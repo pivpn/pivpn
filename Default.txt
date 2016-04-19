@@ -1,0 +1,15 @@
+client
+dev tun
+proto udp
+remote IPv4pub 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+mute-replay-warnings
+ns-cert-type server
+key-direction 1
+cipher AES-128-CBC
+comp-lzo
+verb 1
+mute 20

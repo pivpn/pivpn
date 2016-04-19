@@ -1,0 +1,37 @@
+dev tun
+proto udp
+port 1194
+ca /etc/openvpn/easy-rsa/keys/ca.crt
+cert /etc/openvpn/easy-rsa/keys/server.crt
+key /etc/openvpn/easy-rsa/keys/server.key
+dh /etc/openvpn/easy-rsa/keys/dh1024.pem
+server 10.8.0.0 255.255.255.0
+# server and remote endpoints
+ifconfig 10.8.0.1 10.8.0.2
+# Add route to Client routing table for the OpenVPN Server
+push "route 10.8.0.1 255.255.255.255"
+# Add route to Client routing table for the OPenVPN Subnet
+push "route 10.8.0.0 255.255.255.0"
+# your local subnet
+push "route LOCALIP 255.255.255.0"
+# Set your primary domain name server address to Google DNS 8.8.8.8
+push "dhcp-option DNS 8.8.8.8"
+# Override the Client default gateway by using 0.0.0.0/1 and
+# 128.0.0.0/1 rather than 0.0.0.0/0. This has the benefit of
+# overriding but not wiping out the original default gateway.
+push "redirect-gateway def1"
+client-to-client
+duplicate-cn
+keepalive 10 120
+tls-auth /etc/openvpn/easy-rsa/keys/ta.key 0
+cipher AES-128-CBC
+comp-lzo
+user nobody
+group nogroup
+persist-key
+persist-tun
+#crl-verify /etc/openvpn/crl.pem
+status /var/log/openvpn-status.log 20
+log /var/log/openvpn.log
+verb 1
+# This configuration file was originally written by Lauren Orsini at ReadWrite.

@@ -1,0 +1,18 @@
+_pivpn() 
+{
+    local cur prev opts
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    opts="debug add list revoke uninstall help"
+
+    if [[ ${cur} == -* ]] ; then
+        opts="-a -d -l -r -h -u"
+        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+        return 0
+    fi
+
+    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
+    return 0
+}
+complete -F _pivpn pivpn
