@@ -393,6 +393,7 @@ confOpenVPN () {
         echo "::: Cancel selected. Exiting..."
         exit 1
     fi
+
     # Copy the easy-rsa files to a directory inside the new openvpn directory
     cp -r /usr/share/easy-rsa /etc/openvpn
 
@@ -404,6 +405,54 @@ confOpenVPN () {
         sed -i 's:KEY_SIZE=2048:KEY_SIZE=1024:' vars
     fi
 
+    whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \
+        It is fine to leave these as-is since only you and the clients you create will ever see this.  However, if you want to change \
+        the values, simply select the ones you wish to modify." $r $c
+
+    CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" $r $c 5 \
+        "COUNTRY" "= US" OFF \
+        "STATE" "= CA" OFF \
+        "CITY" "= SanFranciso" OFF \
+        "ORG" "= Fort-Funston" OFF \
+        "EMAIL" "= me@myhost.mydomain" OFF 3>&1 1>&2 2>&3)
+
+    exitstatus=$?
+    if [ $exitstatus != 0 ]; then
+        echo "::: Cancel selected. Exiting..."
+        exit 1
+    fi
+
+    for i in $CERTVAL
+        do
+            if [ $i == '"COUNTRY"' ]; then
+                COUNTRY=$(whiptail --title "Certificate Country" --inputbox \
+                "Enter a 2 letter abbreviation for Country" $r $c US 3>&1 1>&2 2>&3)
+                sed -i -e "s/US/${COUNTRY}/g" vars
+            fi
+            if [ $i == '"STATE"' ]; then
+                STATE=$(whiptail --title "Certificate State" --inputbox \
+                "Enter a 2 letter abbreviated State or Province" $r $c CA 3>&1 1>&2 2>&3)
+                sed -i -e "s/"CA"/"${STATE}"/g" vars
+            fi
+            if [ $i == '"CITY"' ]; then
+                CITY=$(whiptail --title "Certificate State" --inputbox \
+                "Enter a City name" $r $c SanFrancisco 3>&1 1>&2 2>&3)
+                sed -i -e "s/SanFrancisco/${CITY}/g" vars
+            fi
+            if [ $i == '"ORG"' ]; then
+                ORG=$(whiptail --title "Certificate State" --inputbox \
+                "Enter an Organization name" $r $c Fort-Funston 3>&1 1>&2 2>&3)
+                sed -i -e "s/Fort-Funston/${ORG}/g" vars
+            fi
+            if [ $i == '"EMAIL"' ]; then
+                EMAIL=$(whiptail --title "Certificate State" --inputbox \
+                "Enter an Email Address" $r $c "me@myhost.mydomain" 3>&1 1>&2 2>&3)
+                sed -i -e "s/me@myhost.mydomain/${EMAIL}/g" vars
+            fi
+        done
+    # Make PiVPN the OU
+    sed -i -e "s/MyOrganizationalUnit/PiVPN/g" vars
+    
     # source the vars file just edited
     source ./vars
 
@@ -413,8 +462,7 @@ confOpenVPN () {
     # Build the certificate authority
     ./build-ca < /etc/.pivpn/ca_info.txt
 
-    whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "You will now be asked for identifying information for the server.  Press 'Enter' to skip a field." $r $c
-    # can export env variables here for users to provide. export KEY_EMAIL will set email field for example.
+    whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." $r $c
 
     # Build the server
     ./build-key-server --batch server
