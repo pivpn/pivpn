@@ -287,7 +287,7 @@ stopServices() {
     # Stop openvpn
     $SUDO echo ":::"
     $SUDO echo -n "::: Stopping openvpn service..."
-    $SUDO service openvpn stop || true
+    $SUDO systemctl openvpn.service stop || true
     $SUDO echo " done."
 }
 
@@ -382,6 +382,9 @@ update_repo() {
 }
 
 confOpenVPN () {
+    # Ask user if want to modify default port
+    PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c 1194 3>&1 1>&2 2>&3)    
+
     # Ask user for desired level of encryption
     ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
     "Choose your desired level of encryption:" $r $c 2 \
@@ -405,9 +408,7 @@ confOpenVPN () {
         sed -i 's:KEY_SIZE=2048:KEY_SIZE=1024:' vars
     fi
 
-    whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \
-        It is fine to leave these as-is since only you and the clients you create will ever see this.  However, if you want to change \
-        the values, simply select the ones you wish to modify." $r $c
+    whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \n However, if you want to change the values, simply select the ones you wish to modify." $r $c
 
     CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" $r $c 5 \
         "COUNTRY" "= US" OFF \
@@ -479,6 +480,11 @@ confOpenVPN () {
     if [ $ENCRYPT = 2048 ]; then
         sed -i 's:dh1024:dh2048:' /etc/openvpn/server.conf
     fi
+    
+    # if they modified port put value in server.conf
+    if [ $PORT != 1194 ]; then
+        sed -i -e "s/1194/${PORT}/g" /etc/openvpn/server.conf
+    fi
 }
 
 confNetwork() {
@@ -522,6 +528,13 @@ confOVPN() {
             exit 1
         fi
     fi
+
+    # if they modified port put value in Default.txt for clients to use
+    if [ $PORT != 1194 ]; then
+        sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
+    fi
+
+    ### ask about dns for clients
 
     mkdir /home/$pivpnUser/ovpns
     chmod 0777 -R /home/$pivpnUser/ovpns
