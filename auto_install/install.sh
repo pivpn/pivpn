@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # PiVPN: Trivial openvpn setup and configuration
 # Easiest setup and mangement of openvpn on Raspberry Pi
+# http://pivpn.io
+# Heavily adapted from the pi-hole.net project and...
 # https://github.com/StarshipEngineer/OpenVPN-Setup/
-# Installs pivpn 
-# Heavily adapted from the pi-hole project
 #
 # Install with this command (from your Pi):
 #
@@ -405,10 +405,10 @@ confOpenVPN () {
     cd /etc/openvpn/easy-rsa
     sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
     if [[ $ENCRYPT -eq "1024" ]]; then
-        sed -i "s/\(KEY_SIZE=\"\).*/\1${ENCRYPT}\"/" vars
+        sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
     fi
 
-    whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \n However, if you want to change the values, simply select the ones you wish to modify." $r $c
+    whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \nHowever, if you want to change the values, simply select the ones you wish to modify." $r $c
 
     CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" $r $c 7 \
         "COUNTRY" "= US" OFF \
@@ -466,7 +466,9 @@ confOpenVPN () {
         done
     # Make PiVPN the OU
     KEY_OU=PiVPN
+    KEY_ALT=PiVPN_KEYALT
     sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
+    sed -i "s/\(KEY_ALTNAMES=\"\).*/\1${KEY_ALT}\"/" vars
     
     # source the vars file just edited
     source ./vars
