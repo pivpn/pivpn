@@ -7,7 +7,7 @@
 #
 # Install with this command (from your Pi):
 #
-# curl -L vigilcode.com/pivpnsetup | bash
+# curl -L http://install.pivpn.io | bash
 
 
 ######## VARIABLES #########
@@ -15,7 +15,7 @@
 tmpLog=/tmp/pivpn-install.log
 instalLogLoc=/etc/pivpn/install.log
 
-pivpnGitUrl="https://github.com/0-kaladin/OpenVPN-Setup.git"
+pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
 
 
@@ -126,7 +126,7 @@ verifyFreeDiskSpace() {
     fi
 
     if [[ $existingFreeBytes -lt $requiredFreeBytes ]]; then
-        whiptail --msgbox --backtitle "Insufficient Disk Space" --title "Insufficient Disk Space" "\nYour system appears to be low on disk space. PiVPN recomends a minimum of $requiredFreeBytes Bytes.\nYou only have $existingFreeBytes Free.\n\nIf this is a new install you may need to expand your disk.\n\nTry running:\n    'sudo raspi-config'\nChoose the 'expand file system option'\n\nAfter rebooting, run this installation again.\n\ncurl -L vigilcode.com/pivpnsetup | bash\n" $r $c
+        whiptail --msgbox --backtitle "Insufficient Disk Space" --title "Insufficient Disk Space" "\nYour system appears to be low on disk space. PiVPN recomends a minimum of $requiredFreeBytes Bytes.\nYou only have $existingFreeBytes Free.\n\nIf this is a new install you may need to expand your disk.\n\nTry running:\n    'sudo raspi-config'\nChoose the 'expand file system option'\n\nAfter rebooting, run this installation again.\n\ncurl -L http://install.pivpn.io | bash\n" $r $c
         echo "$existingFreeBytes is less than $requiredFreeBytes"
         echo "Insufficient free space, exiting..."
         exit 1
