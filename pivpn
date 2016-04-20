@@ -40,6 +40,10 @@ function uninstallFunc {
     exit 1
 }
 
+function versionFunc {
+    printf "\e[1mVersion 1.0\e[0m\n"
+}
+
 function helpFunc {
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
@@ -67,5 +71,6 @@ case "$1" in
 "-r" | "revoke"             ) removeOVPNFunc;;
 "-h" | "help"               ) helpFunc;;
 "-u" | "uninstall"          ) uninstallFunc;;
+"-v"                        ) versionFunc;;
 *                           ) helpFunc;;
 esac
