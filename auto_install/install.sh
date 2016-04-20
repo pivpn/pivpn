@@ -504,7 +504,7 @@ confOVPN() {
     # Set status that no certs have been revoked
     $SUDO echo 0 > /etc/pivpn/REVOKE_STATUS
 
-    METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS?" $r $c 2 \
+    METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server?" $r $c 2 \
     "$IPv4pub" "Use this public IP" "ON" \
     "DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3) 
     
@@ -513,7 +513,6 @@ confOVPN() {
     echo "::: Cancel selected. Exiting..."
         exit 1
     fi
-
 
     if [ "$METH" == "$IPv4pub" ]; then
         sed 's/IPv4pub/'$IPv4pub'/' </etc/.pivpn/Default.txt >/etc/openvpn/easy-rsa/keys/Default.txt
@@ -528,10 +527,23 @@ confOVPN() {
             exit 1
         fi
     fi
+    
+    # Allow user to change DNS the clients use
+    if (whiptail --title "VPN Client DNS" --yes-button "Default DNS" --no-button "Change DNS" --yesno "By Default your VPN Clients will use Google DNS. \nIf you wish to change this to your own DNS, you can do so now." $r $c) then
+        echo "::: Using Google DNS servers for your VPN Clients"
+    else
+        OVPNDNS=$(whiptail --title "VPN Client DNS" --inputbox "Please enter the IP Address of the DNS server your clients should use" $r $c 8.8.8.8 3>&1 1>&2 2>&3)
+        echo "::: Using $OVPNDNS as a DNS server for your VPN Clients"
+    fi
 
     # if they modified port put value in Default.txt for clients to use
     if [ $PORT != 1194 ]; then
         sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
+    fi
+    
+    # if they changed client dns put in server config 
+    if [ $OVPNDNS != "8.8.8.8" ]; then
+        sed -i -e "s/dhcp-option DNS 8.8.8.8/dhcp-option DNS ${OVPNDNS}/g" /etc/openvpn/server.conf
     fi
 
     ### ask about dns for clients
