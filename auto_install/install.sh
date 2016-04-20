@@ -466,9 +466,8 @@ confOpenVPN () {
         done
     # Make PiVPN the OU
     KEY_OU=PiVPN
-    KEY_ALT=PiVPN_KEYALT
     sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
-    sed -i "s/\(KEY_ALTNAMES=\"\).*/\1${KEY_ALT}\"/" vars
+    grep -q 'KEY_ALTNAMES=' vars || printf '\nexport KEY_ALTNAMES="PiVPN_KEYALT"\n' >> vars
     
     # source the vars file just edited
     source ./vars
