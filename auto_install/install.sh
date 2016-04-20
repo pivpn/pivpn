@@ -405,16 +405,18 @@ confOpenVPN () {
     cd /etc/openvpn/easy-rsa
     sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
     if [[ $ENCRYPT -eq "1024" ]]; then
-        sed -i 's:KEY_SIZE=2048:KEY_SIZE=1024:' vars
+        sed -i "s/\(KEY_SIZE=\"\).*/\1${ENCRYPT}\"/" vars
     fi
 
     whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \n However, if you want to change the values, simply select the ones you wish to modify." $r $c
 
-    CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" $r $c 5 \
+    CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" $r $c 7 \
         "COUNTRY" "= US" OFF \
         "STATE" "= CA" OFF \
         "CITY" "= SanFranciso" OFF \
         "ORG" "= Fort-Funston" OFF \
+        "SERVER_NAME" "= server" OFF \
+        "KEY_NAME" "= EasyRSA" OFF \
         "EMAIL" "= me@myhost.mydomain" OFF 3>&1 1>&2 2>&3)
 
     exitstatus=$?
@@ -428,31 +430,43 @@ confOpenVPN () {
             if [ $i == '"COUNTRY"' ]; then
                 COUNTRY=$(whiptail --title "Certificate Country" --inputbox \
                 "Enter a 2 letter abbreviation for Country" $r $c US 3>&1 1>&2 2>&3)
-                sed -i -e "s/US/${COUNTRY}/g" vars
+                sed -i "s/\(KEY_COUNTRY=\"\).*/\1${COUNTRY}\"/" vars
             fi
             if [ $i == '"STATE"' ]; then
                 STATE=$(whiptail --title "Certificate State" --inputbox \
                 "Enter a 2 letter abbreviated State or Province" $r $c CA 3>&1 1>&2 2>&3)
-                sed -i -e "s/"CA"/"${STATE}"/g" vars
+                sed -i "s/\(KEY_PROVINCE=\"\).*/\1${STATE}\"/" vars
             fi
             if [ $i == '"CITY"' ]; then
-                CITY=$(whiptail --title "Certificate State" --inputbox \
+                CITY=$(whiptail --title "Certificate City" --inputbox \
                 "Enter a City name" $r $c SanFrancisco 3>&1 1>&2 2>&3)
-                sed -i -e "s/SanFrancisco/${CITY}/g" vars
+                sed -i "s/\(KEY_CITY=\"\).*/\1${CITY}\"/" vars
             fi
             if [ $i == '"ORG"' ]; then
-                ORG=$(whiptail --title "Certificate State" --inputbox \
+                ORG=$(whiptail --title "Certificate Org" --inputbox \
                 "Enter an Organization name" $r $c Fort-Funston 3>&1 1>&2 2>&3)
-                sed -i -e "s/Fort-Funston/${ORG}/g" vars
+                sed -i "s/\(KEY_ORG=\"\).*/\1${ORG}\"/" vars
             fi
             if [ $i == '"EMAIL"' ]; then
-                EMAIL=$(whiptail --title "Certificate State" --inputbox \
+                EMAIL=$(whiptail --title "Certificate Email" --inputbox \
                 "Enter an Email Address" $r $c "me@myhost.mydomain" 3>&1 1>&2 2>&3)
-                sed -i -e "s/me@myhost.mydomain/${EMAIL}/g" vars
+                sed -i "s/\(KEY_EMAIL=\"\).*/\1${EMAIL}\"/" vars
+            fi
+            if [ $i == '"SERVER_NAME"' ]; then
+                SERVER_NAME=$(whiptail --title "Server Name" --inputbox \
+                "Enter a Server Name" $r $c "pivpn" 3>&1 1>&2 2>&3)
+                sed -i '/export KEY_CN/s/^#//g' vars
+                sed -i "s/\(KEY_CN=\"\).*/\1${SERVER_NAME}\"/" vars
+            fi
+            if [ $i == '"KEY_NAME"' ]; then
+                KEY_NAME=$(whiptail --title "Key Name" --inputbox \
+                "Enter a Key Name" $r $c "EasyRSA" 3>&1 1>&2 2>&3)
+                sed -i "s/\(KEY_NAME=\"\).*/\1${KEY_NAME}\"/" vars
             fi
         done
     # Make PiVPN the OU
-    sed -i -e "s/MyOrganizationalUnit/PiVPN/g" vars
+    KEY_OU=PiVPN
+    sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
     
     # source the vars file just edited
     source ./vars
@@ -466,7 +480,7 @@ confOpenVPN () {
     whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." $r $c
 
     # Build the server
-    ./build-key-server --batch server
+    ./build-key-server --batch
 
     # Generate Diffie-Hellman key exchange
     ./build-dh
@@ -489,7 +503,7 @@ confOpenVPN () {
 
 confNetwork() {
     # Enable forwarding of internet traffic
-    sed -i '/#net.ipv4.ip_forward=1/c\net.ipv4.ip_forward=1' /etc/sysctl.conf
+    $SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
     $SUDO sysctl -p
 
     # Write script to run openvpn and allow it through firewall on boot using the template .txt file
@@ -542,7 +556,7 @@ confOVPN() {
     fi
     
     # if they changed client dns put in server config 
-    if [ $OVPNDNS != "8.8.8.8" ]; then
+    if [ $OVPNDNS != 8.8.8.8 ]; then
         sed -i -e "s/dhcp-option DNS 8.8.8.8/dhcp-option DNS ${OVPNDNS}/g" /etc/openvpn/server.conf
     fi
 
