@@ -455,8 +455,9 @@ confOpenVPN () {
             if [ $i == '"SERVER_NAME"' ]; then
                 SERVER_NAME=$(whiptail --title "Server Name" --inputbox \
                 "Enter a Server Name" $r $c "pivpn" 3>&1 1>&2 2>&3)
-                sed -i '/export KEY_CN/s/^#//g' vars
-                sed -i "s/\(KEY_CN=\"\).*/\1${SERVER_NAME}\"/" vars
+                # This began a rabbit hole of errors. Nope.
+                #sed -i '/export KEY_CN/s/^#//g' vars
+                #sed -i "s/\(KEY_CN=\"\).*/\1${SERVER_NAME}\"/" vars
             fi
             if [ $i == '"KEY_NAME"' ]; then
                 KEY_NAME=$(whiptail --title "Key Name" --inputbox \
@@ -467,7 +468,9 @@ confOpenVPN () {
     # Make PiVPN the OU
     KEY_OU=PiVPN
     sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
-    grep -q 'KEY_ALTNAMES=' vars || printf '\nexport KEY_ALTNAMES="PiVPN_KEYALT"\n' >> vars
+
+    # It seems you have to set this if you mess with key_cn, lets not.
+    # grep -q 'KEY_ALTNAMES=' vars || printf '\nexport KEY_ALTNAMES="PiVPN_KEYALT"\n' >> vars
     
     # source the vars file just edited
     source ./vars
@@ -476,12 +479,14 @@ confOpenVPN () {
     ./clean-all
 
     # Build the certificate authority
+    echo "::: Building CA..."
     ./build-ca < /etc/.pivpn/ca_info.txt
+    echo "::: CA Complete."
 
     whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." $r $c
 
     # Build the server
-    ./build-key-server --batch
+    ./build-key-server --batch $SERVER_NAME
 
     # Generate Diffie-Hellman key exchange
     ./build-dh
@@ -557,7 +562,7 @@ confOVPN() {
     fi
     
     # if they changed client dns put in server config 
-    if [ $OVPNDNS != 8.8.8.8 ]; then
+    if [[ $OVPNDNS != "8.8.8.8" ]]; then
         sed -i -e "s/dhcp-option DNS 8.8.8.8/dhcp-option DNS ${OVPNDNS}/g" /etc/openvpn/server.conf
     fi
 
