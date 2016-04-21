@@ -524,6 +524,7 @@ confNetwork() {
 }
 
 confOVPN() {
+    OVPNDNS="8.8.8.8"
     IPv4pub=$(dig +short myip.opendns.com @resolver1.opendns.com)
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
 
@@ -571,8 +572,6 @@ confOVPN() {
     if [[ $OVPNDNS != "8.8.8.8" ]]; then
         $SUDO sed -i -e "s/dhcp-option DNS 8.8.8.8/dhcp-option DNS ${OVPNDNS}/g" /etc/openvpn/server.conf
     fi
-
-    ### ask about dns for clients
 
     $SUDO mkdir /home/$pivpnUser/ovpns
     $SUDO chmod 0777 -R /home/$pivpnUser/ovpns
