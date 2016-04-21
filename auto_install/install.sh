@@ -404,7 +404,7 @@ confOpenVPN () {
 
     # Edit the EASY_RSA variable in the vars file to point to the new easy-rsa directory,
     # And change from default 1024 encryption if desired
-    $SUDO cd /etc/openvpn/easy-rsa
+    cd /etc/openvpn/easy-rsa
     $SUDO sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
     if [[ $ENCRYPT -eq "1024" ]]; then
         $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
@@ -570,7 +570,7 @@ confOVPN() {
     
     # if they changed client dns put in server config 
     if [[ $OVPNDNS != "8.8.8.8" ]]; then
-        $SUDO sed -i -e "s/dhcp-option DNS 8.8.8.8/dhcp-option DNS ${OVPNDNS}/g" /etc/openvpn/server.conf
+        $SUDO sed -i "s/\(dhcp-option DNS \).*/\1${OVPNDNS}\"/" /etc/openvpn/server.conf
     fi
 
     $SUDO mkdir /home/$pivpnUser/ovpns
