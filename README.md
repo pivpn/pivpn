@@ -39,7 +39,7 @@ Installation
 
 
 ```shell
-curl -L install.pivpn.io | bash
+curl -L http://install.pivpn.io | bash
 ```
 
 The script will first update your APT repositories, upgrade packages, and install OpenVPN,
@@ -49,24 +49,19 @@ It will ask which encryption method you wish the guts of your server to use, 102
 have a convincing reason one way or the other I'd use 2048 today.
 
 After this, the script will go back to the command line as it builds the server's own
-certificate authority. If you wish to enter identifying information for the
-CA, replace the default values in the file ca_info.txt (CO for country, ST for
-state/province/territory, ORG for organization, etc.) before executing the setup script;
-however, this is not required, and you may leave the ca_info.txt file as-is. After this,
-the script will prompt you in the command line for input in similar identifying information
-fields as it generates your server certificate. Enter whatever you like, or if you do not
-desire to fill them out, skip them by pressing enter; make sure to skip the challenge field
-and leave it blank. After these fields, you will be asked whether you want to sign the
-certificate; you must press 'y'. You'll also be asked if you want to commit - press 'y'
-again.
+certificate authority. The script will ask you if you'd like to change the certificate fields, 
+the default port, client's DNS server, etc.  If you know you want to change these things, feel free,
+and the script will put all the information where it needs to go in the various config files.
+If you aren't sure, it has been designed that you can simply hit 'Enter' through all the questions
+and have a working configuration at the end.
 
 Finally, the script will take some time to build the server's Diffie-Hellman key
 exchange. If you chose 1024-bit encryption, this will just take a few minutes, but if you
 chose 2048-bit, it will take much longer (anywhere from 40 minutes to several hours on a
 Model B+). The script will also make some changes to your system to allow it to forward
 internet traffic and allow VPN connections through the Pi's firewall. When the script
-informs you that it has finished configuring OpenVPN, reboot the system to apply the
-changes, and the VPN server-side setup will be complete!
+informs you that it has finished configuring OpenVPN, it will ask if you want to reboot.  
+I have it where you do not need to reboot when done but it also can't hurt.
 
 Managing the PiVPN
 ----------------------
@@ -83,6 +78,8 @@ the pass phrase you just chose in order to encrypt the client key, and immediate
 another pass phrase for the encrypted key - if you're normal, just use the same one. After this,
 the script will assemble the client .ovpn file and place it in the directory 'ovpns' within your
 home directory.
+
+You can run just 'pivpn' to see all the options.
 
 Importing .ovpn Profiles on Client Machines
 --------------------------------------------
@@ -106,7 +103,7 @@ administrator permissions, right-clicking on the icon in the system tray, and cl
 or on Android by selecting the profile under 'OpenVPN Profile' and pressing 'Connect'. You'll be
 asked to enter the pass phrase you chose. Do so, and you're in! Enjoy your ~$50 USD private VPN.
 
-Removing OpenVPN
+Removing PiVPN
 ----------------
 
 If at any point you wish to remove OpenVPN from your Pi and revert it to a
@@ -122,33 +119,22 @@ welcome any feedback on your experience. If you have problems using it, feel
 free to post an issue here on github.  I'll classify the issues the best I can
 to keep things sorted.
 
-I also encourage discussion of issues, solutions, and ideas on the RaspberryPi.org forum thread for the project [here.](https://www.raspberrypi.org/forums/viewtopic.php?f=36&t=137240&p=911599&hilit=OpenVPN#p911599) I'd love for users to have the opportunity to discuss their ideas with each other!
-
 Contributions
 -------------
 
 I'm also interested in improving this script, and will be adding features to it
-over time to make it easier, more intuitive, and more versatile. If you have any
- feature ideas or requests, or are interested in adding your ideas to it,
- testing it on other platforms, or localizing it to another language, please
- comment or leave a pull request. I will be happy to work with you!
+over time to make it easier, more intuitive, and more versatile. If you have any 
+feature ideas or requests, or are interested in adding your ideas to it,
+testing it on other platforms, please comment or leave a pull request. 
+If you contribute often I can add you as a member of the PiVPN project.
+I will be happy to work with you!
 
-If you have found this tool to be useful and want to use
-[this PayPal link](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=K99QGVL7KA6ZL)
-to buy me a gallon of gas, I would be very grateful!
+If you have found this tool to be useful and want to Donate then consider the following
+sources.
+1. I began this as a rough merger of the code at [OpenVPNSetup](https://github.com/StarshipEngineer/OpenVPN-Setup) who you can donate to at [this PayPal link](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=K99QGVL7KA6ZL)
+2. And the code at [pi-hole.net](https://github.com/pi-hole/pi-hole)
+3. Of course there is [OpenVPN] (https://openvpn.net)
+4. And as always the ever vigilant [EFF] (https://www.eff.org/)
 
-If you decide to do so, please also consider supporting OpenVPN; they
-have produced a wonderful open-source product, and all credit for it goes to
-their community and their hard work. All I did was write a little automated
-front-end for its installation on Raspbian.
+I don't take donations at this time but if you want to show your appreciation to me, then contribute or leave feedback on suggestions or improvements.
 
-Sources
--------
-
-1: [ModMyPi: How to give your Raspberry Pi a Static IP Address](https://www.modmypi.com/blog/tutorial-how-to-give-your-raspberry-pi-a-static-ip-address)
-
-2: [ReadWrite: 5 Pointers To Supercharge Your Raspberry Pi Projects](http://readwrite.com/2014/04/09/raspberry-pi-projects-ssh-remote-desktop-static-ip-tutorial?utm_content=readwrite3-orionautotweet&awesm=readwr.it_b1UN&utm_campaign=&utm_medium=readwr.it-twitter&utm_source=t.co#awesm=~oAXilI0BMOHsS3)
-
-3: [ReadWrite: Building A Raspberry Pi VPN Part 1](http://readwrite.com/2014/04/10/raspberry-pi-vpn-tutorial-server-secure-web-browsing)
-
-4: [ReadWrite: Building A Raspberry Pi VPN Part 2](http://readwrite.com/2014/04/11/building-a-raspberry-pi-vpn-part-two-creating-an-encrypted-client-side#awesm=~oB89WBfWrt21bV)
