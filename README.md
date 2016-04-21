@@ -131,9 +131,13 @@ I will be happy to work with you!
 
 If you have found this tool to be useful and want to Donate then consider the following
 sources.
+
 1. I began this as a rough merger of the code at [OpenVPNSetup](https://github.com/StarshipEngineer/OpenVPN-Setup) who you can donate to at [this PayPal link](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=K99QGVL7KA6ZL)
+
 2. And the code at [pi-hole.net](https://github.com/pi-hole/pi-hole)
+
 3. Of course there is [OpenVPN] (https://openvpn.net)
+
 4. And as always the ever vigilant [EFF] (https://www.eff.org/)
 
 I don't take donations at this time but if you want to show your appreciation to me, then contribute or leave feedback on suggestions or improvements.
