@@ -498,14 +498,15 @@ confOpenVPN () {
 
     # Write config file for server using the template .txt file
     LOCALIP=$(ifconfig $pivpnInterface | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
-    $SUDO sed 's/LOCALIP/'$LOCALIP'/' </etc/.pivpn/server_config.txt >/etc/openvpn/server.conf
+    $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
+    $SUDO sed -i "s/LOCALIP/${LOCALIP}/g" /etc/openvpn/server.conf
     if [ $ENCRYPT = 2048 ]; then
         $SUDO sed -i 's:dh1024:dh2048:' /etc/openvpn/server.conf
     fi
     
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
-        $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/server.conf
+        $SUDO sed -i "s/1194/${PORT}/g" /etc/openvpn/server.conf
     fi
 
     # write out server certs to conf file
