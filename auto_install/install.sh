@@ -530,7 +530,8 @@ confOVPN() {
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
 
     # Set status that no certs have been revoked
-    $SUDO echo 0 > /etc/pivpn/REVOKE_STATUS
+    echo 0 > /tmp/REVOKE_STATUS
+    $SUDO cp /tmp/REVOKE_STATUS /etc/pivpn/REVOKE_STATUS
 
     METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server?" $r $c 2 \
     "$IPv4pub" "Use this public IP" "ON" \
@@ -542,13 +543,15 @@ confOVPN() {
         exit 1
     fi
 
+    $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/keys/Default.txt
+
     if [ "$METH" == "$IPv4pub" ]; then
-        $SUDO sed 's/IPv4pub/'$IPv4pub'/' </etc/.pivpn/Default.txt >/etc/openvpn/easy-rsa/keys/Default.txt
+        $SUDO sed -i 's/IPv4pub/'$IPv4pub'/' /etc/openvpn/easy-rsa/keys/Default.txt
     else 
         PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Raspberry Pi?" $r $c 3>&1 1>&2 2>&3)
         exitstatus=$?
         if [ $exitstatus = 0 ]; then
-            $SUDO sed 's/IPv4pub/'$PUBLICDNS'/' </etc/.pivpn/Default.txt >/etc/openvpn/easy-rsa/keys/Default.txt
+            $SUDO sed -i 's/IPv4pub/'$PUBLICDNS'/' /etc/openvpn/easy-rsa/keys/Default.txt
             whiptail --title "Setup OpenVPN" --infobox "Using PUBLIC DNS: $PUBLICDNS" $r $c
         else
             whiptail --title "Setup OpenVPN" --infobox "Cancelled" $r $c
