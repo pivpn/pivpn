@@ -383,6 +383,7 @@ update_repo() {
 
 confOpenVPN () {
     # Ask user if want to modify default port
+    SERVER_NAME="server"
     PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c 1194 3>&1 1>&2 2>&3)    
 
     # Ask user for desired level of encryption
@@ -505,6 +506,10 @@ confOpenVPN () {
     if [ $PORT != 1194 ]; then
         sed -i -e "s/1194/${PORT}/g" /etc/openvpn/server.conf
     fi
+
+    # write out server certs to conf file
+    sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.key/" /etc/openvpn/server.conf
+    sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.crt/" /etc/openvpn/server.conf
 }
 
 confNetwork() {
