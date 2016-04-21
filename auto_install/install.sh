@@ -481,7 +481,7 @@ confOpenVPN () {
     # Build the certificate authority
     echo "::: Building CA..."
     ./build-ca < /etc/.pivpn/ca_info.txt
-    echo "::: CA Complete."
+    printf "\n::: CA Complete.\n"
 
     whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." $r $c
 
