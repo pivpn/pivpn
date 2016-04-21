@@ -49,6 +49,7 @@ else
     # If it isn't, exit because the install cannot complete
     if [[ $(dpkg-query -s sudo) ]];then
         export SUDO="sudo"
+        export SUDOE="sudo -E"
     else
         echo "::: Please install sudo or run this as root."
         exit 1
@@ -278,7 +279,7 @@ installScripts() {
     $SUDO cp /etc/.pivpn/pivpn /usr/local/bin/pivpn
     $SUDO chmod 0755 /usr/local/bin/pivpn
     $SUDO cp /etc/.pivpn/scripts/bash-completion /etc/bash_completion.d/pivpn
-    source /etc/bash_completion.d/pivpn
+    . /etc/bash_completion.d/pivpn
 
     $SUDO echo " done."
 }
@@ -399,14 +400,14 @@ confOpenVPN () {
     fi
 
     # Copy the easy-rsa files to a directory inside the new openvpn directory
-    cp -r /usr/share/easy-rsa /etc/openvpn
+    $SUDO cp -r /usr/share/easy-rsa /etc/openvpn
 
     # Edit the EASY_RSA variable in the vars file to point to the new easy-rsa directory,
     # And change from default 1024 encryption if desired
-    cd /etc/openvpn/easy-rsa
-    sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
+    $SUDO cd /etc/openvpn/easy-rsa
+    $SUDO sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
     if [[ $ENCRYPT -eq "1024" ]]; then
-        sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
+        $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
     fi
 
     whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \nHowever, if you want to change the values, simply select the ones you wish to modify." $r $c
@@ -431,27 +432,27 @@ confOpenVPN () {
             if [ $i == '"COUNTRY"' ]; then
                 COUNTRY=$(whiptail --title "Certificate Country" --inputbox \
                 "Enter a 2 letter abbreviation for Country" $r $c US 3>&1 1>&2 2>&3)
-                sed -i "s/\(KEY_COUNTRY=\"\).*/\1${COUNTRY}\"/" vars
+                $SUDO sed -i "s/\(KEY_COUNTRY=\"\).*/\1${COUNTRY}\"/" vars
             fi
             if [ $i == '"STATE"' ]; then
                 STATE=$(whiptail --title "Certificate State" --inputbox \
                 "Enter a 2 letter abbreviated State or Province" $r $c CA 3>&1 1>&2 2>&3)
-                sed -i "s/\(KEY_PROVINCE=\"\).*/\1${STATE}\"/" vars
+                $SUDO sed -i "s/\(KEY_PROVINCE=\"\).*/\1${STATE}\"/" vars
             fi
             if [ $i == '"CITY"' ]; then
                 CITY=$(whiptail --title "Certificate City" --inputbox \
                 "Enter a City name" $r $c SanFrancisco 3>&1 1>&2 2>&3)
-                sed -i "s/\(KEY_CITY=\"\).*/\1${CITY}\"/" vars
+                $SUDO sed -i "s/\(KEY_CITY=\"\).*/\1${CITY}\"/" vars
             fi
             if [ $i == '"ORG"' ]; then
                 ORG=$(whiptail --title "Certificate Org" --inputbox \
                 "Enter an Organization name" $r $c Fort-Funston 3>&1 1>&2 2>&3)
-                sed -i "s/\(KEY_ORG=\"\).*/\1${ORG}\"/" vars
+                $SUDO sed -i "s/\(KEY_ORG=\"\).*/\1${ORG}\"/" vars
             fi
             if [ $i == '"EMAIL"' ]; then
                 EMAIL=$(whiptail --title "Certificate Email" --inputbox \
                 "Enter an Email Address" $r $c "me@myhost.mydomain" 3>&1 1>&2 2>&3)
-                sed -i "s/\(KEY_EMAIL=\"\).*/\1${EMAIL}\"/" vars
+                $SUDO sed -i "s/\(KEY_EMAIL=\"\).*/\1${EMAIL}\"/" vars
             fi
             if [ $i == '"SERVER_NAME"' ]; then
                 SERVER_NAME=$(whiptail --title "Server Name" --inputbox \
@@ -463,12 +464,12 @@ confOpenVPN () {
             if [ $i == '"KEY_NAME"' ]; then
                 KEY_NAME=$(whiptail --title "Key Name" --inputbox \
                 "Enter a Key Name" $r $c "EasyRSA" 3>&1 1>&2 2>&3)
-                sed -i "s/\(KEY_NAME=\"\).*/\1${KEY_NAME}\"/" vars
+                $SUDO sed -i "s/\(KEY_NAME=\"\).*/\1${KEY_NAME}\"/" vars
             fi
         done
     # Make PiVPN the OU
     KEY_OU=PiVPN
-    sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
+    $SUDO sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
 
     # It seems you have to set this if you mess with key_cn, lets not.
     # grep -q 'KEY_ALTNAMES=' vars || printf '\nexport KEY_ALTNAMES="PiVPN_KEYALT"\n' >> vars
@@ -477,39 +478,39 @@ confOpenVPN () {
     source ./vars
 
     # Remove any previous keys
-    ./clean-all
+    ${SUDOE} ./clean-all
 
     # Build the certificate authority
     echo "::: Building CA..."
-    ./build-ca < /etc/.pivpn/ca_info.txt
+    ${SUDOE} ./build-ca < /etc/.pivpn/ca_info.txt
     printf "\n::: CA Complete.\n"
 
     whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." $r $c
 
     # Build the server
-    ./build-key-server --batch $SERVER_NAME
+    ${SUDOE} ./build-key-server --batch $SERVER_NAME
 
     # Generate Diffie-Hellman key exchange
-    ./build-dh
+    ${SUDOE} ./build-dh
 
     # Generate static HMAC key to defend against DDoS
-    openvpn --genkey --secret keys/ta.key
+    ${SUDOE} openvpn --genkey --secret keys/ta.key
 
     # Write config file for server using the template .txt file
     LOCALIP=$(ifconfig $pivpnInterface | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
-    sed 's/LOCALIP/'$LOCALIP'/' </etc/.pivpn/server_config.txt >/etc/openvpn/server.conf
+    $SUDO sed 's/LOCALIP/'$LOCALIP'/' </etc/.pivpn/server_config.txt >/etc/openvpn/server.conf
     if [ $ENCRYPT = 2048 ]; then
-        sed -i 's:dh1024:dh2048:' /etc/openvpn/server.conf
+        $SUDO sed -i 's:dh1024:dh2048:' /etc/openvpn/server.conf
     fi
     
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
-        sed -i -e "s/1194/${PORT}/g" /etc/openvpn/server.conf
+        $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/server.conf
     fi
 
     # write out server certs to conf file
-    sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.key/" /etc/openvpn/server.conf
-    sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.crt/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.key/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.crt/" /etc/openvpn/server.conf
 }
 
 confNetwork() {
@@ -540,12 +541,12 @@ confOVPN() {
     fi
 
     if [ "$METH" == "$IPv4pub" ]; then
-        sed 's/IPv4pub/'$IPv4pub'/' </etc/.pivpn/Default.txt >/etc/openvpn/easy-rsa/keys/Default.txt
+        $SUDO sed 's/IPv4pub/'$IPv4pub'/' </etc/.pivpn/Default.txt >/etc/openvpn/easy-rsa/keys/Default.txt
     else 
         PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Raspberry Pi?" $r $c 3>&1 1>&2 2>&3)
         exitstatus=$?
         if [ $exitstatus = 0 ]; then
-            sed 's/IPv4pub/'$PUBLICDNS'/' </etc/.pivpn/Default.txt >/etc/openvpn/easy-rsa/keys/Default.txt
+            $SUDO sed 's/IPv4pub/'$PUBLICDNS'/' </etc/.pivpn/Default.txt >/etc/openvpn/easy-rsa/keys/Default.txt
             whiptail --title "Setup OpenVPN" --infobox "Using PUBLIC DNS: $PUBLICDNS" $r $c
         else
             whiptail --title "Setup OpenVPN" --infobox "Cancelled" $r $c
@@ -563,18 +564,18 @@ confOVPN() {
 
     # if they modified port put value in Default.txt for clients to use
     if [ $PORT != 1194 ]; then
-        sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
+        $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
     fi
     
     # if they changed client dns put in server config 
     if [[ $OVPNDNS != "8.8.8.8" ]]; then
-        sed -i -e "s/dhcp-option DNS 8.8.8.8/dhcp-option DNS ${OVPNDNS}/g" /etc/openvpn/server.conf
+        $SUDO sed -i -e "s/dhcp-option DNS 8.8.8.8/dhcp-option DNS ${OVPNDNS}/g" /etc/openvpn/server.conf
     fi
 
     ### ask about dns for clients
 
-    mkdir /home/$pivpnUser/ovpns
-    chmod 0777 -R /home/$pivpnUser/ovpns
+    $SUDO mkdir /home/$pivpnUser/ovpns
+    $SUDO chmod 0777 -R /home/$pivpnUser/ovpns
 }
 
 installPiVPN() {
@@ -598,8 +599,8 @@ The install log is in /etc/pivpn." $r $c
     if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" $r $c); then
         whiptail --title "Rebooting" --msgbox "The system will now reboot." $r $c
         printf "\nRebooting system...\n"
-        sleep 3
-        shutdown -r now
+        $SUDO sleep 3
+        $SUDO shutdown -r now
     fi
 }
 
