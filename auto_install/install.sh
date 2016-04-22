@@ -56,6 +56,13 @@ else
     fi
 fi
 
+# Next rough check for platform
+if [ "$(cat /etc/os-release | grep ubuntu)" ]; then
+    PLAT="ubuntu"
+else
+    PLAT="raspbian"
+fi
+
 ####### FUNCTIONS ##########
 spinner()
 {
@@ -165,6 +172,12 @@ chooseInterface() {
         echo "::: Cancel selected, exiting...."
         exit 1
     fi
+}
+
+avoidStaticIPv4Ubuntu() {
+    # If we are in Ubuntu then they need to have previously set their network, so just use what you have.
+    whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are using Ubuntu, and not Raspbian, we will not configure a static IP for you
+If you are in Amazon then you can not configure a static IP anyway. Just ensure before this installer started you had set an elastic IP on your instance." $r $c
 }
 
 getStaticIPv4Settings() {
@@ -288,7 +301,11 @@ stopServices() {
     # Stop openvpn
     $SUDO echo ":::"
     $SUDO echo -n "::: Stopping openvpn service..."
-    $SUDO systemctl openvpn.service stop || true
+    if [[ $PLAT == "ubuntu" ]]; then
+        $SUDO service openvpn stop || true
+    else
+        $SUDO systemctl stop openvpn.service || true
+    fi
     $SUDO echo " done."
 }
 
@@ -521,7 +538,11 @@ confNetwork() {
 
     # Write script to run openvpn and allow it through firewall on boot using the template .txt file
     $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
-    $SUDO netfilter-persistent save
+    if [[ $PLAT == "ubuntu" ]]; then
+        $SUDO iptables-save
+    else
+        $SUDO netfilter-persistent save
+    fi
 }
 
 confOVPN() {
@@ -594,8 +615,13 @@ installPiVPN() {
 
 displayFinalMessage() {
     # Final completion message to user
-    $SUDO systemctl enable openvpn.service
-    $SUDO systemctl start openvpn.service
+    if [[ $PLAT == "ubuntu" ]]; then
+        $SUDO service openvpn start
+    else
+        $SUDO systemctl enable openvpn.service
+        $SUDO systemctl start openvpn.service
+    fi
+
     whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles. 
 Run 'pivpn help' to see what else you can do!
 The install log is in /etc/pivpn." $r $c
@@ -616,8 +642,13 @@ verifyFreeDiskSpace
 
 # Find interfaces and let the user choose one
 chooseInterface
-getStaticIPv4Settings
-setStaticIPv4
+
+if [[ $PLAT == "ubuntu" ]]; then
+    avoidStaticIPv4Ubuntu
+else
+    getStaticIPv4Settings
+    setStaticIPv4
+fi
 
 # Choose the user for the ovpns
 chooseUser

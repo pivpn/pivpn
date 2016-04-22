@@ -9,7 +9,7 @@ if [ ! -f $INDEX ]; then
         exit 1
 fi
 
-printf ": NOTE : You should always have a valid server entry below!\n"
+printf ": NOTE : The first entry should always be your valid server!\n"
 printf "\n"
 printf "\e[1m::: Certificate Status List :::\e[0m\n"
 printf " ::\e[4m  Status  \e[0m||\e[4m   Name   \e[0m:: \n"
