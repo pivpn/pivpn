@@ -10,9 +10,9 @@ into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) sof
 
 The master branch of this script installs and configures OpenVPN on Raspbian
 Jessie, and should be used if you are running Jessie or Jessie Lite. Jessie Lite
-is recommended if this will just be a server.  The goal is for this to also work
-on Debian Jessie built on a free-tier Amazon AWS server for those that want thier
-tunneled traffic to be encrypted out of their home ISP. 
+is recommended if this will just be a server.  
+
+> This will also work on a free-tier Amazon AWS server using Ubuntu 14.04.  I don't want to support every scenario there but getting it to run and install successfully on a free server in the cloud was also important.  Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the amazon infrastructure.
 
 Prerequisites
 -------------
