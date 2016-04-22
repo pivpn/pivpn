@@ -5,7 +5,7 @@ About
 -----
 
 Visit the [PiVPN](http://pivpn.io) site for more information.
-This is a set of shell scripts that server to easily turn your Raspberry Pi (TM)
+This is a set of shell scripts that serve to easily turn your Raspberry Pi (TM)
 into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) software. 
 
 The master branch of this script installs and configures OpenVPN on Raspbian
