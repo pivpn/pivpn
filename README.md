@@ -46,7 +46,10 @@ The script will first update your APT repositories, upgrade packages, and instal
 which will take some time.
 It will ask which encryption method you wish the guts of your server to use, 1024-bit or 2048-bit.
 2048-bit is more secure, but will take much longer to set up. If you're unsure or don't
-have a convincing reason one way or the other I'd use 2048 today.
+have a convincing reason one way or the other I'd use 2048 today.  From the OpenVPN site:
+> For asymmetric keys, general wisdom is that 1024-bit keys are no longer sufficient to protect against well-equipped adversaries. Use of 2048-bit is a good minimum. It is wise to ensure all keys across your active PKI (including the CA root keypair) are using at least 2048-bit keys.
+
+> Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN,) but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
 
 After this, the script will go back to the command line as it builds the server's own
 certificate authority. The script will ask you if you'd like to change the certificate fields, 
