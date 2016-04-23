@@ -16,6 +16,7 @@ push "route 10.8.0.0 255.255.255.0"
 push "route LOCALIP 255.255.255.0"
 # Set your primary domain name server address for clients
 push "dhcp-option DNS 8.8.8.8"
+push "dhcp-option DNS 8.8.4.4"
 # Override the Client default gateway by using 0.0.0.0/1 and
 # 128.0.0.0/1 rather than 0.0.0.0/0. This has the benefit of
 # overriding but not wiping out the original default gateway.
@@ -24,7 +25,8 @@ client-to-client
 duplicate-cn
 keepalive 10 120
 tls-auth /etc/openvpn/easy-rsa/keys/ta.key 0
-cipher AES-128-CBC
+cipher AES-256-CBC
+auth SHA256
 comp-lzo
 user nobody
 group nogroup
