@@ -378,7 +378,7 @@ is_repo() {
         if [ -d "$1/.git" ]; then
         echo " OK!"
         return 1
-    fi
+        fi
     echo " not found!!"
     return 0
 }
@@ -396,10 +396,98 @@ update_repo() {
     echo -n ":::     Updating repo in $1..."
     cd "$1" || exit
     $SUDO git pull -q > /dev/null & spinner $!
+    if [ -z ${TESTING+x} ]; then
+        :
+    else
+        $SUDO git checkout test
+    fi
     echo " done!"
 }
 
-confOpenVPN () {
+setClientDNS() {
+    DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients. To use your own, select Custom." $r $c 5)
+    DNSChooseOptions=(Google "" on
+            OpenDNS "" off
+            Level3 "" off
+            Norton "" off
+            Custom "" off)
+    DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
+    if [[ $? = 0 ]];then
+        case $DNSchoices in
+        Google)
+            echo "::: Using Google DNS servers."
+            OVPNDNS1="8.8.8.8"
+            OVPNDNS2="8.8.4.4"
+            # These are already in the file
+            ;;
+        OpenDNS)
+            echo "::: Using OpenDNS servers."
+            OVPNDNS1="208.67.222.222"
+            OVPNDNS2="208.67.220.220"
+            sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+            sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+            ;;
+        Level3)
+            echo "::: Using Level3 servers."
+            OVPNDNS1="4.2.2.1"
+            OVPNDNS2="4.2.2.2"
+            sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+            sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+            ;;
+        Norton)
+            echo "::: Using Norton ConnectSafe servers."
+            OVPNDNS1="199.85.126.10"
+            OVPNDNS2="199.85.127.10"
+            sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+            sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+            ;;
+        Custom)
+            until [[ $DNSSettingsCorrect = True ]]
+            do
+                strInvalid="Invalid"
+                OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), seperated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" $r $c "" 3>&1 1>&2 2>&3)
+                if [[ $? = 0 ]];then
+                    OVPNDNS1=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
+                    OVPNDNS2=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
+                    if ! valid_ip "$OVPNDNS1" || [ ! "$OVPNDNS1" ]; then
+                        OVPNDNS1=$strInvalid
+                    fi
+                    if ! valid_ip "$OVPNDNS2" && [ "$OVPNDNS2" ]; then
+                        OVPNDNS2=$strInvalid
+                    fi
+                else
+                    echo "::: Cancel selected, exiting...."
+                    exit 1
+                fi
+                if [[ $OVPNDNS1 == "$strInvalid" ]] || [[ $OVPNDNS2 == "$strInvalid" ]]; then
+                    whiptail --msgbox --backtitle "Invalid IP" --title "Invalid IP" "One or both entered IP addresses were invalid. Please try again.\n\n    DNS Server 1:   $OVPNDNS1\n    DNS Server 2:   $OVPNDNS2" $r $c
+                    if [[ $OVPNDNS1 == "$strInvalid" ]]; then
+                        OVPNDNS1=""
+                    fi
+                    if [[ $OVPNDNS2 == "$strInvalid" ]]; then
+                        OVPNDNS2=""
+                    fi
+                    DNSSettingsCorrect=False
+                else
+                    if (whiptail --backtitle "Specify Upstream DNS Provider(s)" --title "Upstream DNS Provider(s)" --yesno "Are these settings correct?\n    DNS Server 1:   $OVPNDNS1\n    DNS Server 2:   $OVPNDNS2" $r $c) then
+                        DNSSettingsCorrect=True
+                        sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+                        sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+                    else
+                        # If the settings are wrong, the loop continues
+                        DNSSettingsCorrect=False
+                    fi
+                fi
+        done
+        ;;
+    esac
+    else
+        echo "::: Cancel selected. Exiting..."
+        exit 1
+    fi
+}
+
+confOpenVPN() {
     # Ask user if want to modify default port
     SERVER_NAME="server"
     PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c 1194 3>&1 1>&2 2>&3)    
@@ -546,7 +634,6 @@ confNetwork() {
 }
 
 confOVPN() {
-    OVPNDNS="8.8.8.8"
     IPv4pub=$(dig +short myip.opendns.com @resolver1.opendns.com)
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
 
@@ -580,24 +667,11 @@ confOVPN() {
         fi
     fi
     
-    # Allow user to change DNS the clients use
-    if (whiptail --title "VPN Client DNS" --yes-button "Default DNS" --no-button "Change DNS" --yesno "By Default your VPN Clients will use Google DNS. \nIf you wish to change this to your own DNS, you can do so now." $r $c) then
-        echo "::: Using Google DNS servers for your VPN Clients"
-    else
-        OVPNDNS=$(whiptail --title "VPN Client DNS" --inputbox "Please enter the IP Address of the DNS server your clients should use" $r $c 8.8.8.8 3>&1 1>&2 2>&3)
-        echo "::: Using $OVPNDNS as a DNS server for your VPN Clients"
-    fi
-
     # if they modified port put value in Default.txt for clients to use
     if [ $PORT != 1194 ]; then
         $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
     fi
     
-    # if they changed client dns put in server config 
-    if [[ $OVPNDNS != "8.8.8.8" ]]; then
-        $SUDO sed -i "s/\(dhcp-option DNS \).*/\1${OVPNDNS}\"/" /etc/openvpn/server.conf
-    fi
-
     $SUDO mkdir /home/$pivpnUser/ovpns
     $SUDO chmod 0777 -R /home/$pivpnUser/ovpns
 }
@@ -611,6 +685,7 @@ installPiVPN() {
     confOpenVPN
     confNetwork
     confOVPN
+    setClientDNS
 }
 
 displayFinalMessage() {
