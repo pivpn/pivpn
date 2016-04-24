@@ -388,6 +388,11 @@ make_repo() {
     echo -n ":::    Cloning $2 into $1..."
     $SUDO rm -rf "$1"
     $SUDO git clone -q "$2" "$1" > /dev/null & spinner $!
+    if [ -z ${TESTING+x} ]; then
+        :
+    else
+        $SUDO git checkout test
+    fi
     echo " done!"
 }
 
@@ -429,8 +434,8 @@ setClientDNS() {
             ;;
         Level3)
             echo "::: Using Level3 servers."
-            OVPNDNS1="4.2.2.1"
-            OVPNDNS2="4.2.2.2"
+            OVPNDNS1="209.244.0.3"
+            OVPNDNS2="209.244.0.4"
             sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
             sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
             ;;
