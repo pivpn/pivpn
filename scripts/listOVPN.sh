@@ -21,12 +21,13 @@ while read -r line || [[ -n "$line" ]]; do
         var=$(echo $line | awk '{print $5}' | cut -d'/' -f7)
         var=${var#CN=}
         printf "  $var\n"
-    fi
-    if [[ $status = "R" ]]; then
+    elif [[ $status = "R" ]]; then
         printf "     Revoked :: "
         var=$(echo $line | awk '{print $6}' | cut -d'/' -f7)
         var=${var#CN=}
         printf "  $var\n"
+    else
+        printf "     Unknown :: \n"
     fi
 done <$INDEX
 printf "\n"
