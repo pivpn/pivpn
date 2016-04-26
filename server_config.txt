@@ -24,6 +24,7 @@ push "redirect-gateway def1"
 client-to-client
 duplicate-cn
 keepalive 10 120
+tls-version-min 1.2
 tls-auth /etc/openvpn/easy-rsa/keys/ta.key 0
 cipher AES-256-CBC
 auth SHA256
