@@ -409,6 +409,37 @@ update_repo() {
     echo " done!"
 }
 
+setCustomPort() {
+    until [[ $PORTNumCorrect = True ]]
+        do
+            portInvalid="Invalid"
+
+            PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c 1194 3>&1 1>&2 2>&3)
+            if [[ $? = 0 ]]; then
+                if [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 -a "$PORT" -le 65535 ]; then
+                    :
+                else
+                    PORT=$portInvalid
+                fi
+            else
+                echo "::: Cancel selected, exiting...."
+                exit 1
+            fi
+
+            if [[ $PORT == "$portInvalid" ]]; then
+                whiptail --msgbox --backtitle "Invalid Port" --title "Invalid Port" "You entered an invalid Port number.\n    Please enter a number from 1 - 65535.\n    If you are not sure, please just keep the default." $r $c
+                PORTNumCorrect=False
+            else
+                if (whiptail --backtitle "Specify Custom Port" --title "Confirm Custom Port Number" --yesno "Are these settings correct?\n    PORT:   $PORT" $r $c) then
+                    PORTNumCorrect=True
+                else
+                    # If the settings are wrong, the loop continues
+                    PORTNumCorrect=False
+                fi
+            fi
+        done
+}
+
 setClientDNS() {
     DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients. To use your own, select Custom." $r $c 5)
     DNSChooseOptions=(Google "" on
@@ -495,7 +526,6 @@ setClientDNS() {
 confOpenVPN() {
     # Ask user if want to modify default port
     SERVER_NAME="server"
-    PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c 1194 3>&1 1>&2 2>&3)    
 
     # Ask user for desired level of encryption
     ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
@@ -694,6 +724,7 @@ installPiVPN() {
     $SUDO mkdir -p /etc/pivpn/
     getGitFiles
     installScripts
+    setCustomPort
     confOpenVPN
     confNetwork
     confOVPN
