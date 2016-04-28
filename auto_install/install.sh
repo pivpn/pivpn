@@ -609,7 +609,14 @@ confOpenVPN() {
     # Write config file for server using the template .txt file
     LOCALIP=$(ifconfig $pivpnInterface | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
+    
+    # if using ubuntu remove tls-server-min line as they have an older openvpn
+    if [[ PLAT == "ubuntu" ]]; then
+        $SUDO sed -i '/tls-version-min/s/^/# /' /etc/openvpn/server.conf
+    fi
+
     $SUDO sed -i "s/LOCALIP/${LOCALIP}/g" /etc/openvpn/server.conf
+
     if [ $ENCRYPT = 2048 ]; then
         $SUDO sed -i 's:dh1024:dh2048:' /etc/openvpn/server.conf
     fi
