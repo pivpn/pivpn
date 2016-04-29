@@ -529,10 +529,10 @@ confOpenVPN() {
 
     # Ask user for desired level of encryption
     ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
-    "Choose your desired level of encryption:" $r $c 3 \
-    "2048" "Use 2048-bit encryption. Slower to generate, but more secure." ON \
-    "1024" "Use 1024-bit encryption. Faster to generate, but less secure." OFF \
-    "4096" "Use 4096-bit encryption. Slowest to generate, paranoid mode." OFF 3>&1 1>&2 2>&3)
+    "Choose your desired level of encryption:\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications it is recommended to use 2048 bit.  If you are testing or just want to get through it quicker you can use 1024.  If you are paranoid about ... things... then grab a cup of joe and pick 4096." $r $c 3 \
+    "2048" "Use 2048-bit encryption. Recommended level." ON \
+    "1024" "Use 1024-bit encryption. Test level." OFF \
+    "4096" "Use 4096-bit encryption. Paranoid level." OFF 3>&1 1>&2 2>&3)
 
     exitstatus=$?
     if [ $exitstatus != 0 ]; then
@@ -548,6 +548,15 @@ confOpenVPN() {
     cd /etc/openvpn/easy-rsa
     $SUDO sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
     $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
+    
+    # Init Cert Values
+    COUNTRY="US"
+    STATE="CA"
+    CITY="SanFrancisco"
+    ORG="Fort-Funston"
+    SERVER_NAME="server"
+    KEY_NAME="EasyRSA"
+    EMAIL="me@myhost.mydomain"
 
     whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \nHowever, if you want to change the values, simply select the ones you wish to modify." $r $c
 
