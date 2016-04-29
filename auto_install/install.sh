@@ -552,22 +552,24 @@ confOpenVPN() {
 
     whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \nHowever, if you want to change the values, simply select the ones you wish to modify." $r $c
 
-    CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" $r $c 7 \
-        "COUNTRY" "= US" OFF \
-        "STATE" "= CA" OFF \
-        "CITY" "= SanFranciso" OFF \
-        "ORG" "= Fort-Funston" OFF \
-        "SERVER_NAME" "= server" OFF \
-        "KEY_NAME" "= EasyRSA" OFF \
-        "EMAIL" "= me@myhost.mydomain" OFF 3>&1 1>&2 2>&3)
+    until [[ $CERTVALCorrect = True ]]
+    do
+        CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" $r $c 7 \
+            "COUNTRY" "= US" OFF \
+            "STATE" "= CA" OFF \
+            "CITY" "= SanFranciso" OFF \
+            "ORG" "= Fort-Funston" OFF \
+            "SERVER_NAME" "= server" OFF \
+            "KEY_NAME" "= EasyRSA" OFF \
+            "EMAIL" "= me@myhost.mydomain" OFF 3>&1 1>&2 2>&3)
 
-    exitstatus=$?
-    if [ $exitstatus != 0 ]; then
-        echo "::: Cancel selected. Exiting..."
-        exit 1
-    fi
+        exitstatus=$?
+        if [ $exitstatus != 0 ]; then
+            echo "::: Cancel selected. Exiting..."
+            exit 1
+        fi
 
-    for i in $CERTVAL
+        for i in $CERTVAL
         do
             if [ $i == '"COUNTRY"' ]; then
                 COUNTRY=$(whiptail --title "Certificate Country" --inputbox \
@@ -607,6 +609,12 @@ confOpenVPN() {
                 $SUDO sed -i "s/\(KEY_NAME=\"\).*/\1${KEY_NAME}\"/" vars
             fi
         done
+        if (whiptail --backtitle "Confirm Certificate Fields" --title "Confirm Certificate Fields" --yesno "Are these values correct?\n\n    Country:      $COUNTRY\n    State:        $STATE\n    City:         $CITY\n    Org:          $ORG\n    Email:        $EMAIL\n    Server Name:  $SERVER_NAME\n    Key Name:     $KEY_NAME" $r $c) then
+            CERTVALCorrect=True
+        else
+            CERTVALCorrect=False
+        fi
+    done
     # Make PiVPN the OU
     KEY_OU=PiVPN
     $SUDO sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
