@@ -39,7 +39,7 @@ Installation
 
 
 ```shell
-curl -L http://install.pivpn.io | bash
+curl -L https://install.pivpn.io | bash
 ```
 
 The script will first update your APT repositories, upgrade packages, and install OpenVPN,
