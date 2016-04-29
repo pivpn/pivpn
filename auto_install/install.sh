@@ -531,7 +531,7 @@ confOpenVPN() {
     ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
     "Choose your desired level of encryption:" $r $c 3 \
     "2048" "Use 2048-bit encryption. Slower to generate, but more secure." ON \
-    "1024" "Use 1024-bit encryption. Faster to generate, but less secure." OFF 
+    "1024" "Use 1024-bit encryption. Faster to generate, but less secure." OFF \
     "4096" "Use 4096-bit encryption. Slowest to generate, paranoid mode." OFF 3>&1 1>&2 2>&3)
 
     exitstatus=$?
