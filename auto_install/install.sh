@@ -529,9 +529,10 @@ confOpenVPN() {
 
     # Ask user for desired level of encryption
     ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
-    "Choose your desired level of encryption:" $r $c 2 \
-    "2048" "Use 2048-bit encryption. Slower to set up, but more secure." ON \
-    "1024" "Use 1024-bit encryption. Faster to set up, but less secure." OFF 3>&1 1>&2 2>&3)
+    "Choose your desired level of encryption:" $r $c 3 \
+    "2048" "Use 2048-bit encryption. Slower to generate, but more secure." ON \
+    "1024" "Use 1024-bit encryption. Faster to generate, but less secure." OFF 
+    "4096" "Use 4096-bit encryption. Slowest to generate, paranoid mode." OFF 3>&1 1>&2 2>&3)
 
     exitstatus=$?
     if [ $exitstatus != 0 ]; then
@@ -543,12 +544,10 @@ confOpenVPN() {
     $SUDO cp -r /usr/share/easy-rsa /etc/openvpn
 
     # Edit the EASY_RSA variable in the vars file to point to the new easy-rsa directory,
-    # And change from default 1024 encryption if desired
+    # And set the chosen key size
     cd /etc/openvpn/easy-rsa
     $SUDO sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
-    if [[ $ENCRYPT -eq "1024" ]]; then
-        $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
-    fi
+    $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
 
     whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \nHowever, if you want to change the values, simply select the ones you wish to modify." $r $c
 
@@ -655,9 +654,8 @@ confOpenVPN() {
 
     $SUDO sed -i "s/LOCALIP/${LOCALIP}/g" /etc/openvpn/server.conf
 
-    if [ $ENCRYPT = 2048 ]; then
-        $SUDO sed -i 's:dh1024:dh2048:' /etc/openvpn/server.conf
-    fi
+    # Set the user encryption key size
+    $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/keys\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
     
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
@@ -665,8 +663,8 @@ confOpenVPN() {
     fi
 
     # write out server certs to conf file
-    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.key/" /etc/openvpn/server.conf
-    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1$SERVER_NAME.crt/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1${SERVER_NAME}.key/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
 }
 
 confNetwork() {
