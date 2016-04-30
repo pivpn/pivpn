@@ -708,7 +708,7 @@ confOVPN() {
     
     exitstatus=$?
     if [ $exitstatus != 0 ]; then
-    echo "::: Cancel selected. Exiting..."
+        echo "::: Cancel selected. Exiting..."
         exit 1
     fi
 
@@ -717,15 +717,22 @@ confOVPN() {
     if [ "$METH" == "$IPv4pub" ]; then
         $SUDO sed -i 's/IPv4pub/'$IPv4pub'/' /etc/openvpn/easy-rsa/keys/Default.txt
     else 
-        PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Raspberry Pi?" $r $c 3>&1 1>&2 2>&3)
-        exitstatus=$?
-        if [ $exitstatus = 0 ]; then
-            $SUDO sed -i 's/IPv4pub/'$PUBLICDNS'/' /etc/openvpn/easy-rsa/keys/Default.txt
-            whiptail --title "Setup OpenVPN" --infobox "Using PUBLIC DNS: $PUBLICDNS" $r $c
-        else
-            whiptail --title "Setup OpenVPN" --infobox "Cancelled" $r $c
+        until [[ $publicDNSCorrect = True ]]
+        do
+            PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" $r $c 3>&1 1>&2 2>&3)
+            exitstatus=$?
+            if [ $exitstatus != 0 ]; then
+            echo "::: Cancel selected. Exiting..."
             exit 1
-        fi
+            fi
+            if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\n\n Public DNS Name:  $PUBLICDNS" $r $c) then
+                publicDNSCorrect=True
+                $SUDO sed -i 's/IPv4pub/'$PUBLICDNS'/' /etc/openvpn/easy-rsa/keys/Default.txt
+            else
+                publicDNSCorrect=False
+        
+            fi
+        done
     fi
     
     # if they modified port put value in Default.txt for clients to use
