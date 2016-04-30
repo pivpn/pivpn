@@ -10,15 +10,55 @@ CA="ca.crt"
 TA="ta.key" 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 
-echo "Please enter a Name for the Client:"
-read NAME 
- 
+printf "Enter a Name for the Client:  "
+read NAME
+
+stty -echo
+while true
+do
+    printf "Enter the password for the Client:  "
+    read PASSWD
+    printf "\n"
+    printf "Enter the password again to verify:  "
+    read PASSWD2
+    printf "\n"
+    [ "$PASSWD" = "$PASSWD2" ] && break
+    printf "Passwords do not match! Please try again.\n"
+done
+stty echo
+
 #Build the client key and then encrypt the key
 cd /etc/openvpn/easy-rsa
 source /etc/openvpn/easy-rsa/vars
-./build-key-pass $NAME
+
+expect << EOF
+spawn ./build-key-pass $NAME
+expect "Enter PEM pass phrase" { send "$PASSWD\r" }
+expect "Verifying - Enter PEM pass phrase" { send "$PASSWD\r" }
+expect "Country Name" { send "\r" }
+expect "State or Province Name" { send "\r" }
+expect "Locality Name" { send "\r" }
+expect "Organization Name" { send "\r" }
+expect "Organizational Unit" { send "\r" }
+expect "Common Name" { send "\r" }
+expect "Name" { send "\r" }
+expect "Email Address" { send "\r" }
+expect "challenge password" { send "\r" }
+expect "optional company name" { send "\r" }
+expect "Sign the certificate" { send "y\r" }
+expect "commit" { send "y\r" }
+expect eof
+EOF
+
 cd keys
-openssl rsa -in $NAME$OKEY -des3 -out $NAME$KEY
+
+expect << EOF
+spawn openssl rsa -in $NAME$OKEY -des3 -out $NAME$KEY
+expect "Enter pass phrase for" { send "$PASSWD\r" }
+expect "Enter PEM pass phrase" { send "$PASSWD\r" }
+expect "Verifying - Enter PEM pass" { send "$PASSWD\r" }
+expect eof
+EOF
  
 #1st Verify that clients Public Key Exists 
 if [ ! -f $NAME$CRT ]; then 
@@ -74,8 +114,11 @@ echo "</tls-auth>" >> $NAME$FILEEXT
 
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp /etc/openvpn/easy-rsa/keys/$NAME$FILEEXT /home/$INSTALL_USER/ovpns/$NAME$FILEEXT
-echo "$NAME$FILEEXT moved to home directory."
-whiptail --title "MakeOVPN" --msgbox "Done! $NAME$FILEEXT successfully created and \
-moved to directory /home/$INSTALL_USER/ovpns." 8 78
- 
-# Original script written by Eric Jodoin.
+chown $INSTALL_USER /home/$INSTALL_USER/ovpns/$NAME$FILEEXT
+printf "\n\n"
+printf "========================================================\n"
+printf "\e[1mDone! $NAME$FILEEXT successfully created!\e[0m \n"
+printf "$NAME$FILEEXT was copied to:\n"
+printf "  /home/$INSTALL_USER/ovpns\n"
+printf "for easy transfer.\n"
+printf "========================================================\n\n"
