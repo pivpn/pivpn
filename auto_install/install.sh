@@ -343,7 +343,7 @@ checkForDependencies() {
     echo ":::"
     echo "::: Checking dependencies:"
 
-  dependencies=( openvpn easy-rsa git iptables-persistent dnsutils )
+  dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect )
     for i in "${dependencies[@]}"; do
         echo -n ":::    Checking for $i..."
         if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
@@ -353,7 +353,11 @@ checkForDependencies() {
                 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
                 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
             fi
-            $SUDO apt-get -y -qq install "$i" > /dev/null & spinner $!
+            if [[ $i -eq "expect" ]]; then
+                $SUDO apt-get -y -qq --no-install-recommends install "$i" > /dev/null & spinner $!
+            else
+                $SUDO apt-get -y -qq install "$i" > /dev/null & spinner $!
+            fi
             echo " done!"
         else
             echo " already installed!"
