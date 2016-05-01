@@ -125,7 +125,7 @@ chooseUser() {
 
 
 verifyFreeDiskSpace() {
-    # I have no idea what the minimum space needed is, but checking for at least 50MB sounds like a good idea.
+    # Seems we need about 30MB so checking for at least 50MB sounds like a good idea.
     requiredFreeBytes=51200
 
     existingFreeBytes=$(df -lk / 2>&1 | awk '{print $4}' | head -2 | tail -1)

@@ -11,7 +11,8 @@ if [[ ! $EUID -eq 0 ]];then
 fi
 
 function makeOVPNFunc {
-    $SUDO /opt/pivpn/makeOVPN.sh
+    shift
+    $SUDO /opt/pivpn/makeOVPN.sh "$@"
     exit 1
 }
 
@@ -42,10 +43,10 @@ function versionFunc {
 function helpFunc {
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
-    echo "::: Usage: pivpn [options]"
+    echo "::: Usage: pivpn <command> [option]"
     echo ":::"
-    echo "::: Options:"
-    echo ":::  -a, add              Create a client ovpn profile"
+    echo "::: Commands:"
+    echo ":::  -a, add [nopass]     Create a client ovpn profile, optional nopass"
     echo ":::  -d, debug            Start a debugging session if having trouble"
     echo ":::  -l, list             List all valid and revoked certificates"
     echo ":::  -r, revoke           Revoke a client ovpn profile"
@@ -60,7 +61,7 @@ fi
 
 # Handle redirecting to specific functions based on arguments
 case "$1" in
-"-a" | "add"                ) makeOVPNFunc;;
+"-a" | "add"                ) makeOVPNFunc "$@";;
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;
 "-r" | "revoke"             ) removeOVPNFunc;;
