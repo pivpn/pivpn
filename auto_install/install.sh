@@ -784,6 +784,7 @@ confOVPN() {
 installPiVPN() {
     checkForDependencies
     stopServices
+    confUnattendedUpgrades
     $SUDO mkdir -p /etc/pivpn/
     getGitFiles
     installScripts
