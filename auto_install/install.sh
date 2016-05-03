@@ -125,8 +125,8 @@ chooseUser() {
 
 
 verifyFreeDiskSpace() {
-    # Seems we need about 30MB so checking for at least 50MB sounds like a good idea.
-    requiredFreeBytes=51200
+    # If user installs unattended-upgrades we'd need about 60MB so will check for 75MB free
+    requiredFreeBytes=76800
 
     existingFreeBytes=$(df -lk / 2>&1 | awk '{print $4}' | head -2 | tail -1)
     if ! [[ "$existingFreeBytes" =~ ^([0-9])+$ ]]; then
@@ -298,8 +298,7 @@ installScripts() {
 }
 
 unattendedUpgrades() {
-    whiptail --msgbox --backtitle "Security Updates" --title "Unattended Upgrades" "Since this server will have at least one port open to the internet, it is recommended you enable unattended-upgrades.\n  This feature will check daily for security package updates only and apply them when necessary.
-It will NOT automatically reboot the server so to fully apply some updates you should periodically reboot." $r $c
+    whiptail --msgbox --backtitle "Security Updates" --title "Unattended Upgrades" "Since this server will have at least one port open to the internet, it is recommended you enable unattended-upgrades.\nThis feature will check daily for security package updates only and apply them when necessary.\nIt will NOT automatically reboot the server so to fully apply some updates you should periodically reboot." $r $c
 
     if (whiptail --backtitle "Security Updates" --title "Unattended Upgrades" --yesno "Do you want to enable unattended upgrades of security patches to this server?" $r $c) then
         UNATTUPG="unattended-upgrades"
@@ -672,7 +671,7 @@ confOpenVPN() {
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
     
     # if using ubuntu remove tls-server-min line as they have an older openvpn
-    if [[ PLAT == "ubuntu" ]]; then
+    if [[ $PLAT == "ubuntu" ]]; then
         $SUDO sed -i '/tls-version-min/s/^/# /' /etc/openvpn/server.conf
     fi
 
