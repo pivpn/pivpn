@@ -44,7 +44,7 @@ spinner()
 function removeAll {
     # Purge dependencies
 echo ":::"
-    dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect )
+    dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect unattended-upgrades )
     for i in "${dependencies[@]}"; do
         if [ "$(dpkg-query -W --showformat='${Status}\n' "$i" 2> /dev/null | grep -c "ok installed")" -eq 1 ]; then
             while true; do
@@ -52,6 +52,7 @@ echo ":::"
                 case $yn in
                     [Yy]* ) printf ":::\tRemoving %s..." "$i"; $SUDO apt-get -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\n"; 
                             if [ "$i" == "openvpn" ]; then UINST_OVPN=1 ; fi
+                            if [ "$i" == "unattended-upgrades" ]; then UINST_UNATTUPG=1 ; fi
                             break;;
                     [Nn]* ) printf ":::\tSkipping %s" "$i\n"; break;;
                     * ) printf "::: You must answer yes or no!\n";;
@@ -80,6 +81,10 @@ echo ":::"
     $SUDO rm -rf /var/log/*openvpn* &> /dev/null
     if [[ $UINST_OVPN = 1 ]]; then
         $SUDO rm -rf /etc/openvpn &> /dev/null
+    fi
+    if [[ $UINST_UNATTUPG = 1 ]]; then
+        $SUDO rm -rf /var/log/unattended-upgrades
+        $SUDO rm -rf /etc/apt/apt.conf.d/*periodic
     fi
     $SUDO rm /usr/local/bin/pivpn &> /dev/null
     $SUDO rm /etc/bash_completion.d/pivpn

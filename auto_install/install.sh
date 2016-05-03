@@ -297,6 +297,17 @@ installScripts() {
     $SUDO echo " done."
 }
 
+unattendedUpgrades() {
+    whiptail --msgbox --backtitle "Security Updates" --title "Unattended Upgrades" "Since this server will have at least one port open to the internet, it is recommended you enable unattended-upgrades.\n  This feature will check daily for security package updates only and apply them when necessary.
+It will NOT automatically reboot the server so to fully apply some updates you should periodically reboot." $r $c
+
+    if (whiptail --backtitle "Security Updates" --title "Unattended Upgrades" --yesno "Do you want to enable unattended upgrades of security patches to this server?" $r $c) then
+        UNATTUPG="unattended-upgrades"
+    else
+        UNATTUPG=""
+    fi
+}
+
 stopServices() {
     # Stop openvpn
     $SUDO echo ":::"
@@ -343,7 +354,7 @@ checkForDependencies() {
     echo ":::"
     echo "::: Checking dependencies:"
 
-  dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect )
+  dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect $UNATTUPG )
     for i in "${dependencies[@]}"; do
         echo -n ":::    Checking for $i..."
         if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
@@ -353,7 +364,7 @@ checkForDependencies() {
                 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
                 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
             fi
-            if [[ $i -eq "expect" ]]; then
+            if [[ $i = "expect" ]] || [[ $i = "unattended-upgrades" ]]; then
                 $SUDO apt-get -y -qq --no-install-recommends install "$i" > /dev/null & spinner $!
             else
                 $SUDO apt-get -y -qq install "$i" > /dev/null & spinner $!
@@ -680,6 +691,32 @@ confOpenVPN() {
     $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
 }
 
+confUnattendedUpgrades() {
+    if [[ $UNATTUPG == "unattended-upgrades" ]]; then
+        if [[ $PLAT == "ubuntu" ]]; then
+            # Ubuntu 50unattended-upgrades should already just have security enabled
+            # so we just need to configure the 10periodic file
+            cat << EOT | $SUDO tee /etc/apt/apt.conf.d/10periodic >/dev/null
+    APT::Periodic::Update-Package-Lists "1";
+    APT::Periodic::Download-Upgradeable-Packages "1";
+    APT::Periodic::AutocleanInterval "5";
+    APT::Periodic::Unattended-Upgrade "1";
+EOT
+        else
+            $SUDO sed -i '/\(o=Raspbian,n=jessie\)/c\"o=Raspbian,n=jessie,l=Raspbian-Security";\' /etc/apt/apt.conf.d/50unattended-upgrades
+            cat << EOT | $SUDO tee /etc/apt/apt.conf.d/02periodic >/dev/null
+    APT::Periodic::Enable "1";
+    APT::Periodic::Update-Package-Lists "1";
+    APT::Periodic::Download-Upgradeable-Packages "1";
+    APT::Periodic::Unattended-Upgrade "1";
+    APT::Periodic::AutocleanInterval "7";
+    APT::Periodic::Verbose "0";
+EOT
+        fi
+    fi
+
+}
+
 confNetwork() {
     # Enable forwarding of internet traffic
     $SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
@@ -796,6 +833,9 @@ fi
 
 # Choose the user for the ovpns
 chooseUser
+
+# Ask if unattended-upgrades will be enabled
+unattendedUpgrades
 
 # Install and log everything to a file
 installPiVPN
