@@ -44,9 +44,8 @@ curl -L https://install.pivpn.io | bash
 
 The script will first update your APT repositories, upgrade packages, and install OpenVPN,
 which will take some time.
-It will ask which encryption method you wish the guts of your server to use, 1024-bit or 2048-bit.
-2048-bit is more secure, but will take much longer to set up. If you're unsure or don't
-have a convincing reason one way or the other I'd use 2048 today.  From the OpenVPN site:
+It will ask which encryption method you wish the guts of your server to use, 1024-bit, 2048-bit, or 4096-bit.
+If you're unsure or don't have a convincing reason one way or the other I'd use 2048 today.  From the OpenVPN site:
 > For asymmetric keys, general wisdom is that 1024-bit keys are no longer sufficient to protect against well-equipped adversaries. Use of 2048-bit is a good minimum. It is wise to ensure all keys across your active PKI (including the CA root keypair) are using at least 2048-bit keys.
 
 > Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN,) but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
@@ -71,16 +70,25 @@ Managing the PiVPN
 
 After the installation is complete you can use the command 'pivpn' to manage the server.
 
-"pivpn add"
+"pivpn add" 
 You will be prompted to enter a name for your client. Pick anything you like and hit 'enter'.
 You will be asked to enter a pass phrase for the client key; make sure it's one you'll remember.
-You'll then be prompted for input in more identification fields, which you can again ignore if
-you like; make sure you again leave the challenge field blank. The script will then ask if you
-want to sign the client certificate and commit; press 'y' for both. You'll then be asked to enter
-the pass phrase you just chose in order to encrypt the client key, and immediately after to choose
-another pass phrase for the encrypted key - if you're normal, just use the same one. After this,
-the script will assemble the client .ovpn file and place it in the directory 'ovpns' within your
+The script will assemble the client .ovpn file and place it in the directory 'ovpns' within your
 home directory.
+
+If you need to create a client certificate that is not password protected (IE for use on a router),
+then you can use the 'pivpn add nopass' option to generate that.
+
+"pivpn revoke"
+Asks you for the name of the client to revoke.  Once you revoke a client, it will no longer to use 
+the certificate (ovpn config) you sent it to connect.  This is useful for many reasons but some ex:
+You have a profile on a mobile phone and it was lost or stolen.  Revoke its cert and generate a new 
+one for your new phone.  Or even if you suspect that a cert may have been comprmised in any way, 
+just revoke it and generate a new one.
+
+"pivpn list"
+If you add more than a few clients, this gives you a nice list of thier names and whether their certificate
+is still valid or has been revoked.  Great way to keep track of what you did with 'pivpn add' and 'pivpn revoke'.
 
 You can run just 'pivpn' to see all the options.
 
