@@ -54,7 +54,7 @@ echo ":::"
                             if [ "$i" == "openvpn" ]; then UINST_OVPN=1 ; fi
                             if [ "$i" == "unattended-upgrades" ]; then UINST_UNATTUPG=1 ; fi
                             break;;
-                    [Nn]* ) printf ":::\tSkipping %s" "$i\n"; break;;
+                    [Nn]* ) printf ":::\tSkipping %s\n" "$i"; break;;
                     * ) printf "::: You must answer yes or no!\n";;
                 esac
             done
