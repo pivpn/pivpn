@@ -90,6 +90,11 @@ EOF
 printf "Enter a Name for the Client:  "
 read NAME
 
+if [[ -z "$NAME" ]]; then
+    printf '%s\n' "::: You can not leave this blank!"
+    exit 1
+fi
+
 cd /etc/openvpn/easy-rsa
 source /etc/openvpn/easy-rsa/vars
 

@@ -3,6 +3,7 @@
 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 REVOKE_STATUS=$(cat /etc/pivpn/REVOKE_STATUS)
+PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 INDEX="/etc/openvpn/easy-rsa/keys/index.txt"
 
 if [ ! -f $INDEX ]; then
@@ -14,12 +15,14 @@ fi
 printf "\n"
 printf " ::\e[4m  Certificate List  \e[0m:: \n"
 
+i=0
 while read -r line || [[ -n "$line" ]]; do
     status=$(echo $line | awk '{print $1}')
     if [[ $status = "V" ]]; then
         var=$(echo $line | awk '{print $5}' | cut -d'/' -f7)
         var=${var#CN=}
-        if [ "$var" != "server" ]; then
+        certs[$i]=$var
+        if [ "$i" != 0 ]; then
             printf "  $var\n"
         fi
     fi
@@ -28,6 +31,22 @@ printf "\n"
 
 echo "::: Please enter the Name of the client to be revoked from the list above:"
 read NAME
+
+if [[ -z "$NAME" ]]; then
+    printf '%s\n' "::: You can not leave this blank!"
+    exit 1
+fi
+
+for((x=1;x<=$y;++x)) do
+    if [[ ${certs[$x]} = ${NAME} ]]; then
+        Valid=1
+    fi
+done
+
+if [[ -z "$Valid" ]]; then
+    printf "::: You didn't enter a valid cert name!\n"
+    exit 1
+fi
 
 cd /etc/openvpn/easy-rsa
 source /etc/openvpn/easy-rsa/vars
@@ -43,5 +62,9 @@ if [ $REVOKE_STATUS == 0 ]; then
         printf "\nThis seems to be the first time you have revoked a cert.\n"
         printf "We are adding the CRL to the server.conf and restarting openvpn.\n"
         sed -i '/#crl-verify/c\crl-verify /etc/openvpn/crl.pem' /etc/openvpn/server.conf
-        systemctl restart openvpn.service
+        if [[ ${PLAT} == "ubuntu" ]]; then
+            service openvpn restart
+        else
+            systemctl restart openvpn.service
+        fi
 fi

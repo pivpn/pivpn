@@ -63,6 +63,8 @@ else
     PLAT="raspbian"
 fi
 
+echo "${PLAT}" > /tmp/DET_PLATFORM
+
 ####### FUNCTIONS ##########
 spinner()
 {
@@ -733,6 +735,7 @@ confNetwork() {
 confOVPN() {
     IPv4pub=$(dig +short myip.opendns.com @resolver1.opendns.com)
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
+    $SUDO cp /tmp/DET_PLATFORM /etc/pivpn/DET_PLATFORM
 
     # Set status that no certs have been revoked
     echo 0 > /tmp/REVOKE_STATUS
