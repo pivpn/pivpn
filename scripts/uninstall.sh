@@ -17,6 +17,7 @@ else
 fi
 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
+PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 
 # Find the rows and columns
 rows=$(tput lines)
@@ -74,18 +75,23 @@ echo ":::"
     echo "::: Removing pivpn system files..."
     $SUDO rm -rf /opt/pivpn &> /dev/null
     $SUDO rm -rf /etc/.pivpn &> /dev/null
-    $SUDO rm -rf /etc/pivpn &> /dev/null
     $SUDO rm -rf /home/$INSTALL_USER/ovpns &> /dev/null
 
     $SUDO rm -rf /var/log/*pivpn* &> /dev/null
     $SUDO rm -rf /var/log/*openvpn* &> /dev/null
     if [[ $UINST_OVPN = 1 ]]; then
         $SUDO rm -rf /etc/openvpn &> /dev/null
+        if [[ $PLAT = "ubuntu" ]]; then
+            printf "::: Removing openvpn apt source..."
+            $SUDO rm -rf /etc/apt/sources.list.d/swupdate.openvpn.net.list &> /dev/null
+            $SUDO apt-get -qq update & spinner $!; printf "done!\n";
+        fi
     fi
     if [[ $UINST_UNATTUPG = 1 ]]; then
         $SUDO rm -rf /var/log/unattended-upgrades
         $SUDO rm -rf /etc/apt/apt.conf.d/*periodic
     fi
+    $SUDO rm -rf /etc/pivpn &> /dev/null
     $SUDO rm /usr/local/bin/pivpn &> /dev/null
     $SUDO rm /etc/bash_completion.d/pivpn
 

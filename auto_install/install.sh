@@ -332,10 +332,16 @@ checkForDependencies() {
     timestamp=$(stat -c %Y /var/cache/apt/)
     timestampAsDate=$(date -d @"$timestamp" "+%b %e")
     today=$(date "+%b %e")
+    
+    if [[ $PLAT == "ubuntu" ]]; then
+        wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+        echo "deb http://swupdate.openvpn.net/apt trusty main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+    fi
 
-    if [ ! "$today" == "$timestampAsDate" ]; then
+    if [ ! "$today" == "$timestampAsDate" ] || [ $PLAT = "ubuntu" ]; then
         #update package lists
         echo ":::"
+        echo "::: Either you are on ubuntu or"
         echo -n "::: apt-get update has not been run today. Running now..."
         $SUDO apt-get -qq update & spinner $!
         echo " done!"
@@ -355,13 +361,13 @@ checkForDependencies() {
     echo ":::"
     echo "::: Checking dependencies:"
 
-  dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect $UNATTUPG )
+    dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect $UNATTUPG )
     for i in "${dependencies[@]}"; do
         echo -n ":::    Checking for $i..."
         if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
             echo -n " Not found! Installing...."
             #Supply answers to the questions so we don't prompt user
-            if [[ $i -eq "iptables-persistent" ]]; then
+            if [[ $i = "iptables-persistent" ]]; then
                 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
                 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
             fi
@@ -407,7 +413,7 @@ make_repo() {
     if [ -z ${TESTING+x} ]; then
         :
     else
-        $SUDO git checkout test
+        $SUDO git -C $1 checkout test
     fi
     echo " done!"
 }
@@ -420,7 +426,7 @@ update_repo() {
     if [ -z ${TESTING+x} ]; then
         :
     else
-        $SUDO git checkout test
+        ${SUDOE} git checkout test
     fi
     echo " done!"
 }
@@ -672,11 +678,6 @@ confOpenVPN() {
     LOCALIP=$(ifconfig $pivpnInterface | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
     
-    # if using ubuntu remove tls-server-min line as they have an older openvpn
-    if [[ $PLAT == "ubuntu" ]]; then
-        $SUDO sed -i '/tls-version-min/s/^/# /' /etc/openvpn/server.conf
-    fi
-
     $SUDO sed -i "s/LOCALIP/${LOCALIP}/g" /etc/openvpn/server.conf
 
     # Set the user encryption key size
@@ -779,6 +780,9 @@ confOVPN() {
         $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
     fi
     
+    # verify server name to strengthen security
+    $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/keys/Default.txt
+
     $SUDO mkdir /home/$pivpnUser/ovpns
     $SUDO chmod 0777 -R /home/$pivpnUser/ovpns
 }
