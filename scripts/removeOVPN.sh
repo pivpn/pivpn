@@ -25,6 +25,8 @@ while read -r line || [[ -n "$line" ]]; do
         if [ "$i" != 0 ]; then
             printf "  $var\n"
         fi
+        let i=i+1
+        y=$i
     fi
 done <$INDEX
 printf "\n"
@@ -37,7 +39,7 @@ if [[ -z "$NAME" ]]; then
     exit 1
 fi
 
-for((x=1;x<=$y;++x)) do
+for((x=1;x<=$y;++x)); do
     if [[ ${certs[$x]} = ${NAME} ]]; then
         Valid=1
     fi
