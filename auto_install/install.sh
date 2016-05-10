@@ -56,11 +56,37 @@ else
     fi
 fi
 
-# Next rough check for platform
-if [ "$(cat /etc/os-release | grep ubuntu)" ]; then
-    PLAT="ubuntu"
+# Next see if we are on a tested and supported OS
+function noOS_Support() {
+    whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
+Currently this installer supports Raspbian jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
+If you think you received this message in error, you can post an issue on the GitHub at https://github.com/pivpn/pivpn/issues." $r $c
+    exit 1
+}
+
+LSB_REL=$(which lsb_release)
+
+if [[ -z $LSB_REL ]]; then
+    noOS_Support
 else
-    PLAT="raspbian"
+    PLAT=$($LSB_REL -si)
+    OSCN=$($LSB_REL -sc) # We want this to be trusty xenial or jessie
+
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Raspbian" || $PLAT == "Debian" ]]; then
+        if [[ $OSCN != "trusty" && $OSCN != "xenial" && $OSCN != "jessie" ]]; then
+            if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.  
+                Currently this installer supports Raspbian jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
+                Would you like to continue anyway?" $r $c) then
+                echo "::: Did not detect perfectly supported OS but,"
+                echo "::: Continuing installation at user's own risk..."
+            else
+                echo "::: Exiting due to unsupported OS"
+                exit 1
+            fi
+        fi
+    else
+        noOS_Support
+    fi
 fi
 
 echo "${PLAT}" > /tmp/DET_PLATFORM
@@ -313,7 +339,7 @@ stopServices() {
     # Stop openvpn
     $SUDO echo ":::"
     $SUDO echo -n "::: Stopping openvpn service..."
-    if [[ $PLAT == "ubuntu" ]]; then
+    if [[ $PLAT == "Ubuntu" ]]; then
         $SUDO service openvpn stop || true
     else
         $SUDO systemctl stop openvpn.service || true
@@ -333,12 +359,12 @@ checkForDependencies() {
     timestampAsDate=$(date -d @"$timestamp" "+%b %e")
     today=$(date "+%b %e")
     
-    if [[ $PLAT == "ubuntu" ]]; then
+    if [[ $PLAT == "Ubuntu" ]]; then
         wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
         echo "deb http://swupdate.openvpn.net/apt trusty main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
     fi
 
-    if [ ! "$today" == "$timestampAsDate" ] || [ $PLAT = "ubuntu" ]; then
+    if [ ! "$today" == "$timestampAsDate" ] || [ $PLAT = "Ubuntu" ]; then
         #update package lists
         echo ":::"
         echo "::: Either you are on ubuntu or"
@@ -695,7 +721,7 @@ confOpenVPN() {
 
 confUnattendedUpgrades() {
     if [[ $UNATTUPG == "unattended-upgrades" ]]; then
-        if [[ $PLAT == "ubuntu" ]]; then
+        if [[ $PLAT == "Ubuntu" ]]; then
             # Ubuntu 50unattended-upgrades should already just have security enabled
             # so we just need to configure the 10periodic file
             cat << EOT | $SUDO tee /etc/apt/apt.conf.d/10periodic >/dev/null
@@ -726,7 +752,7 @@ confNetwork() {
 
     # Write script to run openvpn and allow it through firewall on boot using the template .txt file
     $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
-    if [[ $PLAT == "ubuntu" ]]; then
+    if [[ $PLAT == "Ubuntu" ]]; then
         $SUDO iptables-save
     else
         $SUDO netfilter-persistent save
@@ -803,7 +829,7 @@ installPiVPN() {
 
 displayFinalMessage() {
     # Final completion message to user
-    if [[ $PLAT == "ubuntu" ]]; then
+    if [[ $PLAT == "Ubuntu" ]]; then
         $SUDO service openvpn start
     else
         $SUDO systemctl enable openvpn.service
@@ -831,7 +857,7 @@ verifyFreeDiskSpace
 # Find interfaces and let the user choose one
 chooseInterface
 
-if [[ $PLAT == "ubuntu" ]]; then
+if [[ $PLAT == "Ubuntu" ]]; then
     avoidStaticIPv4Ubuntu
 else
     getStaticIPv4Settings
