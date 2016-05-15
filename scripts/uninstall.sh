@@ -18,6 +18,7 @@ fi
 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
+NO_UFW=$(cat /etc/pivpn/NO_UFW)
 
 # Find the rows and columns
 rows=$(tput lines)
@@ -98,6 +99,12 @@ echo ":::"
     # Disable IPv4 forwarding
     sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
     sysctl -p
+    
+    if [[ $NO_UFW -eq 0 ]]; then
+        $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"DROP\"/" /etc/default/ufw
+        $SUDO sed -i '/START OPENVPN RULES/,/END OPENVPN RULES/ d' /etc/ufw/before.rules        
+        $SUDO ufw reload
+    fi
     
     echo ":::"
     printf "::: Finished removing PiVPN from your system.\n"

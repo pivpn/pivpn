@@ -760,8 +760,7 @@ confNetwork() {
             $SUDO sed -i 's/IPv4dev/'$IPv4dev'/' /tmp/ufw_add.txt
             $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
             $SUDO sed -i -e '/delete these required/r /tmp/ufw_add.txt' -e//N /etc/ufw/before.rules
-            $SUDO ufw disable
-            $SUDO ufw enable
+            $SUDO ufw reload
             echo "::: UFW configuration completed."
         fi
     else
@@ -769,13 +768,18 @@ confNetwork() {
     fi
     # else configure iptables
     if [[ $noUFW -eq 1 ]]; then
+        echo 1 > /tmp/noUFW
         $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
         if [[ $PLAT == "Ubuntu" ]]; then
             $SUDO iptables-save
         else
             $SUDO netfilter-persistent save
         fi
+    else
+        echo 0 > /tmp/noUFW
     fi
+    
+    $SUDO cp /tmp/noUFW /etc/pivpn/NO_UFW
 }
 
 confOVPN() {
