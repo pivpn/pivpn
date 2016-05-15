@@ -64,11 +64,7 @@ If you think you received this message in error, you can post an issue on the Gi
     exit 1
 }
 
-LSB_REL=$(which lsb_release)
-
-if [[ -z $LSB_REL ]]; then
-    noOS_Support
-else
+if hash lsb_release 2>/dev/null; then
     PLAT=$($LSB_REL -si)
     OSCN=$($LSB_REL -sc) # We want this to be trusty xenial or jessie
 
@@ -87,6 +83,8 @@ else
     else
         noOS_Support
     fi
+else
+    noOS_Support
 fi
 
 echo "${PLAT}" > /tmp/DET_PLATFORM
