@@ -750,12 +750,33 @@ confNetwork() {
     $SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
     $SUDO sysctl -p
 
-    # Write script to run openvpn and allow it through firewall on boot using the template .txt file
-    $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
-    if [[ $PLAT == "Ubuntu" ]]; then
-        $SUDO iptables-save
+    # if ufw enabled, configure that
+    if hash ufw 2>/dev/null; then
+        $SUDO ufw status | grep inactive &>/dev/null
+        if [[ $? -eq 0 ]]; then
+            noUFW=1
+        else
+            echo "::: Detected UFW is enabled."
+            echo "::: Adding UFW rules..."
+            $SUDO cp /etc/.pivpn/ufw_add.txt /tmp/ufw_add.txt
+            $SUDO sed -i 's/IPv4dev/'$IPv4dev'/' /tmp/ufw_add.txt
+            $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
+            $SUDO sed -i -e '/delete these required/r /tmp/ufw_add.txt' -e//N /etc/ufw/before.rules
+            $SUDO ufw disable
+            $SUDO ufw enable
+            echo "::: UFW configuration completed."
+        fi
     else
-        $SUDO netfilter-persistent save
+        noUFW=1
+    fi
+    # else configure iptables
+    if [[ $noUFW -eq 1 ]]; then
+        $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
+        if [[ $PLAT == "Ubuntu" ]]; then
+            $SUDO iptables-save
+        else
+            $SUDO netfilter-persistent save
+        fi
     fi
 }
 
