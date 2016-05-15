@@ -65,8 +65,8 @@ If you think you received this message in error, you can post an issue on the Gi
 }
 
 if hash lsb_release 2>/dev/null; then
-    PLAT=$($LSB_REL -si)
-    OSCN=$($LSB_REL -sc) # We want this to be trusty xenial or jessie
+    PLAT=$(lsb_release -si)
+    OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
 
     if [[ $PLAT == "Ubuntu" || $PLAT == "Raspbian" || $PLAT == "Debian" ]]; then
         if [[ $OSCN != "trusty" && $OSCN != "xenial" && $OSCN != "jessie" ]]; then
