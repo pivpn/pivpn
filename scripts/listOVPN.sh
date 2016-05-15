@@ -16,18 +16,16 @@ printf " ::\e[4m  Status  \e[0m||\e[4m   Name   \e[0m:: \n"
 
 while read -r line || [[ -n "$line" ]]; do
     status=$(echo $line | awk '{print $1}')
+    var=$(echo $line | sed -e 's/^.*CN=\([^/]*\)\/.*/\1/')
     if [[ $status = "V" ]]; then
         printf "     Valid   :: "
-        var=$(echo $line | awk '{print $5}' | cut -d'/' -f7)
-        var=${var#CN=}
         printf "  $var\n"
     elif [[ $status = "R" ]]; then
         printf "     Revoked :: "
-        var=$(echo $line | awk '{print $6}' | cut -d'/' -f7)
-        var=${var#CN=}
         printf "  $var\n"
     else
         printf "     Unknown :: \n"
+        printf "  $var\n"
     fi
 done <$INDEX
 printf "\n"

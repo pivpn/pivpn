@@ -19,8 +19,7 @@ i=0
 while read -r line || [[ -n "$line" ]]; do
     status=$(echo $line | awk '{print $1}')
     if [[ $status = "V" ]]; then
-        var=$(echo $line | awk '{print $5}' | cut -d'/' -f7)
-        var=${var#CN=}
+        var=$(echo $line | sed -e 's/^.*CN=\([^/]*\)\/.*/\1/')
         certs[$i]=$var
         if [ "$i" != 0 ]; then
             printf "  $var\n"
