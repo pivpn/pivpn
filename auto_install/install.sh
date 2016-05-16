@@ -64,13 +64,8 @@ If you think you received this message in error, you can post an issue on the Gi
     exit 1
 }
 
-if hash lsb_release 2>/dev/null; then
-    PLAT=$(lsb_release -si)
-    OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
-
-    if [[ $PLAT == "Ubuntu" || $PLAT == "Raspbian" || $PLAT == "Debian" ]]; then
-        if [[ $OSCN != "trusty" && $OSCN != "xenial" && $OSCN != "jessie" ]]; then
-            if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.  
+function maybeOS_Support() {
+    if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.  
                 Currently this installer supports Raspbian jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
                 Would you like to continue anyway?" $r $c) then
                 echo "::: Did not detect perfectly supported OS but,"
@@ -79,10 +74,26 @@ if hash lsb_release 2>/dev/null; then
                 echo "::: Exiting due to unsupported OS"
                 exit 1
             fi
+}
+
+if hash lsb_release 2>/dev/null; then
+    PLAT=$(lsb_release -si)
+    OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
+
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Raspbian" || $PLAT == "Debian" ]]; then
+        if [[ $OSCN != "trusty" && $OSCN != "xenial" && $OSCN != "jessie" ]]; then
+            maybeOS_Support
         fi
     else
         noOS_Support
     fi
+elif [[ "$(cat /etc/os-release | grep raspbian)" ]]; then
+    if [[ "$(cat /etc/os-release | grep jessie)" ]]; then
+        PLAT="Raspbian"
+        OSCN="jessie"
+    else
+        maybeOS_Support
+    fi 
 else
     noOS_Support
 fi
