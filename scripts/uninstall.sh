@@ -19,6 +19,7 @@ fi
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 NO_UFW=$(cat /etc/pivpn/NO_UFW)
+PORT=$(cat /etc/pivpn/INSTALL_PORT)
 
 # Find the rows and columns
 rows=$(tput lines)
@@ -103,6 +104,8 @@ echo ":::"
     if [[ $NO_UFW -eq 0 ]]; then
         $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"DROP\"/" /etc/default/ufw
         $SUDO sed -i '/START OPENVPN RULES/,/END OPENVPN RULES/ d' /etc/ufw/before.rules        
+        $SUDO ufw delete allow from 10.8.0.0/24 >/dev/null
+        $SUDO ufw delete allow ${PORT}/udp >/dev/null
         $SUDO ufw reload
     fi
     
