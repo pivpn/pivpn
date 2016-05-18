@@ -8,6 +8,7 @@ persist-key
 persist-tun
 key-direction 1
 remote-cert-tls server
+tls-version-min 1.2
 verify-x509-name SRVRNAME name
 cipher AES-256-CBC
 auth SHA256
