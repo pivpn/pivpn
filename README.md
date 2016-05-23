@@ -8,11 +8,14 @@ Visit the [PiVPN](http://pivpn.io) site for more information.
 This is a set of shell scripts that serve to easily turn your Raspberry Pi (TM)
 into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) software. 
 
-The master branch of this script installs and configures OpenVPN on Raspbian
-Jessie, and should be used if you are running Jessie or Jessie Lite. Jessie Lite
-is recommended if this will just be a server.  
+Have you been looking for a good guide or tutorial for installing openvpn on a raspberry pi or ubuntu based server?  Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
 
-> This will also work on a free-tier Amazon AWS server using Ubuntu 14.04.  I don't want to support every scenario there but getting it to run and install successfully on a free server in the cloud was also important.  Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the amazon infrastructure.
+The master branch of this script installs and configures OpenVPN on Raspbian
+Jessie and has been tested on Ubuntu 14.04 running from an Amazon AWS image.  Personally, I'd recommend using the Jessie Lite image on a raspberry pi in your home so you can VPN into your home from unsecure remote locations and safely use the internet.  However, the scripts do try to detect different distributions and make adjustments accordingly.  They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
+
+This scripts primary mission in life is to allow a user to have a home VPN for as cost effective as possible and without being a technical wizard.  Hence the design of pivpn to work on a Raspberry Pi ($35) and then one command installer.  Followed by easy management of the VPN thereafter with the 'pivpn' command.  That being said...
+
+> This will also work on a free-tier Amazon AWS server using Ubuntu 14.04 - 16.04.  I don't want to support every scenario there but getting it to run and install successfully on a free server in the cloud was also important.  Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the amazon infrastructure.
 
 Prerequisites
 -------------
@@ -26,7 +29,7 @@ Jessie Lite from https://raspberrypi.org/downloads, but if you don't,
 be sure to make a backup image of your existing installation before proceeding.
 You should also setup your Pi with a static IP address (see either source
   1 or 2 at the bottom of this Readme) but it is not required as the script can do this for you.
-  You will need to have your router forward UPD port 1194
+  You will need to have your router forward UDP port 1194 (or whatever custom port you may have chose in the installer)
   (varies by model & manufacturer; consult your router manufacturer's
   documentation to do this). 
   Enabling SSH on your Pi is also highly recommended, so that
@@ -133,8 +136,7 @@ to keep things sorted.
 Contributions
 -------------
 
-I'm also interested in improving this script, and will be adding features to it
-over time to make it easier, more intuitive, and more versatile. If you have any 
+I'm also interested in improving this script, please check the current issues to see where you can help. If you have any 
 feature ideas or requests, or are interested in adding your ideas to it,
 testing it on other platforms, please comment or leave a pull request. 
 If you contribute often I can add you as a member of the PiVPN project.
