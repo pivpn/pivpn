@@ -218,7 +218,7 @@ chooseInterface() {
 
 avoidStaticIPv4Ubuntu() {
     # If we are in Ubuntu then they need to have previously set their network, so just use what you have.
-    whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are using Ubuntu, and not Raspbian, we will not configure a static IP for you
+    whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are not using Raspbian, we will not configure a static IP for you.
 If you are in Amazon then you can not configure a static IP anyway. Just ensure before this installer started you had set an elastic IP on your instance." $r $c
 }
 
@@ -353,7 +353,7 @@ stopServices() {
     # Stop openvpn
     $SUDO echo ":::"
     $SUDO echo -n "::: Stopping openvpn service..."
-    if [[ $PLAT == "Ubuntu" ]]; then
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
         $SUDO service openvpn stop || true
     else
         $SUDO systemctl stop openvpn.service || true
@@ -795,7 +795,7 @@ confNetwork() {
     if [[ $noUFW -eq 1 ]]; then
         echo 1 > /tmp/noUFW
         $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
-        if [[ $PLAT == "Ubuntu" ]]; then
+        if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
             $SUDO iptables-save
         else
             $SUDO netfilter-persistent save
@@ -877,7 +877,7 @@ installPiVPN() {
 
 displayFinalMessage() {
     # Final completion message to user
-    if [[ $PLAT == "Ubuntu" ]]; then
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
         $SUDO service openvpn start
     else
         $SUDO systemctl enable openvpn.service

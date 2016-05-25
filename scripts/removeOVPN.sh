@@ -63,7 +63,7 @@ if [ $REVOKE_STATUS == 0 ]; then
         printf "\nThis seems to be the first time you have revoked a cert.\n"
         printf "We are adding the CRL to the server.conf and restarting openvpn.\n"
         sed -i '/#crl-verify/c\crl-verify /etc/openvpn/crl.pem' /etc/openvpn/server.conf
-        if [[ ${PLAT} == "Ubuntu" ]]; then
+        if [[ ${PLAT} == "Ubuntu" || ${PLAT} == "Debian" ]]; then
             service openvpn restart
         else
             systemctl restart openvpn.service
