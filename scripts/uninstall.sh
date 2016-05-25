@@ -83,7 +83,7 @@ echo ":::"
     $SUDO rm -rf /var/log/*openvpn* &> /dev/null
     if [[ $UINST_OVPN = 1 ]]; then
         $SUDO rm -rf /etc/openvpn &> /dev/null
-        if [[ $PLAT = "Ubuntu" ]]; then
+        if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
             printf "::: Removing openvpn apt source..."
             $SUDO rm -rf /etc/apt/sources.list.d/swupdate.openvpn.net.list &> /dev/null
             $SUDO apt-get -qq update & spinner $!; printf "done!\n";

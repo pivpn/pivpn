@@ -76,6 +76,7 @@ function maybeOS_Support() {
             fi
 }
 
+# if lsb_release command is on their system
 if hash lsb_release 2>/dev/null; then
     PLAT=$(lsb_release -si)
     OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
@@ -87,13 +88,17 @@ if hash lsb_release 2>/dev/null; then
     else
         noOS_Support
     fi
+# else get info from os-release
 elif [[ "$(cat /etc/os-release | grep raspbian)" ]]; then
     if [[ "$(cat /etc/os-release | grep jessie)" ]]; then
         PLAT="Raspbian"
         OSCN="jessie"
     else
+        PLAT="Ubuntu"
+        OSCN="unknown"
         maybeOS_Support
     fi 
+# else we prob don't want to install
 else
     noOS_Support
 fi
@@ -368,15 +373,19 @@ checkForDependencies() {
     timestampAsDate=$(date -d @"$timestamp" "+%b %e")
     today=$(date "+%b %e")
     
-    if [[ $PLAT == "Ubuntu" ]]; then
-        wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-        echo "deb http://swupdate.openvpn.net/apt trusty main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
+        if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" ]]; then
+            wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+            echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+            echo -n "::: Adding openvpn repo for $PLAT $OSCN ..."
+            $SUDO apt-get -qq update & spinner $!
+            echo " done!"
+        fi
     fi
 
-    if [ ! "$today" == "$timestampAsDate" ] || [ $PLAT = "Ubuntu" ]; then
+    if [ ! "$today" == "$timestampAsDate" ]; then
         #update package lists
         echo ":::"
-        echo "::: Either you are on ubuntu or"
         echo -n "::: apt-get update has not been run today. Running now..."
         $SUDO apt-get -qq update & spinner $!
         echo " done!"
@@ -896,7 +905,8 @@ verifyFreeDiskSpace
 # Find interfaces and let the user choose one
 chooseInterface
 
-if [[ $PLAT == "Ubuntu" ]]; then
+# Only try to set static on Raspbian, otherwise let user do it
+if [[ $PLAT != "Raspbian" ]]; then
     avoidStaticIPv4Ubuntu
 else
     getStaticIPv4Settings

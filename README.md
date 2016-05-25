@@ -133,6 +133,8 @@ welcome any feedback on your experience. If you have problems using it, feel
 free to post an issue here on github.  I'll classify the issues the best I can
 to keep things sorted.
 
+You can also post on the [Google Space](https://goo.gl/spaces/kgp2Mcy5RDfZ5SSf8) I created for PiVPN, especially suited for general questions or discussions.
+
 Contributions
 -------------
 
