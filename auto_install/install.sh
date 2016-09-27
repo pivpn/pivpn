@@ -476,13 +476,11 @@ update_repo() {
 }
 
 setCustomProto() {
-  # Turn the available interfaces into an array so it can be used with a whiptail dialog
+  # Set the available protocols into an array so it can be used with a whiptail dialog
   protoArray=()
-
   protoArray+=("udp" "available" "ON")
   protoArray+=("tcp" "available" "OFF")
 
-  # Find out how many interfaces are available to choose from
   chooseProtoCmd=(whiptail --separate-output --radiolist "Choose A Protocol" $r $c 2)
   echo "${chooseProtoCmd[@]}" "${protoArray[@]}"
   chooseProtoOptions=$("${chooseProtoCmd[@]}" "${protoArray[@]}" 2>&1 >/dev/tty)
@@ -763,6 +761,7 @@ confOpenVPN() {
         $SUDO sed -i "s/1194/${PORT}/g" /etc/openvpn/server.conf
     fi
 
+    # if they modified protocol put value in server.conf
     if [ $PROTO != "udp" ]; then
         $SUDO sed -i "s/proto udp/proto tcp/g" /etc/openvpn/server.conf
     fi
@@ -886,6 +885,7 @@ confOVPN() {
         $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
     fi
 
+    # if they modified protocol put value in Default.txt for clients to use
     if [ $PROTO != "udp" ]; then
         $SUDO sed -i -e "s/proto udp/proto tcp/g" /etc/openvpn/easy-rsa/keys/Default.txt
     fi
