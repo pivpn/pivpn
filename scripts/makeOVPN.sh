@@ -8,6 +8,7 @@ OKEY=".key"
 KEY=".3des.key"
 CA="ca.crt"
 TA="ta.key"
+INDEX="/etc/openvpn/easy-rsa/keys/index.txt"
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 
 # Functions def
@@ -44,7 +45,7 @@ function keyPASS() {
     stty -echo
     while true
     do
-        printf "Enter the password for the Client:  "
+        printf "Enter the password for the client:  "
         read -r PASSWD
         printf "\n"
         printf "Enter the password again to verify:  "
@@ -108,6 +109,20 @@ fi
 
 if [[ -z "$NAME" ]]; then
     echo "You cannot leave the name blank"
+    exit 1
+fi
+
+# Check if name is already in use
+while read -r line || [ -n "$line" ]; do
+    if [ "$(echo "$line" | sed -e 's/^.*CN=\([^/]*\)\/.*/\1/')" = "$NAME" ]; then
+        echo "Name is already in use"
+        exit 1
+    fi
+done <$INDEX
+
+# Check if name is reserved
+if [ "$NAME" = "ta" ] || [ "$NAME" = "server" ] || [ "$NAME" = "ca" ]; then
+    echo "Sorry, this name is unavailable, please choose another one"
     exit 1
 fi
 
