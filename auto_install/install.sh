@@ -65,7 +65,7 @@ If you think you received this message in error, you can post an issue on the Gi
 }
 
 function maybeOS_Support() {
-    if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.  
+    if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
                 Currently this installer supports Raspbian jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
                 Would you like to continue anyway?" $r $c) then
                 echo "::: Did not detect perfectly supported OS but,"
@@ -97,7 +97,7 @@ elif [[ "$(cat /etc/os-release | grep raspbian)" ]]; then
         PLAT="Ubuntu"
         OSCN="unknown"
         maybeOS_Support
-    fi 
+    fi
 # else we prob don't want to install
 else
     noOS_Support
@@ -127,7 +127,7 @@ welcomeDialogs() {
 
     # Explain the need for a static address
     whiptail --msgbox --backtitle "Initiating network interface" --title "Static IP Needed" "The PiVPN is a SERVER so it needs a STATIC IP ADDRESS to function properly.
-    
+
 In the next section, you can choose to use your current network settings (DHCP) or to manually edit them." $r $c
 }
 
@@ -372,7 +372,7 @@ checkForDependencies() {
     timestamp=$(stat -c %Y /var/cache/apt/)
     timestampAsDate=$(date -d @"$timestamp" "+%b %e")
     today=$(date "+%b %e")
-    
+
     if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
         if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" ]]; then
             wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
@@ -617,7 +617,7 @@ confOpenVPN() {
     cd /etc/openvpn/easy-rsa
     $SUDO sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
     $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
-    
+
     # Init Cert Values
     COUNTRY="US"
     STATE="CA"
@@ -698,7 +698,7 @@ confOpenVPN() {
 
     # It seems you have to set this if you mess with key_cn, lets not.
     # grep -q 'KEY_ALTNAMES=' vars || printf '\nexport KEY_ALTNAMES="PiVPN_KEYALT"\n' >> vars
-    
+
     # source the vars file just edited
     source ./vars
 
@@ -715,21 +715,26 @@ confOpenVPN() {
     # Build the server
     ${SUDOE} ./build-key-server --batch $SERVER_NAME
 
-    # Generate Diffie-Hellman key exchange
-    ${SUDOE} ./build-dh
-
+    if (whiptail --backtitle "Setup OpenVPN" --title "Diffie-Hellman Parameters" --yesno "Generating Diffie-Hellman might take a long time on a Raspberry Pi. Do you want to download them?" $r $c)
+    then
+        # Downloading parameters
+        ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}" -o "${KEY_DIR}/dh${KEY_SIZE}.pem"
+    else
+        # Generate Diffie-Hellman key exchange
+        ${SUDOE} ./build-dh
+    fi
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret keys/ta.key
 
     # Write config file for server using the template .txt file
     LOCALIP=$(ifconfig $pivpnInterface | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
-    
+
     $SUDO sed -i "s/LOCALIP/${LOCALIP}/g" /etc/openvpn/server.conf
 
     # Set the user encryption key size
     $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/keys\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
-    
+
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
         $SUDO sed -i "s/1194/${PORT}/g" /etc/openvpn/server.conf
@@ -803,7 +808,7 @@ confNetwork() {
     else
         echo 0 > /tmp/noUFW
     fi
-    
+
     $SUDO cp /tmp/noUFW /etc/pivpn/NO_UFW
 }
 
@@ -818,8 +823,8 @@ confOVPN() {
 
     METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server?" $r $c 2 \
     "$IPv4pub" "Use this public IP" "ON" \
-    "DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3) 
-    
+    "DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3)
+
     exitstatus=$?
     if [ $exitstatus != 0 ]; then
         echo "::: Cancel selected. Exiting..."
@@ -830,7 +835,7 @@ confOVPN() {
 
     if [ "$METH" == "$IPv4pub" ]; then
         $SUDO sed -i 's/IPv4pub/'$IPv4pub'/' /etc/openvpn/easy-rsa/keys/Default.txt
-    else 
+    else
         until [[ $publicDNSCorrect = True ]]
         do
             PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" $r $c 3>&1 1>&2 2>&3)
@@ -844,16 +849,16 @@ confOVPN() {
                 $SUDO sed -i 's/IPv4pub/'$PUBLICDNS'/' /etc/openvpn/easy-rsa/keys/Default.txt
             else
                 publicDNSCorrect=False
-        
+
             fi
         done
     fi
-    
+
     # if they modified port put value in Default.txt for clients to use
     if [ $PORT != 1194 ]; then
         $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
     fi
-    
+
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/keys/Default.txt
 
@@ -884,7 +889,7 @@ displayFinalMessage() {
         $SUDO systemctl start openvpn.service
     fi
 
-    whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles. 
+    whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles.
 Run 'pivpn help' to see what else you can do!
 The install log is in /etc/pivpn." $r $c
     if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" $r $c); then
