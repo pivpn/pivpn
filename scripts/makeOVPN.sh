@@ -20,6 +20,7 @@ function keynoPASS() {
 
     #Build the client key
     expect << EOF
+    set timeout -1
     spawn ./build-key "$NAME"
     expect "Country Name" { send "\r" }
     expect "State or Province Name" { send "\r" }
@@ -70,6 +71,7 @@ function keyPASS() {
     #Build the client key and then encrypt the key
 
     expect << EOF
+    set timeout -1
     spawn ./build-key-pass "$NAME"
     expect "Enter PEM pass phrase" { send "$PASSWD\r" }
     expect "Verifying - Enter PEM pass phrase" { send "$PASSWD\r" }
@@ -91,6 +93,7 @@ EOF
     cd keys || exit
 
     expect << EOF
+    set timeout -1
     spawn openssl rsa -in "$NAME$OKEY" -des3 -out "$NAME$KEY"
     expect "Enter pass phrase for" { send "$PASSWD\r" }
     expect "Enter PEM pass phrase" { send "$PASSWD\r" }
