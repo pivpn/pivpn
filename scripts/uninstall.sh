@@ -20,6 +20,7 @@ INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 NO_UFW=$(cat /etc/pivpn/NO_UFW)
 PORT=$(cat /etc/pivpn/INSTALL_PORT)
+PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
 
 # Find the rows and columns
 rows=$(tput lines)
@@ -53,7 +54,7 @@ echo ":::"
             while true; do
                 read -rp "::: Do you wish to remove $i from your system? [y/n]: " yn
                 case $yn in
-                    [Yy]* ) printf ":::\tRemoving %s..." "$i"; $SUDO apt-get -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\n"; 
+                    [Yy]* ) printf ":::\tRemoving %s..." "$i"; $SUDO apt-get -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\n";
                             if [ "$i" == "openvpn" ]; then UINST_OVPN=1 ; fi
                             if [ "$i" == "unattended-upgrades" ]; then UINST_UNATTUPG=1 ; fi
                             break;;
@@ -100,15 +101,15 @@ echo ":::"
     # Disable IPv4 forwarding
     sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
     sysctl -p
-    
+
     if [[ $NO_UFW -eq 0 ]]; then
         $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"DROP\"/" /etc/default/ufw
-        $SUDO sed -i '/START OPENVPN RULES/,/END OPENVPN RULES/ d' /etc/ufw/before.rules        
+        $SUDO sed -i '/START OPENVPN RULES/,/END OPENVPN RULES/ d' /etc/ufw/before.rules
         $SUDO ufw delete allow from 10.8.0.0/24 >/dev/null
-        $SUDO ufw delete allow ${PORT}/udp >/dev/null
+        $SUDO ufw delete allow ${PORT}/${PROTO} >/dev/null
         $SUDO ufw reload
     fi
-    
+
     echo ":::"
     printf "::: Finished removing PiVPN from your system.\n"
     printf "::: Reinstall by simpling running\n:::\n:::\tcurl -L https://install.pivpn.io | bash\n:::\n::: at any time!\n:::\n"
@@ -132,7 +133,7 @@ while true; do
     read -rp "::: Do you wish to completely remove PiVPN configuration and installed packages from your system? (You will be prompted for each package) [y/n]: " yn
     case $yn in
         [Yy]* ) removeAll; askreboot; break;;
-    
+
         [Nn]* ) printf "::: Not removing anything, exiting...\n"; break;;
     esac
 done
