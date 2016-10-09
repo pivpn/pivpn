@@ -477,20 +477,15 @@ update_repo() {
 
 setCustomProto() {
   # Set the available protocols into an array so it can be used with a whiptail dialog
-  protoArray=()
-  protoArray+=("udp" "available" "ON")
-  protoArray+=("tcp" "available" "OFF")
-
-  chooseProtoCmd=(whiptail --separate-output --radiolist "Choose A Protocol" $r $c 2)
-  echo "${chooseProtoCmd[@]}" "${protoArray[@]}"
-  chooseProtoOptions=$("${chooseProtoCmd[@]}" "${protoArray[@]}" 2>&1 >/dev/tty)
-  if [[ $? = 0 ]]; then
-      for desiredProto in $chooseProtoOptions
-      do
-          pivpnProto=$desiredProto
-          echo "::: Using protocol: $pivpnProto"
-          echo "${pivpnProto}" > /tmp/pivpnPROTO
-      done
+  protocol=$(whiptail --title "Protocol" --radiolist \
+  "Choose a protocol. Please only choose TCP if you know why you need TCP." $r $c 2 \
+  "UDP" "" ON \
+  "TCP" "" OFF 3>&1 1>&2 2>&3)
+  if [ $? -eq 0 ]; then
+      # Convert option into lowercase (UDP->udp)
+      pivpnProto="${protocol,,}"
+      echo "::: Using protocol: $pivpnProto"
+      echo "${pivpnProto}" > /tmp/pivpnPROTO
   else
       echo "::: Cancel selected, exiting...."
       exit 1
