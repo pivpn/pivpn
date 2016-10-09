@@ -501,7 +501,14 @@ setCustomPort() {
         do
             portInvalid="Invalid"
 
-            PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c 1194 3>&1 1>&2 2>&3)
+            PROTO=`cat /etc/pivpn/INSTALL_PROTO`
+            if [ "$PROTO" = "udp" ]; then
+              DEFAULT_PORT=1194
+            else
+              DEFAULT_PORT=443
+            fi
+
+            PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c $DEFAULT_PORT 3>&1 1>&2 2>&3)
             if [[ $? = 0 ]]; then
                 if [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 -a "$PORT" -le 65535 ]; then
                     :
