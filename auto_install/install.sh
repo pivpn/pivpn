@@ -842,6 +842,16 @@ confNetwork() {
 
 confOVPN() {
     IPv4pub=$(dig +short myip.opendns.com @resolver1.opendns.com)
+    if [ $? -ne 0 ]
+    then
+        echo "dig failed, now trying to curl eth0.me"
+        IPv4pub=$(curl eth0.me)
+        if [ $? -ne 0 ]
+        then
+            echo "eth0.me failed, please check your internet connection/DNS"
+            exit $?
+        fi
+    fi
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
     $SUDO cp /tmp/DET_PLATFORM /etc/pivpn/DET_PLATFORM
 
