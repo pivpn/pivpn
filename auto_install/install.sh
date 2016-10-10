@@ -743,8 +743,14 @@ confOpenVPN() {
     # Build the server
     ${SUDOE} ./build-key-server --batch $SERVER_NAME
 
+    if ( ("$ENCRYPT" >= 4096) && whiptail --backtitle "Setup OpenVPN" --title "Diffie-Hellman Parameters" --defaultno --yesno "Generating Diffie-Hellman parameters for a $ENCRYPT-bits key might take a long time on a Raspberry Pi. Do you want to download them? (If you're paranoid, choose 'No')" $r $c)
+then
+    # Downloading parameters, $KEY_DIR and $KEY_SIZE get set by sourcing ./vars
+    ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}" -o "${KEY_DIR}/dh${KEY_SIZE}.pem"
+else
     # Generate Diffie-Hellman key exchange
     ${SUDOE} ./build-dh
+fi
 
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret keys/ta.key
