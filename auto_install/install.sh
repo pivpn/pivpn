@@ -12,9 +12,6 @@
 
 ######## VARIABLES #########
 
-tmpLog=/tmp/pivpn-install.log
-instalLogLoc=/etc/pivpn/install.log
-
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
 
@@ -89,8 +86,8 @@ if hash lsb_release 2>/dev/null; then
         noOS_Support
     fi
 # else get info from os-release
-elif [[ "$(cat /etc/os-release | grep raspbian)" ]]; then
-    if [[ "$(cat /etc/os-release | grep jessie)" ]]; then
+elif grep -q debian /etc/os-release; then
+    if grep -q jessie /etc/os-release; then
         PLAT="Raspbian"
         OSCN="jessie"
     else
@@ -111,7 +108,8 @@ spinner()
     local pid=$1
     local delay=0.50
     local spinstr='/-\|'
-    while [ "$(ps a | awk '{print $1}' | grep "$pid")" ]; do
+    while ps a | awk '{print $1}' | grep -q "$pid"
+    do
         local temp=${spinstr#?}
         printf " [%c]  " "$spinstr"
         local spinstr=$temp${spinstr%"$temp"}
@@ -151,8 +149,8 @@ chooseUser() {
     # Find out how many users are available to choose from
     userCount=$(echo "$availableUsers" | wc -l)
     chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose:" $r $c $userCount)
-    chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
-    if [[ $? = 0 ]]; then
+    if chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
+    then
         for desiredUser in $chooseUserOptions
         do
             pivpnUser=$desiredUser
@@ -202,8 +200,8 @@ chooseInterface() {
     # Find out how many interfaces are available to choose from
     interfaceCount=$(echo "$availableInterfaces" | wc -l)
     chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An Interface" $r $c $interfaceCount)
-    chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty)
-    if [[ $? = 0 ]]; then
+    if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty)
+    then
         for desiredInterface in $chooseInterfaceOptions
         do
             pivpnInterface=$desiredInterface
@@ -239,12 +237,12 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
         until [[ $ipSettingsCorrect = True ]]
         do
             # Ask for the IPv4 address
-            IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" $r $c "$IPv4addr" 3>&1 1>&2 2>&3)
-            if [[ $? = 0 ]];then
+            if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" $r $c "$IPv4addr" 3>&1 1>&2 2>&3)
+            then
             echo "::: Your static IPv4 address:    $IPv4addr"
             # Ask for the gateway
-            IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" $r $c "$IPv4gw" 3>&1 1>&2 2>&3)
-            if [[ $? = 0 ]];then
+            if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" $r $c "$IPv4gw" 3>&1 1>&2 2>&3)
+            then
                 echo "::: Your static IPv4 gateway:    $IPv4gw"
                 # Give the user a chance to review their settings before moving on
                 if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
@@ -454,10 +452,10 @@ make_repo() {
     echo -n ":::    Cloning $2 into $1..."
     $SUDO rm -rf "$1"
     $SUDO git clone -q "$2" "$1" > /dev/null & spinner $!
-    if [ -z ${TESTING+x} ]; then
+    if [ -z "${TESTING+x}" ]; then
         :
     else
-        $SUDO git -C $1 checkout test
+        $SUDO git -C "$1" checkout test
     fi
     echo " done!"
 }
@@ -467,7 +465,7 @@ update_repo() {
     echo -n ":::     Updating repo in $1..."
     cd "$1" || exit
     $SUDO git pull -q > /dev/null & spinner $!
-    if [ -z ${TESTING+x} ]; then
+    if [ -z "${TESTING+x}" ]; then
         :
     else
         ${SUDOE} git checkout test
@@ -477,11 +475,11 @@ update_repo() {
 
 setCustomProto() {
   # Set the available protocols into an array so it can be used with a whiptail dialog
-  protocol=$(whiptail --title "Protocol" --radiolist \
+  if protocol=$(whiptail --title "Protocol" --radiolist \
   "Choose a protocol. Please only choose TCP if you know why you need TCP." $r $c 2 \
   "UDP" "" ON \
   "TCP" "" OFF 3>&1 1>&2 2>&3)
-  if [ $? -eq 0 ]; then
+  then
       # Convert option into lowercase (UDP->udp)
       pivpnProto="${protocol,,}"
       echo "::: Using protocol: $pivpnProto"
@@ -501,16 +499,15 @@ setCustomPort() {
         do
             portInvalid="Invalid"
 
-            PROTO=`cat /etc/pivpn/INSTALL_PROTO`
+            PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
             if [ "$PROTO" = "udp" ]; then
               DEFAULT_PORT=1194
             else
               DEFAULT_PORT=443
             fi
-
-            PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c $DEFAULT_PORT 3>&1 1>&2 2>&3)
-            if [[ $? = 0 ]]; then
-                if [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 -a "$PORT" -le 65535 ]; then
+            if PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" $r $c $DEFAULT_PORT 3>&1 1>&2 2>&3)
+            then
+                if [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ]; then
                     :
                 else
                     PORT=$portInvalid
@@ -544,8 +541,9 @@ setClientDNS() {
             Level3 "" off
             Norton "" off
             Custom "" off)
-    DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
-    if [[ $? = 0 ]];then
+
+    if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
+    then
         case $DNSchoices in
         Google)
             echo "::: Using Google DNS servers."
@@ -578,8 +576,9 @@ setClientDNS() {
             until [[ $DNSSettingsCorrect = True ]]
             do
                 strInvalid="Invalid"
-                OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), seperated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" $r $c "" 3>&1 1>&2 2>&3)
-                if [[ $? = 0 ]];then
+
+                if OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), seperated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" $r $c "" 3>&1 1>&2 2>&3)
+                then
                     OVPNDNS1=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
                     OVPNDNS2=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
                     if ! valid_ip "$OVPNDNS1" || [ ! "$OVPNDNS1" ]; then
@@ -642,7 +641,7 @@ confOpenVPN() {
 
     # Edit the EASY_RSA variable in the vars file to point to the new easy-rsa directory,
     # And set the chosen key size
-    cd /etc/openvpn/easy-rsa
+    cd /etc/openvpn/easy-rsa || exit
     $SUDO sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
     $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
 
@@ -676,39 +675,39 @@ confOpenVPN() {
 
         for i in $CERTVAL
         do
-            if [ $i == '"COUNTRY"' ]; then
+            if [ "$i" == '"COUNTRY"' ]; then
                 COUNTRY=$(whiptail --title "Certificate Country" --inputbox \
                 "Enter a 2 letter abbreviation for Country" $r $c US 3>&1 1>&2 2>&3)
                 $SUDO sed -i "s/\(KEY_COUNTRY=\"\).*/\1${COUNTRY}\"/" vars
             fi
-            if [ $i == '"STATE"' ]; then
+            if [ "$i" == '"STATE"' ]; then
                 STATE=$(whiptail --title "Certificate State" --inputbox \
                 "Enter a 2 letter abbreviated State or Province" $r $c CA 3>&1 1>&2 2>&3)
                 $SUDO sed -i "s/\(KEY_PROVINCE=\"\).*/\1${STATE}\"/" vars
             fi
-            if [ $i == '"CITY"' ]; then
+            if [ "$i" == '"CITY"' ]; then
                 CITY=$(whiptail --title "Certificate City" --inputbox \
                 "Enter a City name" $r $c SanFrancisco 3>&1 1>&2 2>&3)
                 $SUDO sed -i "s/\(KEY_CITY=\"\).*/\1${CITY}\"/" vars
             fi
-            if [ $i == '"ORG"' ]; then
+            if [ "$i" == '"ORG"' ]; then
                 ORG=$(whiptail --title "Certificate Org" --inputbox \
                 "Enter an Organization name" $r $c Fort-Funston 3>&1 1>&2 2>&3)
                 $SUDO sed -i "s/\(KEY_ORG=\"\).*/\1${ORG}\"/" vars
             fi
-            if [ $i == '"EMAIL"' ]; then
+            if [ "$i" == '"EMAIL"' ]; then
                 EMAIL=$(whiptail --title "Certificate Email" --inputbox \
                 "Enter an Email Address" $r $c "me@myhost.mydomain" 3>&1 1>&2 2>&3)
                 $SUDO sed -i "s/\(KEY_EMAIL=\"\).*/\1${EMAIL}\"/" vars
             fi
-            if [ $i == '"SERVER_NAME"' ]; then
+            if [ "$i" == '"SERVER_NAME"' ]; then
                 SERVER_NAME=$(whiptail --title "Server Name" --inputbox \
                 "Enter a Server Name" $r $c "pivpn" 3>&1 1>&2 2>&3)
                 # This began a rabbit hole of errors. Nope.
                 #sed -i '/export KEY_CN/s/^#//g' vars
                 #sed -i "s/\(KEY_CN=\"\).*/\1${SERVER_NAME}\"/" vars
             fi
-            if [ $i == '"KEY_NAME"' ]; then
+            if [ "$i" == '"KEY_NAME"' ]; then
                 KEY_NAME=$(whiptail --title "Key Name" --inputbox \
                 "Enter a Key Name" $r $c "EasyRSA" 3>&1 1>&2 2>&3)
                 $SUDO sed -i "s/\(KEY_NAME=\"\).*/\1${KEY_NAME}\"/" vars
@@ -741,7 +740,7 @@ confOpenVPN() {
     whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." $r $c
 
     # Build the server
-    ${SUDOE} ./build-key-server --batch $SERVER_NAME
+    ${SUDOE} ./build-key-server --batch "$SERVER_NAME"
 
     if ( ("$ENCRYPT" >= 4096) && whiptail --backtitle "Setup OpenVPN" --title "Diffie-Hellman Parameters" --defaultno --yesno "Generating Diffie-Hellman parameters for a $ENCRYPT-bits key might take a long time on a Raspberry Pi. Do you want to download them? (If you're paranoid, choose 'No')" $r $c)
 then
@@ -756,7 +755,7 @@ fi
     ${SUDOE} openvpn --genkey --secret keys/ta.key
 
     # Write config file for server using the template .txt file
-    LOCALIP=$(ifconfig $pivpnInterface | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
+    LOCALIP=$(ifconfig "$pivpnInterface" | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
     $SUDO sed -i "s/LOCALIP/${LOCALIP}/g" /etc/openvpn/server.conf
@@ -770,7 +769,7 @@ fi
     fi
 
     # if they modified protocol put value in server.conf
-    if [ $PROTO != "udp" ]; then
+    if [ "$PROTO" != "udp" ]; then
         $SUDO sed -i "s/proto udp/proto tcp/g" /etc/openvpn/server.conf
     fi
 
@@ -812,17 +811,17 @@ confNetwork() {
 
     # if ufw enabled, configure that
     if hash ufw 2>/dev/null; then
-        $SUDO ufw status | grep inactive &>/dev/null
-        if [[ $? -eq 0 ]]; then
+        if $SUDO ufw status | grep -q inactive
+        then
             noUFW=1
         else
             echo "::: Detected UFW is enabled."
             echo "::: Adding UFW rules..."
             $SUDO cp /etc/.pivpn/ufw_add.txt /tmp/ufw_add.txt
-            $SUDO sed -i 's/IPv4dev/'$IPv4dev'/' /tmp/ufw_add.txt
+            $SUDO sed -i 's/IPv4dev/'"$IPv4dev"'/' /tmp/ufw_add.txt
             $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
             $SUDO sed -i -e '/delete these required/r /tmp/ufw_add.txt' -e//N /etc/ufw/before.rules
-            $SUDO ufw allow ${PORT}/${PROTO}
+            $SUDO ufw allow "${PORT}/${PROTO}"
             $SUDO ufw allow from 10.8.0.0/24
             $SUDO ufw reload
             echo "::: UFW configuration completed."
@@ -833,7 +832,7 @@ confNetwork() {
     # else configure iptables
     if [[ $noUFW -eq 1 ]]; then
         echo 1 > /tmp/noUFW
-        $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
+        $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o "$IPv4dev" -j MASQUERADE
         if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
             $SUDO iptables-save
         else
@@ -847,12 +846,10 @@ confNetwork() {
 }
 
 confOVPN() {
-    IPv4pub=$(dig +short myip.opendns.com @resolver1.opendns.com)
-    if [ $? -ne 0 ]
+    if ! IPv4pub=$(dig +short myip.opendns.com @resolver1.opendns.com)
     then
         echo "dig failed, now trying to curl eth0.me"
-        IPv4pub=$(curl eth0.me)
-        if [ $? -ne 0 ]
+        if ! IPv4pub=$(curl eth0.me)
         then
             echo "eth0.me failed, please check your internet connection/DNS"
             exit $?
@@ -878,7 +875,7 @@ confOVPN() {
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/keys/Default.txt
 
     if [ "$METH" == "$IPv4pub" ]; then
-        $SUDO sed -i 's/IPv4pub/'$IPv4pub'/' /etc/openvpn/easy-rsa/keys/Default.txt
+        $SUDO sed -i 's/IPv4pub/'"$IPv4pub"'/' /etc/openvpn/easy-rsa/keys/Default.txt
     else
         until [[ $publicDNSCorrect = True ]]
         do
@@ -890,7 +887,7 @@ confOVPN() {
             fi
             if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\n\n Public DNS Name:  $PUBLICDNS" $r $c) then
                 publicDNSCorrect=True
-                $SUDO sed -i 's/IPv4pub/'$PUBLICDNS'/' /etc/openvpn/easy-rsa/keys/Default.txt
+                $SUDO sed -i 's/IPv4pub/'"$PUBLICDNS"'/' /etc/openvpn/easy-rsa/keys/Default.txt
             else
                 publicDNSCorrect=False
 
@@ -904,15 +901,15 @@ confOVPN() {
     fi
 
     # if they modified protocol put value in Default.txt for clients to use
-    if [ $PROTO != "udp" ]; then
+    if [ "$PROTO" != "udp" ]; then
         $SUDO sed -i -e "s/proto udp/proto tcp/g" /etc/openvpn/easy-rsa/keys/Default.txt
     fi
 
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/keys/Default.txt
 
-    $SUDO mkdir /home/$pivpnUser/ovpns
-    $SUDO chmod 0777 -R /home/$pivpnUser/ovpns
+    $SUDO mkdir "/home/$pivpnUser/ovpns"
+    $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
 installPiVPN() {
@@ -974,11 +971,9 @@ chooseUser
 # Ask if unattended-upgrades will be enabled
 unattendedUpgrades
 
-# Install and log everything to a file
+# Install
 installPiVPN
 
-# Move the log file into /etc/pivpn for storage
-#$SUDO mv $tmpLog $installLogLoc
 
 displayFinalMessage
 
