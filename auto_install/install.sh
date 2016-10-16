@@ -836,7 +836,7 @@ confNetwork() {
         echo 1 > /tmp/noUFW
         $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE
         if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
-            $SUDO iptables-save
+            $SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
         else
             $SUDO netfilter-persistent save
         fi
