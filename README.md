@@ -83,10 +83,10 @@ If you need to create a client certificate that is not password protected (IE fo
 then you can use the 'pivpn add nopass' option to generate that.
 
 "pivpn revoke"
-Asks you for the name of the client to revoke.  Once you revoke a client, it will no longer to use 
-the certificate (ovpn config) you sent it to connect.  This is useful for many reasons but some ex:
+Asks you for the name of the client to revoke.  Once you revoke a client, it will no longer allow you to use 
+the given client certificate (ovpn config) to connect.  This is useful for many reasons but some ex:
 You have a profile on a mobile phone and it was lost or stolen.  Revoke its cert and generate a new 
-one for your new phone.  Or even if you suspect that a cert may have been comprmised in any way, 
+one for your new phone.  Or even if you suspect that a cert may have been compromised in any way, 
 just revoke it and generate a new one.
 
 "pivpn list"
