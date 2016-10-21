@@ -743,7 +743,7 @@ confOpenVPN() {
     # Build the server
     ${SUDOE} ./build-key-server --batch $SERVER_NAME
 
-    if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Diffie-Hellman Parameters" --defaultno --yesno "Generating Diffie-Hellman parameters for a $ENCRYPT-bits key might take a long time on a Raspberry Pi. Do you want to download them? (If you're paranoid, choose 'No')" $r $c)
+    if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." $r $c)
 then
     # Downloading parameters, $KEY_DIR and $KEY_SIZE get set by sourcing ./vars
     RANDOM_INDEX=$(( RANDOM % 128 ))
