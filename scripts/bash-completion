@@ -1,18 +1,22 @@
-_pivpn() 
+_pivpn()
 {
     local cur prev opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
+    dashopts="-a -d -l -r -h -u"
     opts="debug add list revoke uninstall help"
-
-    if [[ ${cur} == -* ]] ; then
-        opts="-a -d -l -r -h -u"
-        COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
-        return 0
+    if [ "${#COMP_WORDS[@]}" -eq 2 ]
+    then
+        if [[ ${cur} == -* ]] ; then
+            COMPREPLY=( $(compgen -W "${dashopts}" -- "${cur}") )
+        else
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+        fi
+    elif [[ ( "$prev" == "add" || "$prev" == "-a" ) && "${#COMP_WORDS[@]}" -eq 3 ]]
+    then
+        COMPREPLY=( $(compgen -W "nopass" -- "${cur}") )
     fi
-
-    COMPREPLY=( $(compgen -W "${opts}" -- ${cur}) )
     return 0
 }
 complete -F _pivpn pivpn
