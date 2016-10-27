@@ -32,7 +32,6 @@ IPv4addr=$(ip -o -f inet addr show dev "$IPv4dev" | awk '{print $4}' | awk 'END 
 IPv4gw=$(ip route get 8.8.8.8 | awk '{print $3}')
 
 availableInterfaces=$(ip -o link | awk '{print $2}' | grep -v "lo" | cut -d':' -f1)
-availableUsers=$(awk -F':' '$3>=500 && $3<=60000 {print $1}' /etc/passwd)
 dhcpcdFile=/etc/dhcpcd.conf
 
 ######## FIRST CHECK ########
@@ -132,7 +131,29 @@ In the next section, you can choose to use your current network settings (DHCP) 
 chooseUser() {
     # Explain the local user
     whiptail --msgbox --backtitle "Parsing User List" --title "Local Users" "Choose a local user that will hold your ovpn configurations." $r $c
-
+    # First, let's check if there is a user available.
+    numUsers=$(awk -F':' 'BEGIN {count=0} $3>=500 && $3<=60000 { count++ } END{ print count }' /etc/passwd)
+    if [ "$numUsers" -eq 0 ]
+    then
+        # We don't have a user, let's ask to add one.
+        if userToAdd=$(whiptail --title "Choose A User" --inputbox "No non-root user account was found. Please type a new username." $r $c 3>&1 1>&2 2>&3)
+        then
+            # See http://askubuntu.com/a/667842/459815
+            PASSWORD=$(whiptail  --title "password dialog" --passwordbox "Please enter the new user password" $r $c 3>&1 1>&2 2>&3)
+            CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "$password")
+            $SUDO useradd -m -p "$CRYPT" -s /bin/bash "$userToAdd"
+            if [ $? -eq 0 ]
+            then
+                echo "Succeeded"
+                ((numUsers+=1))
+            else
+                exit 1
+            fi
+        else
+            exit 1
+        fi
+    fi
+    availableUsers=$(awk -F':' '$3>=500 && $3<=60000 {print $1}' /etc/passwd)
     userArray=()
     firstloop=1
 
@@ -143,12 +164,9 @@ chooseUser() {
             firstloop=0
             mode="ON"
         fi
-        userArray+=("$line" "available" "$mode")
+        userArray+=("$line" "" "$mode")
     done <<< "$availableUsers"
-
-    # Find out how many users are available to choose from
-    userCount=$(echo "$availableUsers" | wc -l)
-    chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose:" $r $c $userCount)
+    chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose:" $r $c $numUsers)
     if chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
     then
         for desiredUser in $chooseUserOptions
