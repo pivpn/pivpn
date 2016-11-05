@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# PiVPN: Trivial openvpn setup and configuration
-# Easiest setup and mangement of openvpn on Raspberry Pi
+# PiVPN: Trivial OpenVPN setup and configuration
+# Easiest setup and mangement of OpenVPN on Raspberry Pi
 # http://pivpn.io
 # Heavily adapted from the pi-hole.net project and...
 # https://github.com/StarshipEngineer/OpenVPN-Setup/
@@ -8,6 +8,7 @@
 # Install with this command (from your Pi):
 #
 # curl -L https://install.pivpn.io | bash
+# Make sure you have `curl` installed
 
 
 ######## VARIABLES #########
@@ -120,7 +121,7 @@ spinner()
 
 welcomeDialogs() {
     # Display the welcome dialog
-    whiptail --msgbox --backtitle "Welcome" --title "PiVPN Automated Installer" "This installer will transform your Raspberry Pi into an openvpn server!" $r $c
+    whiptail --msgbox --backtitle "Welcome" --title "PiVPN Automated Installer" "This installer will transform your Raspberry Pi into an OpenVPN server!" $r $c
 
     # Explain the need for a static address
     whiptail --msgbox --backtitle "Initiating network interface" --title "Static IP Needed" "The PiVPN is a SERVER so it needs a STATIC IP ADDRESS to function properly.
@@ -360,6 +361,7 @@ unattendedUpgrades() {
 
     if (whiptail --backtitle "Security Updates" --title "Unattended Upgrades" --yesno "Do you want to enable unattended upgrades of security patches to this server?" $r $c) then
         UNATTUPG="unattended-upgrades"
+        $SUDO apt-get -y -qq --no-install-recommends install "$UNATTUPG" > /dev/null & spinner $!
     else
         UNATTUPG=""
     fi
@@ -368,7 +370,7 @@ unattendedUpgrades() {
 stopServices() {
     # Stop openvpn
     $SUDO echo ":::"
-    $SUDO echo -n "::: Stopping openvpn service..."
+    $SUDO echo -n "::: Stopping OpenVPN service..."
     if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
         $SUDO service openvpn stop || true
     else
@@ -380,7 +382,7 @@ stopServices() {
 checkForDependencies() {
     #Running apt-get update/upgrade with minimal output can cause some issues with
     #requiring user input (e.g password for phpmyadmin see #218)
-    #We'll change the logic up here, to check to see if there are any updates availible and
+    #We'll change the logic up here, to check to see if there are any updates available and
     # if so, advise the user to run apt-get update/upgrade at their own discretion
     #Check to see if apt-get update has already been run today
     # it needs to have been run at least once on new installs!
@@ -393,7 +395,7 @@ checkForDependencies() {
         if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" ]]; then
             wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
             echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-            echo -n "::: Adding openvpn repo for $PLAT $OSCN ..."
+            echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
             $SUDO apt-get -qq update & spinner $!
             echo " done!"
         fi
@@ -421,7 +423,7 @@ checkForDependencies() {
     echo ":::"
     echo "::: Checking dependencies:"
 
-    dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect $UNATTUPG )
+    dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect whiptail )
     for i in "${dependencies[@]}"; do
         echo -n ":::    Checking for $i..."
         if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
@@ -431,7 +433,7 @@ checkForDependencies() {
                 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
                 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
             fi
-            if [[ $i = "expect" ]] || [[ $i = "unattended-upgrades" ]]; then
+            if [[ $i = "expect" ]]; then
                 $SUDO apt-get -y -qq --no-install-recommends install "$i" > /dev/null & spinner $!
             else
                 $SUDO apt-get -y -qq install "$i" > /dev/null & spinner $!
@@ -743,7 +745,7 @@ confOpenVPN() {
 
     # It seems you have to set this if you mess with key_cn, lets not.
     # grep -q 'KEY_ALTNAMES=' vars || printf '\nexport KEY_ALTNAMES="PiVPN_KEYALT"\n' >> vars
-
+    echo "export KEY_ALTNAMES=\"PiVPN_ALTNAME\"" >> vars
     # source the vars file just edited
     source ./vars
 
@@ -932,7 +934,6 @@ confOVPN() {
 }
 
 installPiVPN() {
-    checkForDependencies
     stopServices
     confUnattendedUpgrades
     $SUDO mkdir -p /etc/pivpn/
@@ -967,6 +968,8 @@ The install log is in /etc/pivpn." $r $c
 }
 
 ######## SCRIPT ############
+# Install the packages (we do this first because we need whiptail)
+checkForDependencies
 # Start the installer
 welcomeDialogs
 
