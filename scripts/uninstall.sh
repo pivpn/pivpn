@@ -22,13 +22,17 @@ NO_UFW=$(cat /etc/pivpn/NO_UFW)
 PORT=$(cat /etc/pivpn/INSTALL_PORT)
 PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
 
-# Find the rows and columns
-rows=$(stty size | awk '{print $1}')
-columns=$(stty size | awk '{print $2}')
+# Find the rows and columns. Will default to 80x24 if it can not be detected.
+screen_size=$(stty size 2>/dev/null || echo 24 80)
+rows=$(echo $screen_size | awk '{print $1}')
+columns=$(echo $screen_size | awk '{print $2}')
 
 # Divide by two so the dialogs take up half of the screen, which looks nice.
 r=$(( rows / 2 ))
 c=$(( columns / 2 ))
+# Unless the screen is tiny
+r=$(( r < 20 ? 20 : r ))
+c=$(( c < 70 ? 70 : c ))
 
 spinner()
 {
