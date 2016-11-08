@@ -23,8 +23,8 @@ PORT=$(cat /etc/pivpn/INSTALL_PORT)
 PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
 
 # Find the rows and columns
-rows=$(tput lines)
-columns=$(tput cols)
+rows=$(stty size | awk '{print $1}')
+columns=$(stty size | awk '{print $2}')
 
 # Divide by two so the dialogs take up half of the screen, which looks nice.
 r=$(( rows / 2 ))
