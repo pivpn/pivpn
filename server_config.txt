@@ -13,7 +13,7 @@ push "route 10.8.0.1 255.255.255.255"
 # Add route to Client routing table for the OPenVPN Subnet
 push "route 10.8.0.0 255.255.255.0"
 # your local subnet
-push "route LOCALIP 255.255.255.0"
+push "route LOCALNET LOCALMASK"
 # Set your primary domain name server address for clients
 push "dhcp-option DNS 8.8.8.8"
 push "dhcp-option DNS 8.8.4.4"

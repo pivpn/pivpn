@@ -271,7 +271,6 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
                     IP address:    $IPv4addr
                     Gateway:       $IPv4gw" $r $c)then
                     # If the settings are correct, then we need to set the piVPNIP
-                    # Saving it to a temporary file us to retrieve it later when we run the gravity.sh script
                     echo "${IPv4addr%/*}" > /tmp/pivpnIP
                     echo "$pivpnInterface" > /tmp/pivpnINT
                     # After that's done, the loop ends and we move on
@@ -317,6 +316,15 @@ setStaticIPv4() {
         echo "::: Setting IP to $IPv4addr.  You may need to restart after the install is complete."
         echo ":::"
     fi
+}
+
+setNetwork() {
+    # Sets the Network IP and Mask correctly
+    LOCALMASK=$(ifconfig "$pivpnInterface" | awk '/Mask:/{ print $4;} ' | cut -c6-)
+    LOCALIP=$(ifconfig "$pivpnInterface" | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
+    IFS=. read -r i1 i2 i3 i4 <<< "$LOCALIP"
+    IFS=. read -r m1 m2 m3 m4 <<< "$LOCALMASK"
+    LOCALNET=$(printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))")
 }
 
 function valid_ip()
@@ -627,7 +635,11 @@ setClientDNS() {
                     if (whiptail --backtitle "Specify Upstream DNS Provider(s)" --title "Upstream DNS Provider(s)" --yesno "Are these settings correct?\n    DNS Server 1:   $OVPNDNS1\n    DNS Server 2:   $OVPNDNS2" $r $c) then
                         DNSSettingsCorrect=True
                         $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
-                        $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+                        if [ -z ${OVPNDNS2} ]; then
+                            $SUDO sed -i '/\(dhcp-option DNS \)/{n;N;d}' /etc/openvpn/server.conf
+                        else
+                            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+                        fi
                     else
                         # If the settings are wrong, the loop continues
                         DNSSettingsCorrect=False
@@ -779,10 +791,10 @@ fi
     ${SUDOE} openvpn --genkey --secret keys/ta.key
 
     # Write config file for server using the template .txt file
-    LOCALIP=$(ifconfig "$pivpnInterface" | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
-    $SUDO sed -i "s/LOCALIP/${LOCALIP}/g" /etc/openvpn/server.conf
+    $SUDO sed -i "s/LOCALNET/${LOCALNET}/g" /etc/openvpn/server.conf
+    $SUDO sed -i "s/LOCALMASK/${LOCALMASK}/g" /etc/openvpn/server.conf
 
     # Set the user encryption key size
     $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/keys\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
@@ -989,6 +1001,8 @@ else
     getStaticIPv4Settings
     setStaticIPv4
 fi
+
+setNetwork
 
 # Choose the user for the ovpns
 chooseUser
