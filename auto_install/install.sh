@@ -111,12 +111,11 @@ spinner()
     local pid=$1
     local delay=0.50
     local spinstr='/-\|'
-    while ps a | awk '{print $1}' | grep -q "$pid"
-    do
+    while [ "$(ps a | awk '{print $1}' | grep "${pid}")" ]; do
         local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
+        printf " [%c]  " "${spinstr}"
+        local spinstr=${temp}${spinstr%"$temp"}
+        sleep ${delay}
         printf "\b\b\b\b\b\b"
     done
     printf "    \b\b\b\b"
@@ -188,16 +187,33 @@ chooseUser() {
 
 verifyFreeDiskSpace() {
     # If user installs unattended-upgrades we'd need about 60MB so will check for 75MB free
-    requiredFreeBytes=76800
+    echo "::: Verifying free disk space..."
+    local required_free_kilobytes=76800
+    local existing_free_kilobytes=$(df -Pk | grep -m1 '\/$' | awk '{print $4}')
 
-    existingFreeBytes=$(df -lk / 2>&1 | awk '{print $4}' | head -2 | tail -1)
-    if ! [[ "$existingFreeBytes" =~ ^([0-9])+$ ]]; then
-        existingFreeBytes=$(df -lk /dev 2>&1 | awk '{print $4}' | head -2 | tail -1)
-    fi
+    # - Unknown free disk space , not a integer
+    if ! [[ "${existing_free_kilobytes}" =~ ^([0-9])+$ ]]; then
+        echo "::: Unknown free disk space!"
+        echo "::: We were unable to determine available free disk space on this system."
+        echo "::: You may continue with the installation, however, it is not recommended."
+        read -r -p "::: If you are sure you want to continue, type YES and press enter :: " response
+        case $response in
+            [Y][E][S])
+                ;;
+            *)
+                echo "::: Confirmation not received, exiting..."
+                exit 1
+                ;; 
+        esac
+    # - Insufficient free disk space
+    elif [[ ${existing_free_kilobytes} -lt ${required_free_kilobytes} ]]; then
+        echo "::: Insufficient Disk Space!"
+        echo "::: Your system appears to be low on disk space. PiVPN recommends a minimum of $required_free_kilobytes KiloBytes."
+        echo "::: You only have ${existing_free_kilobytes} KiloBytes free."
+        echo "::: If this is a new install on a Raspberry Pi you may need to expand your disk."
+        echo "::: Try running 'sudo raspi-config', and choose the 'expand file system option'"
+        echo "::: After rebooting, run this installation again. (curl -L https://install.pivpn.io | bash)"
 
-    if [[ $existingFreeBytes -lt $requiredFreeBytes ]]; then
-        whiptail --msgbox --backtitle "Insufficient Disk Space" --title "Insufficient Disk Space" "\nYour system appears to be low on disk space. PiVPN recomends a minimum of $requiredFreeBytes Bytes.\nYou only have $existingFreeBytes Free.\n\nIf this is a new install you may need to expand your disk.\n\nTry running:\n    'sudo raspi-config'\nChoose the 'expand file system option'\n\nAfter rebooting, run this installation again.\n\ncurl -L https://install.pivpn.io | bash\n" $r $c
-        echo "$existingFreeBytes is less than $requiredFreeBytes"
         echo "Insufficient free space, exiting..."
         exit 1
     fi
