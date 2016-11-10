@@ -266,32 +266,31 @@ If you are in Amazon then you can not configure a static IP anyway. Just ensure 
 getStaticIPv4Settings() {
     # Ask if the user wants to use DHCP settings as their static IP
     if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Do you want to use your current network settings as a static address?
-                    IP address:    $IPv4addr
-                    Gateway:       $IPv4gw" $r $c) then
+                    IP address:    ${IPv4addr}
+                    Gateway:       ${IPv4gw}" ${r} ${c}); then
         # If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
         whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
 If you are worried, either manually set the address, or modify the DHCP reservation pool so it does not include the IP you want.
-It is also possible to use a DHCP reservation, but if you are going to do that, you might as well set a static address." $r $c
+It is also possible to use a DHCP reservation, but if you are going to do that, you might as well set a static address." ${r} ${c}
         # Nothing else to do since the variables are already set above
     else
         # Otherwise, we need to ask the user to input their desired settings.
         # Start by getting the IPv4 address (pre-filling it with info gathered from DHCP)
         # Start a loop to let the user enter their information with the chance to go back and edit it if necessary
-        until [[ $ipSettingsCorrect = True ]]
-        do
+        until [[ ${ipSettingsCorrect} = True ]]; do
             # Ask for the IPv4 address
-            if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" $r $c "$IPv4addr" 3>&1 1>&2 2>&3)
-            then
-            echo "::: Your static IPv4 address:    $IPv4addr"
+            IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${IPv4addr}" 3>&1 1>&2 2>&3)
+            if [[ $? = 0 ]]; then
+            echo "::: Your static IPv4 address:    ${IPv4addr}"
             # Ask for the gateway
-            if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" $r $c "$IPv4gw" 3>&1 1>&2 2>&3)
-            then
-                echo "::: Your static IPv4 gateway:    $IPv4gw"
+            IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${IPv4gw}" 3>&1 1>&2 2>&3)
+            if [[ $? = 0 ]]; then
+                echo "::: Your static IPv4 gateway:    ${IPv4gw}"
                 # Give the user a chance to review their settings before moving on
                 if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
-                    IP address:    $IPv4addr
-                    Gateway:       $IPv4gw" $r $c)then
-                    # If the settings are correct, then we need to set the piVPNIP
+                    IP address:    ${IPv4addr}
+                    Gateway:       ${IPv4gw}" ${r} ${c}); then
+                    # If the settings are correct, then we need to set the pivpnIP
                     echo "${IPv4addr%/*}" > /tmp/pivpnIP
                     echo "$pivpnInterface" > /tmp/pivpnINT
                     # After that's done, the loop ends and we move on
@@ -319,10 +318,10 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 
 setDHCPCD() {
     # Append these lines to dhcpcd.conf to enable a static IP
-    echo "::: interface $pivpnInterface
-    static ip_address=$IPv4addr
-    static routers=$IPv4gw
-    static domain_name_servers=$IPv4gw" | $SUDO tee -a $dhcpcdFile >/dev/null
+    echo "::: interface ${pivpnInterface}
+    static ip_address=${IPv4addr}
+    static routers=${IPv4gw}
+    static domain_name_servers=${IPv4gw}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
 }
 
 setStaticIPv4() {
