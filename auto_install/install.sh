@@ -222,27 +222,32 @@ verifyFreeDiskSpace() {
 
 chooseInterface() {
     # Turn the available interfaces into an array so it can be used with a whiptail dialog
-    interfacesArray=()
-    firstloop=1
+    local interfacesArray=()
+    # Number of available interfaces
+    local interfaceCount
+    # Whiptail variable storage
+    local chooseInterfaceCmd
+    # Temporary Whiptail options storage
+    local chooseInterfaceOptions
+    # Loop sentinel variable
+    local firstLoop=1
 
-    while read -r line
-    do
+    while read -r line; do
         mode="OFF"
-        if [[ $firstloop -eq 1 ]]; then
+        if [[ ${firstloop} -eq 1 ]]; then
             firstloop=0
             mode="ON"
         fi
-        interfacesArray+=("$line" "available" "$mode")
+        interfacesArray+=("${line}" "available" "${mode}")
     done <<< "$availableInterfaces"
 
     # Find out how many interfaces are available to choose from
-    interfaceCount=$(echo "$availableInterfaces" | wc -l)
-    chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An Interface" $r $c $interfaceCount)
-    if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty)
-    then
-        for desiredInterface in $chooseInterfaceOptions
-        do
-            pivpnInterface=$desiredInterface
+    interfaceCount=$(echo "${availableInterfaces}" | wc -l)
+    chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An Interface (press space to select)" $r $c ${interfaceCount})
+    chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty)
+    if [[ $? = 0 ]]; then
+        for desiredInterface in ${chooseInterfaceOptions}; do
+            pivpnInterface=${desiredInterface}
             echo "::: Using interface: $pivpnInterface"
             echo "${pivpnInterface}" > /tmp/pivpnINT
         done
