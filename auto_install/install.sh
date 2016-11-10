@@ -326,22 +326,27 @@ setDHCPCD() {
 
 setStaticIPv4() {
     # Tries to set the IPv4 address
-    if grep -q "$IPv4addr" $dhcpcdFile; then
-        # address already set, noop
-        :
+    if [[ -f /etc/dhcpcd.conf ]]; then
+        if grep -q "${IPv4addr}" ${dhcpcdFile}; then
+            echo "::: Static IP already configured."
+            :
+        else
+            setDHCPCD
+            $SUDO ip addr replace dev "${pivpnInterface}" "${IPv4addr}"
+            echo ":::"
+            echo "::: Setting IP to ${IPv4addr}.  You may need to restart after the install is complete."
+            echo ":::"
+        fi
     else
-        setDHCPCD
-        $SUDO ip addr replace dev "$pivpnInterface" "$IPv4addr"
-        echo ":::"
-        echo "::: Setting IP to $IPv4addr.  You may need to restart after the install is complete."
-        echo ":::"
+        echo "::: Critical: Unable to locate configuration file to set static IPv4 address!"
+        exit 1
     fi
 }
 
 setNetwork() {
     # Sets the Network IP and Mask correctly
-    LOCALMASK=$(ifconfig "$pivpnInterface" | awk '/Mask:/{ print $4;} ' | cut -c6-)
-    LOCALIP=$(ifconfig "$pivpnInterface" | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
+    LOCALMASK=$(ifconfig "${pivpnInterface}" | awk '/Mask:/{ print $4;} ' | cut -c6-)
+    LOCALIP=$(ifconfig "${pivpnInterface}" | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
     IFS=. read -r i1 i2 i3 i4 <<< "$LOCALIP"
     IFS=. read -r m1 m2 m3 m4 <<< "$LOCALMASK"
     LOCALNET=$(printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))")
