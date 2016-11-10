@@ -372,7 +372,7 @@ unattendedUpgrades() {
 
     if (whiptail --backtitle "Security Updates" --title "Unattended Upgrades" --yesno "Do you want to enable unattended upgrades of security patches to this server?" $r $c) then
         UNATTUPG="unattended-upgrades"
-        $SUDO apt-get -y -qq --no-install-recommends install "$UNATTUPG" > /dev/null & spinner $!
+        $SUDO apt-get --yes --quiet --no-install-recommends install "$UNATTUPG" > /dev/null & spinner $!
     else
         UNATTUPG=""
     fi
@@ -445,9 +445,9 @@ checkForDependencies() {
                 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
             fi
             if [[ $i = "expect" ]]; then
-                $SUDO apt-get -y -qq --no-install-recommends install "$i" > /dev/null & spinner $!
+                $SUDO apt-get --yes --quiet --no-install-recommends install "$i" > /dev/null & spinner $!
             else
-                $SUDO apt-get -y -qq install "$i" > /dev/null & spinner $!
+                $SUDO apt-get --yes --quiet install "$i" > /dev/null & spinner $!
             fi
             echo " done!"
         else
