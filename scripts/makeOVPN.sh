@@ -52,11 +52,11 @@ function keyPASS() {
         printf "Enter the password again to verify:  "
         read -r PASSWD2
         printf "\n"
-        [ "$PASSWD" = "$PASSWD2" ] && break
+        [ "${PASSWD}" = "${PASSWD2}" ] && break
         printf "Passwords do not match! Please try again.\n"
     done
     stty echo
-    if [[ -z "$PASSWD" ]]; then
+    if [[ -z "${PASSWD}" ]]; then
         echo "You left the password blank"
         echo "If you don't want a password, please run:"
         echo "pivpn add nopass"
@@ -69,15 +69,15 @@ function keyPASS() {
     fi
 
     #Escape chars in PASSWD
-    PASSWD=$(echo -n $PASSWD | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/\$/\\\$/g' -e 's/!/\\!/g' -e 's/\./\\\./g' -e "s/'/\\\'/g" -e 's/"/\\"/g' -e 's/\*/\\\*/g' -e 's/\@/\\\@/g' -e 's/\#/\\\#/g' -e 's/£/\\£/g' -e 's/%/\\%/g' -e 's/\^/\\\^/g' -e 's/\&/\\\&/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/-/\\-/g' -e 's/_/\\_/g' -e 's/\+/\\\+/g' -e 's/=/\\=/g' -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/;/\\;/g' -e 's/:/\\:/g' -e 's/|/\\|/g' -e 's/</\\</g' -e 's/>/\\>/g' -e 's/,/\\,/g' -e 's/?/\\?/g' -e 's/~/\\~/g' -e 's/{/\\{/g' -e 's/}/\\}/g')
+    PASSWD=$(echo -n ${PASSWD} | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/\$/\\\$/g' -e 's/!/\\!/g' -e 's/\./\\\./g' -e "s/'/\\\'/g" -e 's/"/\\"/g' -e 's/\*/\\\*/g' -e 's/\@/\\\@/g' -e 's/\#/\\\#/g' -e 's/£/\\£/g' -e 's/%/\\%/g' -e 's/\^/\\\^/g' -e 's/\&/\\\&/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/-/\\-/g' -e 's/_/\\_/g' -e 's/\+/\\\+/g' -e 's/=/\\=/g' -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/;/\\;/g' -e 's/:/\\:/g' -e 's/|/\\|/g' -e 's/</\\</g' -e 's/>/\\>/g' -e 's/,/\\,/g' -e 's/?/\\?/g' -e 's/~/\\~/g' -e 's/{/\\{/g' -e 's/}/\\}/g')
 
     #Build the client key and then encrypt the key
 
     expect << EOF
     set timeout -1
     spawn ./build-key-pass "$NAME"
-    expect "Enter PEM pass phrase" { send "\\\$PASSWD\\r" }
-    expect "Verifying - Enter PEM pass phrase" { send "\\\$PASSWD\\r" }
+    expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
+    expect "Verifying - Enter PEM pass phrase" { send "${PASSWD}\r" }
     expect "Country Name" { send "\r" }
     expect "State or Province Name" { send "\r" }
     expect "Locality Name" { send "\r" }
@@ -98,9 +98,9 @@ EOF
     expect << EOF
     set timeout -1
     spawn openssl rsa -in "$NAME$OKEY" -des3 -out "$NAME$KEY"
-    expect "Enter pass phrase for" { send "\\\$PASSWD\\r" }
-    expect "Enter PEM pass phrase" { send "\\\$PASSWD\\r" }
-    expect "Verifying - Enter PEM pass" { send "\\\$PASSWD\\r" }
+    expect "Enter pass phrase for" { send "${PASSWD}\r" }
+    expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
+    expect "Verifying - Enter PEM pass" { send "${PASSWD}\r" }
     expect eof
 EOF
 }
