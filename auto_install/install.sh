@@ -485,33 +485,29 @@ getGitFiles() {
     # Setup git repos for base files
     echo ":::"
     echo "::: Checking for existing base files..."
-    if is_repo $pivpnFilesDir; then
-        make_repo $pivpnFilesDir $pivpnGitUrl
+    if is_repo "${1}"; then
+        update_repo "${1}"
     else
-        update_repo $pivpnFilesDir
+        make_repo "${1}" "${2}"
     fi
 }
 
 is_repo() {
     # If the directory does not have a .git folder it is not a repo
     echo -n ":::    Checking $1 is a repo..."
-        if [ -d "$1/.git" ]; then
-        echo " OK!"
-        return 1
-        fi
-    echo " not found!!"
-    return 0
+    cd "${1}" &> /dev/null || return 1
+    $SUDO git status &> /dev/null && echo " OK!"; return 0 || echo " not found!"; return 1
 }
 
 make_repo() {
     # Remove the non-repos interface and clone the interface
     echo -n ":::    Cloning $2 into $1..."
-    $SUDO rm -rf "$1"
-    $SUDO git clone -q "$2" "$1" > /dev/null & spinner $!
+    $SUDO rm -rf "${1}"
+    $SUDO git clone -q "${2}" "${1}" > /dev/null & spinner $!
     if [ -z "${TESTING+x}" ]; then
         :
     else
-        $SUDO git -C "$1" checkout test
+        $SUDO git -C "${1}" checkout test
     fi
     echo " done!"
 }
@@ -519,7 +515,8 @@ make_repo() {
 update_repo() {
     # Pull the latest commits
     echo -n ":::     Updating repo in $1..."
-    cd "$1" || exit
+    cd "${1}" || exit 1
+    $SUDO git stash -q > /dev/null & spinner $!
     $SUDO git pull -q > /dev/null & spinner $!
     if [ -z "${TESTING+x}" ]; then
         :
@@ -977,7 +974,7 @@ installPiVPN() {
     stopServices
     confUnattendedUpgrades
     $SUDO mkdir -p /etc/pivpn/
-    getGitFiles
+    getGitFiles ${pivpnFilesDir} ${pivpnGitUrl}
     installScripts
     setCustomProto
     setCustomPort
