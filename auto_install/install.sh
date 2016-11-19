@@ -12,8 +12,6 @@
 
 
 ######## VARIABLES #########
-tmpLog=/tmp/pivpn-install.log
-instalLogLoc=/etc/pivpn/install.log
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
@@ -1035,10 +1033,8 @@ chooseUser
 unattendedUpgrades
 
 # Install
-installPiVPN | tee ${tmpLog}
+installPiVPN
 
-# Move the install log into /etc/pivpn for storage
-$SUDO mv ${tmpLog} ${instalLogLoc}
 
 displayFinalMessage
 
