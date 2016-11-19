@@ -22,7 +22,12 @@ function listOVPNFunc {
 }
 
 function debugFunc {
-    $SUDO /opt/pivpn/pivpnDebug.sh
+    echo "::: Generating Debug Output"
+    $SUDO /opt/pivpn/pivpnDebug.sh | tee /tmp/debug.txt
+    echo "::: "
+    echo "::: Debug output completed above."
+    echo "::: Copy saved to /tmp/debug.txt"
+    echo "::: "
     exit 1
 }
 

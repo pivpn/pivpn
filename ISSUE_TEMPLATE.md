@@ -1,4 +1,5 @@
 <!-- Hi, you are about to open a new issue. -->
+<!-- For any output requested below, you may alternatively post it on http://pastebin.com and provide the pastebin url in it's place -->
 # PiVPN Issue Template
 <!-- If the install failed: can you please copy-paste the console output after running `curl install.pivpn.io | bash` between the backticks -->
 ## Console output of `curl install.pivpn.io | bash`
