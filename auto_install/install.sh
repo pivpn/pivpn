@@ -15,7 +15,7 @@
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
-
+easyrsaRel="https://github.com/pivpn/easy-rsa/releases/download/3.0.1-pivpn/EasyRSA-3.0.1-pivpn.tgz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80) 
@@ -320,7 +320,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 
 setDHCPCD() {
     # Append these lines to dhcpcd.conf to enable a static IP
-    echo "::: interface ${pivpnInterface}
+    echo "## interface ${pivpnInterface}
     static ip_address=${IPv4addr}
     static routers=${IPv4gw}
     static domain_name_servers=${IPv4dns}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
