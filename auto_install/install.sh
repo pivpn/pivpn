@@ -34,7 +34,6 @@ c=$(( c < 70 ? 70 : c ))
 IPv4dev=$(ip route get 8.8.8.8 | awk '{for(i=1;i<=NF;i++)if($i~/dev/)print $(i+1)}')
 IPv4addr=$(ip -o -f inet addr show dev "$IPv4dev" | awk '{print $4}' | awk 'END {print}')
 IPv4gw=$(ip route get 8.8.8.8 | awk '{print $3}')
-IPv4dns=$(nslookup 127.0.0.1 | grep Server: | awk '{print $2}')
 
 availableInterfaces=$(ip -o link | awk '{print $2}' | grep -v "lo" | cut -d':' -f1 | cut -d'@' -f1)
 dhcpcdFile=/etc/dhcpcd.conf
@@ -265,6 +264,8 @@ If you are in Amazon then you can not configure a static IP anyway. Just ensure 
 }
 
 getStaticIPv4Settings() {
+    # Grab their current DNS Server
+    IPv4dns=$(nslookup 127.0.0.1 | grep Server: | awk '{print $2}')
     # Ask if the user wants to use DHCP settings as their static IP
     if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Do you want to use your current network settings as a static address?
                     IP address:    ${IPv4addr}
