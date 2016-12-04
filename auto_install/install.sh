@@ -15,7 +15,8 @@
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
-easyrsaRel="https://github.com/pivpn/easy-rsa/releases/download/3.0.1-pivpn/EasyRSA-3.0.1-pivpn.tgz"
+easyrsaVer="3.0.1-pivpn1"
+easyrsaRel="https://github.com/pivpn/easy-rsa/releases/download/${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80) 
@@ -461,7 +462,7 @@ checkForDependencies() {
     echo ":::"
     echo "::: Checking dependencies:"
 
-    dependencies=( openvpn easy-rsa git iptables-persistent dnsutils expect whiptail )
+    dependencies=( openvpn git iptables-persistent dnsutils expect whiptail )
     for i in "${dependencies[@]}"; do
         echo -n ":::    Checking for $i..."
         if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
@@ -594,12 +595,13 @@ setClientDNS() {
     DNSChooseOptions=(Google "" on
             OpenDNS "" off
             Level3 "" off
+            DNS.WATCH "" off
             Norton "" off
             Custom "" off)
 
     if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
     then
-        case $DNSchoices in
+        case ${DNSchoices} in
         Google)
             echo "::: Using Google DNS servers."
             OVPNDNS1="8.8.8.8"
@@ -617,6 +619,13 @@ setClientDNS() {
             echo "::: Using Level3 servers."
             OVPNDNS1="209.244.0.3"
             OVPNDNS2="209.244.0.4"
+            $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+            ;;
+        DNS.WATCH)
+            echo "::: Using DNS.WATCH servers."
+            OVPNDNS1="82.200.69.80"
+            OVPNDNS2="84.200.70.40"
             $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
             $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
             ;;
@@ -695,125 +704,65 @@ confOpenVPN() {
         exit 1
     fi
 
-    # Copy the easy-rsa files to a directory inside the new openvpn directory
-    $SUDO cp -r /usr/share/easy-rsa /etc/openvpn
+    # If easy-rsa exists, remove it
+    if [[ -d /etc/openvpn/easy-rsa/ ]]; then
+        $SUDO rm -rf /etc/openvpn/easy-rsa/
+    fi
 
-    # Edit the EASY_RSA variable in the vars file to point to the new easy-rsa directory,
-    # And set the chosen key size
+    # zzz Get the PiVPN easy-rsa
+    wget -q -O "/tmp/EasyRSA-${easyrsaVer}" "${easyrsaRel}"
+    tar xzf /tmp/EasyRSA-${easyrsaVer} -C /tmp
+    $SUDO mv /tmp/EasyRSA-${easyrsaVer}/ /etc/openvpn/easy-rsa/
+    $SUDO chown -R root:root /etc/openvpn/easy-rsa
+    $SUDO mkdir /etc/openvpn/easy-rsa/pki
+
+    # Write out new vars file
+    IFS= read -d '' String <<"EOF"
+if [ -z "$EASYRSA_CALLER" ]; then
+    echo "Nope." >&2
+    return 1
+fi
+set_var EASYRSA            "/etc/openvpn/easy-rsa"
+set_var EASYRSA_PKI        "$EASYRSA/pki"
+set_var EASYRSA_KEY_SIZE   2048
+set_var EASYRSA_ALGO       ec
+set_var EASYRSA_CURVE      secp384r1
+EOF
+
+echo "${String}" | $SUDO tee /etc/openvpn/easy-rsa/vars >/dev/null
+
+    # Edit the KEY_SIZE variable in the vars file to set user chosen key size
     cd /etc/openvpn/easy-rsa || exit
-    $SUDO sed -i 's:"`pwd`":"/etc/openvpn/easy-rsa":' vars
-    $SUDO sed -i "s/\(KEY_SIZE=\).*/\1${ENCRYPT}/" vars
-
-    # Init Cert Values
-    COUNTRY="US"
-    STATE="CA"
-    CITY="SanFrancisco"
-    ORG="Fort-Funston"
-    SERVER_NAME="server"
-    KEY_NAME="EasyRSA"
-    EMAIL="me@myhost.mydomain"
-
-    whiptail --title "Certificate Information" --msgbox "You will now be shown the default values for fields that will be used in the certificate. \nIt is fine to leave these as-is since only you and the clients you create will ever see this. \nHowever, if you want to change the values, simply select the ones you wish to modify." ${r} ${c}
-
-    until [[ $CERTVALCorrect = True ]]
-    do
-        CERTVAL=$(whiptail --title "Certificate Information" --checklist "Choose any certificate values you want to change" ${r} ${c} 7 \
-            "COUNTRY" "= US" OFF \
-            "STATE" "= CA" OFF \
-            "CITY" "= SanFranciso" OFF \
-            "ORG" "= Fort-Funston" OFF \
-            "SERVER_NAME" "= server" OFF \
-            "KEY_NAME" "= EasyRSA" OFF \
-            "EMAIL" "= me@myhost.mydomain" OFF 3>&1 1>&2 2>&3)
-
-        exitstatus=$?
-        if [ $exitstatus != 0 ]; then
-            echo "::: Cancel selected. Exiting..."
-            exit 1
-        fi
-
-        for i in $CERTVAL
-        do
-            if [ "$i" == '"COUNTRY"' ]; then
-                COUNTRY=$(whiptail --title "Certificate Country" --inputbox \
-                "Enter a 2 letter abbreviation for Country" ${r} ${c} US 3>&1 1>&2 2>&3)
-                $SUDO sed -i "s/\(KEY_COUNTRY=\"\).*/\1${COUNTRY}\"/" vars
-            fi
-            if [ "$i" == '"STATE"' ]; then
-                STATE=$(whiptail --title "Certificate State" --inputbox \
-                "Enter a 2 letter abbreviated State or Province" ${r} ${c} CA 3>&1 1>&2 2>&3)
-                $SUDO sed -i "s/\(KEY_PROVINCE=\"\).*/\1${STATE}\"/" vars
-            fi
-            if [ "$i" == '"CITY"' ]; then
-                CITY=$(whiptail --title "Certificate City" --inputbox \
-                "Enter a City name" ${r} ${c} SanFrancisco 3>&1 1>&2 2>&3)
-                $SUDO sed -i "s/\(KEY_CITY=\"\).*/\1${CITY}\"/" vars
-            fi
-            if [ "$i" == '"ORG"' ]; then
-                ORG=$(whiptail --title "Certificate Org" --inputbox \
-                "Enter an Organization name" ${r} ${c} Fort-Funston 3>&1 1>&2 2>&3)
-                $SUDO sed -i "s/\(KEY_ORG=\"\).*/\1${ORG}\"/" vars
-            fi
-            if [ "$i" == '"EMAIL"' ]; then
-                EMAIL=$(whiptail --title "Certificate Email" --inputbox \
-                "Enter an Email Address" ${r} ${c} "me@myhost.mydomain" 3>&1 1>&2 2>&3)
-                $SUDO sed -i "s/\(KEY_EMAIL=\"\).*/\1${EMAIL}\"/" vars
-            fi
-            if [ "$i" == '"SERVER_NAME"' ]; then
-                SERVER_NAME=$(whiptail --title "Server Name" --inputbox \
-                "Enter a Server Name" ${r} ${c} "pivpn" 3>&1 1>&2 2>&3)
-                # This began a rabbit hole of errors. Nope.
-                #sed -i '/export KEY_CN/s/^#//g' vars
-                #sed -i "s/\(KEY_CN=\"\).*/\1${SERVER_NAME}\"/" vars
-            fi
-            if [ "$i" == '"KEY_NAME"' ]; then
-                KEY_NAME=$(whiptail --title "Key Name" --inputbox \
-                "Enter a Key Name" ${r} ${c} "EasyRSA" 3>&1 1>&2 2>&3)
-                $SUDO sed -i "s/\(KEY_NAME=\"\).*/\1${KEY_NAME}\"/" vars
-            fi
-        done
-        if (whiptail --backtitle "Confirm Certificate Fields" --title "Confirm Certificate Fields" --yesno "Are these values correct?\n\n    Country:      $COUNTRY\n    State:        $STATE\n    City:         $CITY\n    Org:          $ORG\n    Email:        $EMAIL\n    Server Name:  $SERVER_NAME\n    Key Name:     $KEY_NAME" ${r} ${c}) then
-            CERTVALCorrect=True
-        else
-            CERTVALCorrect=False
-        fi
-    done
-    # Make PiVPN the OU
-    KEY_OU=PiVPN
-    $SUDO sed -i "s/\(KEY_OU=\"\).*/\1${KEY_OU}\"/" vars
-
-    # It seems you have to set this if you mess with key_cn, lets not.
-    # grep -q 'KEY_ALTNAMES=' vars || printf '\nexport KEY_ALTNAMES="PiVPN_KEYALT"\n' >> vars
-    echo "export KEY_ALTNAMES=\"PiVPN_ALTNAME\"" >> vars
-    # source the vars file just edited
-    source ./vars
+    $SUDO sed -i "s/\(KEY_SIZE=\).*/\1   ${ENCRYPT}/" vars
 
     # Remove any previous keys
-    ${SUDOE} ./clean-all
+    ${SUDOE} ./easyrsa init-pki
 
     # Build the certificate authority
-    echo "::: Building CA..."
-    ${SUDOE} ./build-ca < /etc/.pivpn/ca_info.txt
+    printf "::: Building CA...\n"
+    ${SUDOE} ./easyrsa --batch build-ca nopass
     printf "\n::: CA Complete.\n"
 
     whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." ${r} ${c}
 
     # Build the server
-    ${SUDOE} ./build-key-server --batch "$SERVER_NAME"
+    ${SUDOE} ./easyrsa build-server-full server nopass
 
     if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c})
 then
-    # Downloading parameters, $KEY_DIR and $KEY_SIZE get set by sourcing ./vars
+    # Downloading parameters
     RANDOM_INDEX=$(( RANDOM % 128 ))
-    ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "${KEY_DIR}/dh${KEY_SIZE}.pem"
+    ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
 else
     # Generate Diffie-Hellman key exchange
-    ${SUDOE} ./build-dh
+    ${SUDOE} ./easyrsa gen-dh
+    ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
 fi
 
     # Generate static HMAC key to defend against DDoS
-    ${SUDOE} openvpn --genkey --secret keys/ta.key
+    ${SUDOE} openvpn --genkey --secret pki/ta.key
 
+#zzz up to here
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
