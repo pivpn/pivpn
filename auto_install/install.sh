@@ -144,10 +144,9 @@ chooseUser() {
         then
             # See http://askubuntu.com/a/667842/459815
             PASSWORD=$(whiptail  --title "password dialog" --passwordbox "Please enter the new user password" ${r} ${c} 3>&1 1>&2 2>&3)
-            CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "$password")
-            $SUDO useradd -m -p "$CRYPT" -s /bin/bash "$userToAdd"
-            if [ $? -eq 0 ]
-            then
+            CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "${PASSWORD}")
+            $SUDO useradd -m -p "${CRYPT}" -s /bin/bash "${userToAdd}"
+            if [[ $? = 0 ]]; then
                 echo "Succeeded"
                 ((numUsers+=1))
             else
@@ -158,8 +157,8 @@ chooseUser() {
         fi
     fi
     availableUsers=$(awk -F':' '$3>=500 && $3<=60000 {print $1}' /etc/passwd)
-    userArray=()
-    firstloop=1
+    local userArray=()
+    local firstloop=1
 
     while read -r line
     do
@@ -168,13 +167,12 @@ chooseUser() {
             firstloop=0
             mode="ON"
         fi
-        userArray+=("$line" "" "$mode")
+        userArray+=("${line}" "" "${mode}")
     done <<< "${availableUsers}"
     chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose:" ${r} ${c} ${numUsers})
-    if chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
-    then
-        for desiredUser in ${chooseUserOptions}
-        do
+    chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
+    if [[ $? = 0 ]]; then
+        for desiredUser in ${chooseUserOptions}; do
             pivpnUser=${desiredUser}
             echo "::: Using User: $pivpnUser"
             echo "${pivpnUser}" > /tmp/pivpnUSR
@@ -184,7 +182,6 @@ chooseUser() {
         exit 1
     fi
 }
-
 
 verifyFreeDiskSpace() {
     # If user installs unattended-upgrades we'd need about 60MB so will check for 75MB free
@@ -240,7 +237,7 @@ chooseInterface() {
             mode="ON"
         fi
         interfacesArray+=("${line}" "available" "${mode}")
-    done <<< "$availableInterfaces"
+    done <<< "${availableInterfaces}"
 
     # Find out how many interfaces are available to choose from
     interfaceCount=$(echo "${availableInterfaces}" | wc -l)
@@ -709,7 +706,7 @@ confOpenVPN() {
         $SUDO rm -rf /etc/openvpn/easy-rsa/
     fi
 
-    # zzz Get the PiVPN easy-rsa
+    # Get the PiVPN easy-rsa
     wget -q -O "/tmp/EasyRSA-${easyrsaVer}" "${easyrsaRel}"
     tar xzf /tmp/EasyRSA-${easyrsaVer} -C /tmp
     $SUDO mv /tmp/EasyRSA-${easyrsaVer}/ /etc/openvpn/easy-rsa/
@@ -733,7 +730,7 @@ echo "${String}" | $SUDO tee /etc/openvpn/easy-rsa/vars >/dev/null
 
     # Edit the KEY_SIZE variable in the vars file to set user chosen key size
     cd /etc/openvpn/easy-rsa || exit
-    $SUDO sed -i "s/\(KEY_SIZE=\).*/\1   ${ENCRYPT}/" vars
+    $SUDO sed -i "s/\(KEY_SIZE\).*/\1   ${ENCRYPT}/" vars
 
     # Remove any previous keys
     ${SUDOE} ./easyrsa --batch init-pki
@@ -762,7 +759,6 @@ fi
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret pki/ta.key
 
-#zzz up to here
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
@@ -770,7 +766,7 @@ fi
     $SUDO sed -i "s/LOCALMASK/${LOCALMASK}/g" /etc/openvpn/server.conf
 
     # Set the user encryption key size
-    $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/keys\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
 
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
@@ -783,8 +779,8 @@ fi
     fi
 
     # write out server certs to conf file
-    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1${SERVER_NAME}.key/" /etc/openvpn/server.conf
-    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/keys\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/pki\/\).*/\1${SERVER_NAME}.key/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/pki\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
 }
 
 confUnattendedUpgrades() {
@@ -881,10 +877,10 @@ confOVPN() {
         exit 1
     fi
 
-    $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/keys/Default.txt
+    $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
     if [ "$METH" == "$IPv4pub" ]; then
-        $SUDO sed -i 's/IPv4pub/'"$IPv4pub"'/' /etc/openvpn/easy-rsa/keys/Default.txt
+        $SUDO sed -i 's/IPv4pub/'"$IPv4pub"'/' /etc/openvpn/easy-rsa/pki/Default.txt
     else
         until [[ $publicDNSCorrect = True ]]
         do
@@ -896,7 +892,7 @@ confOVPN() {
             fi
             if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\n\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
                 publicDNSCorrect=True
-                $SUDO sed -i 's/IPv4pub/'"$PUBLICDNS"'/' /etc/openvpn/easy-rsa/keys/Default.txt
+                $SUDO sed -i 's/IPv4pub/'"$PUBLICDNS"'/' /etc/openvpn/easy-rsa/pki/Default.txt
             else
                 publicDNSCorrect=False
 
@@ -906,16 +902,16 @@ confOVPN() {
 
     # if they modified port put value in Default.txt for clients to use
     if [ $PORT != 1194 ]; then
-        $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/keys/Default.txt
+        $SUDO sed -i -e "s/1194/${PORT}/g" /etc/openvpn/easy-rsa/pki/Default.txt
     fi
 
     # if they modified protocol put value in Default.txt for clients to use
     if [ "$PROTO" != "udp" ]; then
-        $SUDO sed -i -e "s/proto udp/proto tcp/g" /etc/openvpn/easy-rsa/keys/Default.txt
+        $SUDO sed -i -e "s/proto udp/proto tcp/g" /etc/openvpn/easy-rsa/pki/Default.txt
     fi
 
     # verify server name to strengthen security
-    $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/keys/Default.txt
+    $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
     $SUDO mkdir "/home/$pivpnUser/ovpns"
     $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
