@@ -736,7 +736,7 @@ echo "${String}" | $SUDO tee /etc/openvpn/easy-rsa/vars >/dev/null
     $SUDO sed -i "s/\(KEY_SIZE=\).*/\1   ${ENCRYPT}/" vars
 
     # Remove any previous keys
-    ${SUDOE} ./easyrsa init-pki
+    ${SUDOE} ./easyrsa --batch init-pki
 
     # Build the certificate authority
     printf "::: Building CA...\n"
