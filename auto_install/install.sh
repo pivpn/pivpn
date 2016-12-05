@@ -469,7 +469,7 @@ checkForDependencies() {
                 echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
                 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
             fi
-            if [[ $i = "expect" ]]; then
+            if [[ $i == "expect" ]] || [[ $i == "openvpn" ]]; then
                 $SUDO apt-get --yes --quiet --no-install-recommends install "$i" > /dev/null & spinner $!
             else
                 $SUDO apt-get --yes --quiet install "$i" > /dev/null & spinner $!
