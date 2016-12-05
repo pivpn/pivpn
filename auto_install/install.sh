@@ -588,7 +588,7 @@ setCustomPort() {
 }
 
 setClientDNS() {
-    DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients. To use your own, select Custom." ${r} ${c} 5)
+    DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients. To use your own, select Custom." ${r} ${c} 6)
     DNSChooseOptions=(Google "" on
             OpenDNS "" off
             Level3 "" off
@@ -779,8 +779,8 @@ fi
     fi
 
     # write out server certs to conf file
-    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/pki\/\).*/\1${SERVER_NAME}.key/" /etc/openvpn/server.conf
-    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/pki\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/pki\/private\/\).*/\1${SERVER_NAME}.key/" /etc/openvpn/server.conf
+    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/pki\/issued\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
 }
 
 confUnattendedUpgrades() {
