@@ -34,7 +34,7 @@ user nobody
 group nogroup
 persist-key
 persist-tun
-#crl-verify /etc/openvpn/easy-rsa/pki/crl.pem
+#crl-verify /etc/openvpn/crl.pem
 status /var/log/openvpn-status.log 20
 log /var/log/openvpn.log
 verb 1
