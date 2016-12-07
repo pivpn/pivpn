@@ -722,7 +722,7 @@ fi
 set_var EASYRSA            "/etc/openvpn/easy-rsa"
 set_var EASYRSA_PKI        "$EASYRSA/pki"
 set_var EASYRSA_KEY_SIZE   2048
-set_var EASYRSA_ALGO       ec
+set_var EASYRSA_ALGO       rsa
 set_var EASYRSA_CURVE      secp384r1
 EOF
 
