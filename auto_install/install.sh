@@ -318,7 +318,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 
 setDHCPCD() {
     # Append these lines to dhcpcd.conf to enable a static IP
-    echo "## interface ${pivpnInterface}
+    echo "interface ${pivpnInterface}
     static ip_address=${IPv4addr}
     static routers=${IPv4gw}
     static domain_name_servers=${IPv4dns}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
@@ -459,7 +459,7 @@ checkForDependencies() {
     echo ":::"
     echo "::: Checking dependencies:"
 
-    dependencies=( openvpn git iptables-persistent dnsutils expect whiptail )
+    dependencies=( openvpn git dhcpcd5 tar wget iptables-persistent dnsutils expect whiptail )
     for i in "${dependencies[@]}"; do
         echo -n ":::    Checking for $i..."
         if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
