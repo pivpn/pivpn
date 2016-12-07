@@ -18,7 +18,7 @@ pivpnFilesDir="/etc/.pivpn"
 easyrsaRel="https://github.com/pivpn/easy-rsa/releases/download/3.0.1-pivpn/EasyRSA-3.0.1-pivpn.tgz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
-screen_size=$(stty size 2>/dev/null || echo 24 80)
+screen_size=$(stty size 2>/dev/null || echo 24 80) 
 rows=$(echo $screen_size | awk '{print $1}')
 columns=$(echo $screen_size | awk '{print $2}')
 
@@ -203,7 +203,7 @@ verifyFreeDiskSpace() {
             *)
                 echo "::: Confirmation not received, exiting..."
                 exit 1
-                ;;
+                ;; 
         esac
     # - Insufficient free disk space
     elif [[ ${existing_free_kilobytes} -lt ${required_free_kilobytes} ]]; then
@@ -319,8 +319,6 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 }
 
 setDHCPCD() {
-    # First, create the dhcpd config file
-    touch ${dhcpcdFile}
     # Append these lines to dhcpcd.conf to enable a static IP
     echo "## interface ${pivpnInterface}
     static ip_address=${IPv4addr}
@@ -330,7 +328,7 @@ setDHCPCD() {
 
 setStaticIPv4() {
     # Tries to set the IPv4 address
-    if [[ -f ${dhcpcdFile} ]]; then
+    if [[ -f /etc/dhcpcd.conf ]]; then
         if grep -q "${IPv4addr}" ${dhcpcdFile}; then
             echo "::: Static IP already configured."
             :
