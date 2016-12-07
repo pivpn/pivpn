@@ -4,40 +4,24 @@
 DEFAULT="Default.txt"
 FILEEXT=".ovpn"
 CRT=".crt"
-OKEY=".key"
-KEY=".3des.key"
+KEY=".key"
 CA="ca.crt"
 TA="ta.key"
-INDEX="/etc/openvpn/easy-rsa/keys/index.txt"
+INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 
 # Functions def
 
 function keynoPASS() {
 
-    # Override key def
-    KEY=".key"
-
     #Build the client key
     expect << EOF
     set timeout -1
-    spawn ./build-key "$NAME"
-    expect "Country Name" { send "\r" }
-    expect "State or Province Name" { send "\r" }
-    expect "Locality Name" { send "\r" }
-    expect "Organization Name" { send "\r" }
-    expect "Organizational Unit" { send "\r" }
-    expect "Common Name" { send "\r" }
-    expect "Name" { send "\r" }
-    expect "Email Address" { send "\r" }
-    expect "challenge password" { send "\r" }
-    expect "optional company name" { send "\r" }
-    expect "Sign the certificate" { send "y\r" }
-    expect "commit" { send "y\r" }
+    spawn ./easyrsa build-client-full "$NAME" nopass
     expect eof
 EOF
 
-    cd keys || exit
+    cd pki || exit
 
 }
 
@@ -75,65 +59,44 @@ function keyPASS() {
 
     expect << EOF
     set timeout -1
-    spawn ./build-key-pass "$NAME"
+    spawn ./easyrsa build-client-full "$NAME"
     expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
     expect "Verifying - Enter PEM pass phrase" { send "${PASSWD}\r" }
-    expect "Country Name" { send "\r" }
-    expect "State or Province Name" { send "\r" }
-    expect "Locality Name" { send "\r" }
-    expect "Organization Name" { send "\r" }
-    expect "Organizational Unit" { send "\r" }
-    expect "Common Name" { send "\r" }
-    expect "Name" { send "\r" }
-    expect "Email Address" { send "\r" }
-    expect "challenge password" { send "\r" }
-    expect "optional company name" { send "\r" }
-    expect "Sign the certificate" { send "y\r" }
-    expect "commit" { send "y\r" }
     expect eof
 EOF
 
-    cd keys || exit
+    cd pki || exit
 
-    expect << EOF
-    set timeout -1
-    spawn openssl rsa -in "$NAME$OKEY" -des3 -out "$NAME$KEY"
-    expect "Enter pass phrase for" { send "${PASSWD}\r" }
-    expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
-    expect "Verifying - Enter PEM pass" { send "${PASSWD}\r" }
-    expect eof
-EOF
 }
 
 printf "Enter a Name for the Client:  "
 read -r NAME
 
-if [[ "$NAME" =~ [^a-zA-Z0-9] ]]; then
-    echo "Name can only contain alphanumeric characters"
+if [[ "${NAME}" =~ [^a-zA-Z0-9] ]]; then
+    echo "Name can only contain alphanumeric characters."
     exit 1
 fi
 
-if [[ -z "$NAME" ]]; then
-    echo "You cannot leave the name blank"
+if [[ -z "${NAME}" ]]; then
+    echo "You cannot leave the name blank."
     exit 1
 fi
 
 # Check if name is already in use
 while read -r line || [ -n "$line" ]; do
-    if [ "$(echo "$line" | sed -e 's/^.*CN=\([^/]*\)\/.*/\1/')" = "$NAME" ]; then
-        echo "Name is already in use"
+    if [ "$(echo "$line" | sed -e 's:.*/CN=::')" == "${NAME}" ]; then
+        echo "Name is already in use."
         exit 1
     fi
-done <$INDEX
+done <${INDEX}
 
 # Check if name is reserved
-if [ "$NAME" = "ta" ] || [ "$NAME" = "server" ] || [ "$NAME" = "ca" ]; then
-    echo "Sorry, this name is unavailable, please choose another one"
+if [ "${NAME}" == "ta" ] || [ "${NAME}" == "server" ] || [ "${NAME}" == "ca" ]; then
+    echo "Sorry, this is in use by the server and cannot be used by clients."
     exit 1
 fi
 
 cd /etc/openvpn/easy-rsa || exit
-source /etc/openvpn/easy-rsa/vars
 
 if [[ "$@" =~ "nopass" ]]; then
     keynoPASS
@@ -142,28 +105,28 @@ else
 fi
 
 #1st Verify that clients Public Key Exists
-if [ ! -f "$NAME$CRT" ]; then
+if [ ! -f "issued/${NAME}${CRT}" ]; then
     echo "[ERROR]: Client Public Key Certificate not found: $NAME$CRT"
     exit
 fi
 echo "Client's cert found: $NAME$CRT"
 
 #Then, verify that there is a private key for that client
-if [ ! -f "$NAME$KEY" ]; then
-    echo "[ERROR]: Client 3des Private Key not found: $NAME$KEY"
+if [ ! -f "private/${NAME}${KEY}" ]; then
+    echo "[ERROR]: Client Private Key not found: $NAME$KEY"
     exit
 fi
 echo "Client's Private Key found: $NAME$KEY"
 
 #Confirm the CA public key exists
-if [ ! -f "$CA" ]; then
+if [ ! -f "${CA}" ]; then
     echo "[ERROR]: CA Public Key not found: $CA"
     exit
 fi
 echo "CA public Key found: $CA"
 
 #Confirm the tls-auth ta key file exists
-if [ ! -f "$TA" ]; then
+if [ ! -f "${TA}" ]; then
     echo "[ERROR]: tls-auth Key not found: $TA"
     exit
 fi
@@ -172,31 +135,31 @@ echo "tls-auth Private Key found: $TA"
 #Ready to make a new .ovpn file
 {
     # Start by populating with the default file
-    cat "$DEFAULT"
+    cat "${DEFAULT}"
 
     #Now, append the CA Public Cert
     echo "<ca>"
-    cat "$CA"
+    cat "${CA}"
     echo "</ca>"
 
     #Next append the client Public Cert
     echo "<cert>"
-    sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "$NAME$CRT"
+    sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
     echo "</cert>"
 
     #Then, append the client Private Key
     echo "<key>"
-    cat "$NAME$KEY"
+    cat "private/${NAME}${KEY}"
     echo "</key>"
 
     #Finally, append the TA Private Key
     echo "<tls-auth>"
-    cat "$TA"
+    cat "${TA}"
     echo "</tls-auth>"
-} > "$NAME$FILEEXT"
+} > "${NAME}${FILEEXT}"
 
 # Copy the .ovpn profile to the home directory for convenient remote access
-cp "/etc/openvpn/easy-rsa/keys/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
+cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
 chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
 printf "\n\n"
 printf "========================================================\n"

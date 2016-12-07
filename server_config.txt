@@ -1,10 +1,11 @@
 dev tun
 proto udp
 port 1194
-ca /etc/openvpn/easy-rsa/keys/ca.crt
-cert /etc/openvpn/easy-rsa/keys/server.crt
-key /etc/openvpn/easy-rsa/keys/server.key
-dh /etc/openvpn/easy-rsa/keys/dh1024.pem
+ca /etc/openvpn/easy-rsa/pki/ca.crt
+cert /etc/openvpn/easy-rsa/pki/issued/server.crt
+key /etc/openvpn/easy-rsa/pki/private/server.key
+dh /etc/openvpn/easy-rsa/pki/dh1024.pem
+topology subnet
 server 10.8.0.0 255.255.255.0
 # server and remote endpoints
 ifconfig 10.8.0.1 10.8.0.2
@@ -25,7 +26,7 @@ client-to-client
 duplicate-cn
 keepalive 10 120
 tls-version-min 1.2
-tls-auth /etc/openvpn/easy-rsa/keys/ta.key 0
+tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0
 cipher AES-256-CBC
 auth SHA256
 comp-lzo
@@ -37,4 +38,4 @@ persist-tun
 status /var/log/openvpn-status.log 20
 log /var/log/openvpn.log
 verb 1
-# This configuration file was originally written by Lauren Orsini at ReadWrite.
+# Generated for use by PiVPN.io
