@@ -10,6 +10,9 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
+# Latest version of OpenVPN
+# https://www.raspberrypi.org/forums/viewtopic.php?f=36&t=89216
+
 
 ######## VARIABLES #########
 
