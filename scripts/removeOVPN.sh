@@ -67,6 +67,7 @@ if [ "${REVOKE_STATUS}" == 0 ]; then
 fi
 
 ./easyrsa --batch revoke "${NAME}"
+./easyrsa gen-crl
 printf "\n::: Certificate revoked, and CRL file updated.\n"
 printf "::: Removing certs and client configuration for this profile.\n"
 rm -rf "pki/reqs/${NAME}.req"
