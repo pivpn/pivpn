@@ -459,7 +459,7 @@ checkForDependencies() {
     echo ":::"
     echo "::: Checking dependencies:"
 
-    dependencies=( openvpn git dhcpcd5 tar wget iptables-persistent dnsutils expect whiptail )
+    dependencies=( openvpn git dhcpcd5 tar wget grep iptables-persistent dnsutils expect whiptail )
     for i in "${dependencies[@]}"; do
         echo -n ":::    Checking for $i..."
         if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then

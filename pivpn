@@ -16,6 +16,11 @@ function makeOVPNFunc {
     exit 1
 }
 
+function listClientsFunc {
+    $SUDO /opt/pivpn/clientStat.sh
+    exit 1
+}
+
 function listOVPNFunc {
     $SUDO /opt/pivpn/listOVPN.sh
     exit 1
@@ -42,7 +47,7 @@ function uninstallFunc {
 }
 
 function versionFunc {
-    printf "\e[1mVersion 1.7\e[0m\n"
+    printf "\e[1mVersion 1.8\e[0m\n"
 }
 
 function helpFunc {
@@ -52,6 +57,7 @@ function helpFunc {
     echo ":::"
     echo "::: Commands:"
     echo ":::  -a, add [nopass]     Create a client ovpn profile, optional nopass"
+    echo ":::  -c, clients          List any connected clients to the server"
     echo ":::  -d, debug            Start a debugging session if having trouble"
     echo ":::  -l, list             List all valid and revoked certificates"
     echo ":::  -r, revoke           Revoke a client ovpn profile"
@@ -67,6 +73,7 @@ fi
 # Handle redirecting to specific functions based on arguments
 case "$1" in
 "-a" | "add"                ) makeOVPNFunc "$@";;
+"-c" | "clients"            ) listClientsFunc;;
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;
 "-r" | "revoke"             ) removeOVPNFunc;;
