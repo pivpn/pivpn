@@ -911,8 +911,12 @@ confOVPN() {
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
-    $SUDO mkdir "/home/$pivpnUser/ovpns"
-    $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
+  # Here we expect the user (${pivpnUser}) to have it's own home dir...
+  # Some users do not have an own homedir. ("mkdir: cannot create directory `/home/XXXX/ovpns': No such file or directory")
+  # We should ask the user were to put the 'ovpns' dir.
+  # For now I hacked it using a '-p' flag
+  $SUDO mkdir -p "/home/$pivpnUser/ovpns"
+  $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
 installPiVPN() {
