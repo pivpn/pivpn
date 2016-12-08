@@ -708,12 +708,8 @@ confOpenVPN() {
     fi
 
     # Get the PiVPN easy-rsa
-    # BN. wget command does not work and throws an error. "/tmp/EasyRSA-3.0.1-pivpn1/: Is a directory"
-    # wget -q -O "/tmp/EasyRSA-${easyrsaVer}" "${easyrsaRel}"
-    # tar xzf /tmp/EasyRSA-${easyrsaVer} -C /tmp
-    wget -q -O "/tmp/EasyRSA-${easyrsaVer}.tgz" "${easyrsaRel}"
-    tar xzf /tmp/EasyRSA-${easyrsaVer}.tgz -C /tmp
-    $SUDO mv /tmp/EasyRSA-${easyrsaVer}/ /etc/openvpn/easy-rsa/
+    wget -q -O - "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-${easyrsaVer} /etc/openvpn/easy-rsa
+    # fix ownership
     $SUDO chown -R root:root /etc/openvpn/easy-rsa
     $SUDO mkdir /etc/openvpn/easy-rsa/pki
 
