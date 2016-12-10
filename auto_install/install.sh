@@ -393,6 +393,19 @@ installScripts() {
     $SUDO echo " done."
 }
 
+fixApt() {
+    if [[ ${APTFAIL} == 1 ]]; then
+        printf "\n::: There seem to be fatal apt errors. Try rebooting and running the install again.\n"
+        exit 1
+    fi
+    printf "\n::: Installation of some packages seems to have failed, attempting to fix...\n"
+    $SUDO apt-get -qy update > /dev/null & spinner $!
+    $SUDO apt-get -qy upgrade > /dev/null & spinner $!
+    $SUDO dpkg --configure -a > /dev/null & spinner $!
+    APTFAIL=1
+    checkForDependencies
+}
+
 unattendedUpgrades() {
     whiptail --msgbox --backtitle "Security Updates" --title "Unattended Upgrades" "Since this server will have at least one port open to the internet, it is recommended you enable unattended-upgrades.\nThis feature will check daily for security package updates only and apply them when necessary.\nIt will NOT automatically reboot the server so to fully apply some updates you should periodically reboot." ${r} ${c}
 
@@ -471,9 +484,9 @@ checkForDependencies() {
                 echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
             fi
             if [[ $i == "expect" ]] || [[ $i == "openvpn" ]]; then
-                $SUDO apt-get --yes --quiet --no-install-recommends install "$i" > /dev/null & spinner $!
+                ($SUDO apt-get --yes --quiet --no-install-recommends install "$i" > /dev/null || echo "Installation Failed!" && fixApt) & spinner $!
             else
-                $SUDO apt-get --yes --quiet install "$i" > /dev/null & spinner $!
+                ($SUDO apt-get --yes --quiet install "$i" > /dev/null || echo "Installation Failed!" && fixApt) & spinner $!
             fi
             echo " done!"
         else
