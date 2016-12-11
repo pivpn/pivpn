@@ -17,9 +17,9 @@ printf " ::\e[4m  Certificate List  \e[0m:: \n"
 i=0
 while read -r line || [ -n "$line" ]; do
     STATUS=$(echo "$line" | awk '{print $1}')
-    if [[ "$STATUS" = "V" ]]; then
+    if [[ "${STATUS}" = "V" ]]; then
         NAME=$(echo "$line" | sed -e 's:.*/CN=::')
-        CERTS[$i]=$NAME
+        CERTS[$i]=${NAME}
         if [ "$i" != 0 ]; then
             # Prevent printing "server" certificate
             printf "  %s\n" "$NAME"
@@ -73,6 +73,6 @@ printf "::: Removing certs and client configuration for this profile.\n"
 rm -rf "pki/reqs/${NAME}.req"
 rm -rf "pki/private/${NAME}.key"
 rm -rf "pki/issued/${NAME}.crt"
-rm -rf "/home/$INSTALL_USER/ovpns/${NAME}.ovpn"
+rm -rf "/home/${INSTALL_USER}/ovpns/${NAME}.ovpn"
 cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
 printf "::: Completed!\n"

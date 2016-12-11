@@ -123,7 +123,7 @@ function askreboot() {
     printf "It is \e[1mstrongly\e[0m recommended to reboot after un-installation.\n"
     read -p "Would you like to reboot now? [y/n]: " -n 1 -r
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
         printf "\nRebooting system...\n"
         sleep 3
         shutdown -r now

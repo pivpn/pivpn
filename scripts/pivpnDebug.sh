@@ -14,6 +14,8 @@ for filename in /etc/pivpn/*; do
 done
 printf ":::\t\t\t\t\t:::\n:: /etc/openvpn/easy-rsa/pki/Default.txt ::\n:::\t\t\t\t\t:::\n"
 cat /etc/openvpn/easy-rsa/pki/Default.txt
-printf ":::\t\t\t\t\t:::\n::\tOutput of iptables\t\t ::\n:::\t\t\t\t\t:::\n"
-iptables -t nat -L -n -v
+if [[ ${noUFW} -eq 1 ]]; then
+    printf ":::\t\t\t\t\t:::\n::\tOutput of iptables\t\t ::\n:::\t\t\t\t\t:::\n"
+    iptables -t nat -L -n -v
+fi
 printf ":::\t\t\t\t\t:::\n::\tDebug Output Complete\t\t ::\n:::\t\t\t\t\t:::\n"
