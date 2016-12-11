@@ -379,7 +379,7 @@ installScripts() {
         $SUDO chmod u+srwx /opt/pivpn
     fi
     $SUDO cp /etc/.pivpn/scripts/makeOVPN.sh /opt/pivpn/makeOVPN.sh
-    $SUCO cp /etc/.pivpn/scripts/clientStat.sh /opt/pivpn/clientStat.sh
+    $SUDO cp /etc/.pivpn/scripts/clientStat.sh /opt/pivpn/clientStat.sh
     $SUDO cp /etc/.pivpn/scripts/listOVPN.sh /opt/pivpn/listOVPN.sh
     $SUDO cp /etc/.pivpn/scripts/removeOVPN.sh /opt/pivpn/removeOVPN.sh
     $SUDO cp /etc/.pivpn/scripts/uninstall.sh /opt/pivpn/uninstall.sh
