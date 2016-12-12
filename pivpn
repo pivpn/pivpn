@@ -37,10 +37,7 @@ function debugFunc {
     if [[ ${noUFW} -eq 1 ]]; then
         IPTABLES_FIX=`iptables -t nat -L -n -v | grep -c 'MASQUERADE.*10.8.0.0\/24'`
         iptables -t nat -L -n -v | grep -q 'MASQUERADE.*10.8.0.0\/24'
-        if [ $? = 0 ]; then
-            echo Good, rule exists
-        else
-            echo in rule does not exist area
+        if [ $? -ne 0 ]; then
             IPTABLES_FIX=2
         fi
         if [[ ${IPTABLES_FIX} -gt 1 ]]; then
@@ -50,6 +47,8 @@ function debugFunc {
             if [[ ${REPLY} =~ ^[Yy]$ ]]; then
                 $SUDO /opt/pivpn/fix_iptables.sh
             fi
+            echo "::: Attempt at fix completed."
+            echo "::: Run 'pivpn debug' again to see if we detect issues."
         fi
     fi
     exit 1
