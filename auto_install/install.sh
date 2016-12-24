@@ -13,6 +13,18 @@
 
 ######## VARIABLES #########
 
+tmpLog="/tmp/pivpn-install.log"
+instalLogLoc="/etc/pivpn/install.log"
+
+### PKG Vars ###
+PKG_MANAGER="apt-get"
+PKG_CACHE="/var/lib/apt/lists/"
+UPDATE_PKG_CACHE="${PKG_MANAGER} update"
+PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
+PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
+PIVPN_DEPS=( openvpn git dhcpcd5 tar wget grep iptables-persistent dnsutils expect whiptail )
+###          ###
+
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
 easyrsaVer="3.0.1-pivpn1"
@@ -394,17 +406,73 @@ installScripts() {
     $SUDO echo " done."
 }
 
-fixApt() {
-    if [[ ${APTFAIL} == 1 ]]; then
-        printf "\n::: There seem to be fatal apt errors. Try rebooting and running the install again.\n"
-        exit 1
+package_check_install() {
+    dpkg-query -W -f='${Status}' "${1}" 2>/dev/null | grep -c "ok installed" || ${PKG_INSTALL} "${1}"
+}
+
+update_package_cache() {
+  #Running apt-get update/upgrade with minimal output can cause some issues with
+  #requiring user input
+
+  #Check to see if apt-get update has already been run today
+  #it needs to have been run at least once on new installs!
+  timestamp=$(stat -c %Y ${PKG_CACHE})
+  timestampAsDate=$(date -d @"${timestamp}" "+%b %e")
+  today=$(date "+%b %e")
+
+  if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
+    if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" ]]; then
+      wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+      echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+      echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
+      $SUDO apt-get -qq update & spinner $!
+      echo " done!"
     fi
-    printf "\n::: Installation of some packages seems to have failed, attempting to fix...\n"
-    $SUDO apt-get -qy update > /dev/null & spinner $!
-    $SUDO apt-get -qy upgrade > /dev/null & spinner $!
-    $SUDO dpkg --configure -a > /dev/null & spinner $!
-    APTFAIL=1
-    checkForDependencies
+  fi
+
+  if [ ! "${today}" == "${timestampAsDate}" ]; then
+    #update package lists
+    echo ":::"
+    echo -n "::: ${PKG_MANAGER} update has not been run today. Running now..."
+    ${UPDATE_PKG_CACHE} &> /dev/null
+    echo " done!"
+  fi
+}
+
+notify_package_updates_available() {
+  # Let user know if they have outdated packages on their system and
+  # advise them to run a package update at soonest possible.
+  echo ":::"
+  echo -n "::: Checking ${PKG_MANAGER} for upgraded packages...."
+  updatesToInstall=$(eval "${PKG_COUNT}")
+  echo " done!"
+  echo ":::"
+  if [[ ${updatesToInstall} -eq "0" ]]; then
+    echo "::: Your system is up to date! Continuing with PiVPN installation..."
+  else
+    echo "::: There are ${updatesToInstall} updates available for your system!"
+    echo "::: We recommend you update your OS after installing PiVPN! "
+    echo ":::"
+  fi
+}
+
+install_dependent_packages() {
+  # Install packages passed in via argument array
+  # No spinner - conflicts with set -e
+  declare -a argArray1=("${!1}")
+ 
+  echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
+  echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
+
+  if command -v debconf-apt-progress &> /dev/null; then
+    debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
+  else
+    for i in "${argArray1[@]}"; do
+      echo -n ":::    Checking for $i..."
+      package_check_install "${i}" &> /dev/null
+      echo " installed!"
+    done
+  fi
 }
 
 unattendedUpgrades() {
@@ -966,13 +1034,19 @@ The install log is in /etc/pivpn." ${r} ${c}
 }
 
 ######## SCRIPT ############
-# Install the packages (we do this first because we need whiptail)
-checkForDependencies
-# Start the installer
-welcomeDialogs
-
 # Verify there is enough disk space for the install
 verifyFreeDiskSpace
+
+# Install the packages (we do this first because we need whiptail)
+#checkForDependencies
+update_package_cache
+
+notify_package_updates_available
+
+install_dependent_packages PIVPN_DEPS[@]
+
+# Start the installer
+welcomeDialogs
 
 # Find interfaces and let the user choose one
 chooseInterface
@@ -994,8 +1068,10 @@ chooseUser
 unattendedUpgrades
 
 # Install
-installPiVPN
+installPiVPN | tee ${tmpLog}
 
+#Move the install log into /etc/pivpn for storage
+$SUDO mv ${tmpLog} ${instalLogLoc}
 
 displayFinalMessage
 
