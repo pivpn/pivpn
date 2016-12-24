@@ -65,7 +65,7 @@ function uninstallFunc {
 }
 
 function versionFunc {
-    printf "\e[1mVersion 1.8\e[0m\n"
+    printf "\e[1mVersion 1.9\e[0m\n"
 }
 
 function helpFunc {
