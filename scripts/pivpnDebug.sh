@@ -8,9 +8,11 @@ printf "::\t/etc/openvpn/easy-rsa/pki\t ::\n:::\t\t\t\t\t:::\n"
 ls -LR /etc/openvpn/easy-rsa/pki/ -Ireqs -Icerts_by_serial
 printf ":::\t\t\t\t\t:::\n::\tOutput of /etc/pivpn/*\t\t ::\n:::\t\t\t\t\t:::\n"
 for filename in /etc/pivpn/*; do
-    echo ":: START $filename ::"
-    cat "$filename"
-    echo ":: END $filename ::"
+    if [[ "${filename}" != "/etc/pivpn/install.log" ]]; then
+        echo ":: START $filename ::"
+        cat "$filename"
+        echo ":: END $filename ::"
+    fi
 done
 printf ":::\t\t\t\t\t:::\n:: /etc/openvpn/easy-rsa/pki/Default.txt ::\n:::\t\t\t\t\t:::\n"
 cat /etc/openvpn/easy-rsa/pki/Default.txt

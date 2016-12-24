@@ -27,7 +27,7 @@ function listOVPNFunc {
 }
 
 function debugFunc {
-    noUFW=$(cat /etc/pivpn/noUFW)
+    noUFW=$(cat /etc/pivpn/NO_UFW)
     echo "::: Generating Debug Output"
     $SUDO . /opt/pivpn/pivpnDebug.sh | tee /tmp/debug.txt
     echo "::: "
