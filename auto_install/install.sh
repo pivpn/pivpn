@@ -420,8 +420,8 @@ update_package_cache() {
   timestampAsDate=$(date -d @"${timestamp}" "+%b %e")
   today=$(date "+%b %e")
 
-  if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
-    if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" ]]; then
+  if [[ ${PLAT} == "Ubuntu" || ${PLAT} == "Debian" ]]; then
+    if [[ ${OSCN} == "trusty" || ${OSCN} == "jessie" || ${OSCN} == "wheezy" ]]; then
       wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
       echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
       echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
@@ -434,7 +434,7 @@ update_package_cache() {
     #update package lists
     echo ":::"
     echo -n "::: ${PKG_MANAGER} update has not been run today. Running now..."
-    ${UPDATE_PKG_CACHE} &> /dev/null
+    $SUDO ${UPDATE_PKG_CACHE} &> /dev/null
     echo " done!"
   fi
 }
@@ -465,11 +465,11 @@ install_dependent_packages() {
   echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
   if command -v debconf-apt-progress &> /dev/null; then
-    debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
+    $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
   else
     for i in "${argArray1[@]}"; do
       echo -n ":::    Checking for $i..."
-      package_check_install "${i}" &> /dev/null
+      $SUDO package_check_install "${i}" &> /dev/null
       echo " installed!"
     done
   fi
