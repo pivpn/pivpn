@@ -31,7 +31,7 @@ easyrsaVer="3.0.1-pivpn1"
 easyrsaRel="https://github.com/pivpn/easy-rsa/releases/download/${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
-screen_size=$(stty size 2>/dev/null || echo 24 80) 
+screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo $screen_size | awk '{print $1}')
 columns=$(echo $screen_size | awk '{print $2}')
 
@@ -213,7 +213,7 @@ verifyFreeDiskSpace() {
             *)
                 echo "::: Confirmation not received, exiting..."
                 exit 1
-                ;; 
+                ;;
         esac
     # - Insufficient free disk space
     elif [[ ${existing_free_kilobytes} -lt ${required_free_kilobytes} ]]; then
@@ -460,7 +460,7 @@ install_dependent_packages() {
   # Install packages passed in via argument array
   # No spinner - conflicts with set -e
   declare -a argArray1=("${!1}")
- 
+
   echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
   echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
@@ -704,7 +704,7 @@ setClientDNS() {
             ;;
         DNS.WATCH)
             echo "::: Using DNS.WATCH servers."
-            OVPNDNS1="82.200.69.80"
+            OVPNDNS1="84.200.69.80"
             OVPNDNS2="84.200.70.40"
             $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
             $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
