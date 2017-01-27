@@ -45,10 +45,10 @@ c=$(( c < 70 ? 70 : c ))
 # Find IP used to route to outside world
 
 IPv4dev=$(ip route get 8.8.8.8 | awk '{for(i=1;i<=NF;i++)if($i~/dev/)print $(i+1)}')
-IPv4addr=$(ip -o -f inet addr show dev "$IPv4dev" | awk '{print $4}' | awk 'END {print}')
+IPv4addr=$(ip route get 8.8.8.8| awk '{print $7}')
 IPv4gw=$(ip route get 8.8.8.8 | awk '{print $3}')
 
-availableInterfaces=$(ip -o link | awk '{print $2}' | grep -v "lo" | cut -d':' -f1 | cut -d'@' -f1)
+availableInterfaces=$(ip -o link | grep "state UP" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 dhcpcdFile=/etc/dhcpcd.conf
 
 ######## FIRST CHECK ########
@@ -242,6 +242,11 @@ chooseInterface() {
     # Loop sentinel variable
     local firstLoop=1
 
+    if [[ $(echo "${availableInterfaces}" | wc -l) -eq 1 ]]; then
+      pivpnInterface="${availableInterfaces}"
+      return
+    fi
+
     while read -r line; do
         mode="OFF"
         if [[ ${firstloop} -eq 1 ]]; then
@@ -260,6 +265,7 @@ chooseInterface() {
             pivpnInterface=${desiredInterface}
             echo "::: Using interface: $pivpnInterface"
             echo "${pivpnInterface}" > /tmp/pivpnINT
+            $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
         done
     else
         echo "::: Cancel selected, exiting...."
@@ -305,6 +311,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
                     # If the settings are correct, then we need to set the pivpnIP
                     echo "${IPv4addr%/*}" > /tmp/pivpnIP
                     echo "$pivpnInterface" > /tmp/pivpnINT
+                     $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
                     # After that's done, the loop ends and we move on
                     ipSettingsCorrect=True
                 else
