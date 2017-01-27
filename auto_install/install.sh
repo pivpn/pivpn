@@ -244,6 +244,8 @@ chooseInterface() {
 
     if [[ $(echo "${availableInterfaces}" | wc -l) -eq 1 ]]; then
       pivpnInterface="${availableInterfaces}"
+      echo "${pivpnInterface}" > /tmp/pivpnINT
+      $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
       return
     fi
 
