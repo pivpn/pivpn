@@ -245,7 +245,6 @@ chooseInterface() {
     if [[ $(echo "${availableInterfaces}" | wc -l) -eq 1 ]]; then
       pivpnInterface="${availableInterfaces}"
       echo "${pivpnInterface}" > /tmp/pivpnINT
-      $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
       return
     fi
 
@@ -267,7 +266,6 @@ chooseInterface() {
             pivpnInterface=${desiredInterface}
             echo "::: Using interface: $pivpnInterface"
             echo "${pivpnInterface}" > /tmp/pivpnINT
-            $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
         done
     else
         echo "::: Cancel selected, exiting...."
@@ -313,7 +311,6 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
                     # If the settings are correct, then we need to set the pivpnIP
                     echo "${IPv4addr%/*}" > /tmp/pivpnIP
                     echo "$pivpnInterface" > /tmp/pivpnINT
-                     $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
                     # After that's done, the loop ends and we move on
                     ipSettingsCorrect=True
                 else
@@ -411,6 +408,8 @@ installScripts() {
     $SUDO chmod 0755 /usr/local/bin/pivpn
     $SUDO cp /etc/.pivpn/scripts/bash-completion /etc/bash_completion.d/pivpn
     . /etc/bash_completion.d/pivpn
+    # Copy interface setting for debug
+    $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
 
     $SUDO echo " done."
 }
