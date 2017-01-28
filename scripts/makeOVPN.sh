@@ -83,12 +83,22 @@ if [[ -z "${NAME}" ]]; then
 fi
 
 # Check if name is already in use
-while read -r line || [ -n "$line" ]; do
-    if [ "$(echo "$line" | sed -e 's:.*/CN=::')" == "${NAME}" ]; then
-        echo "Name is already in use."
-        exit 1
+while read -r line || [ -n "${line}" ]; do
+    STATUS=$(echo "$line" | awk '{print $1}')
+
+    if [[ "${STATUS}" = "V" ]]; then
+        CERT=$(echo "$line" | sed -e 's:.*/CN=::')
+        if [ "${CERT}" == "${NAME}" ]; then
+            INUSE="1"
+        fi
     fi
 done <${INDEX}
+
+if [ "${INUSE}" == "1" ]; then
+    printf "\n!! This name is already in use by a Valid Certificate."
+    printf "\nPlease choose another name or revoke this certificate first.\n"
+    exit 1
+fi
 
 # Check if name is reserved
 if [ "${NAME}" == "ta" ] || [ "${NAME}" == "server" ] || [ "${NAME}" == "ca" ]; then
