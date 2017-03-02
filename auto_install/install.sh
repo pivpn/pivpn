@@ -10,6 +10,9 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
+# Latest version of OpenVPN
+# https://www.raspberrypi.org/forums/viewtopic.php?f=36&t=89216
+
 
 ######## VARIABLES #########
 
@@ -801,7 +804,6 @@ confOpenVPN() {
     wget -q -O - "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-${easyrsaVer} /etc/openvpn/easy-rsa
     # fix ownership
     $SUDO chown -R root:root /etc/openvpn/easy-rsa
-    $SUDO mkdir /etc/openvpn/easy-rsa/pki
 
     # Write out new vars file
     IFS= read -d '' String <<"EOF"
@@ -1003,8 +1005,12 @@ confOVPN() {
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
-    $SUDO mkdir "/home/$pivpnUser/ovpns"
-    $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
+  # Here we expect the user (${pivpnUser}) to have it's own home dir...
+  # Some users do not have an own homedir. ("mkdir: cannot create directory `/home/XXXX/ovpns': No such file or directory")
+  # We should ask the user were to put the 'ovpns' dir.
+  # For now I hacked it using a '-p' flag
+  $SUDO mkdir -p "/home/$pivpnUser/ovpns"
+  $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
 installPiVPN() {
