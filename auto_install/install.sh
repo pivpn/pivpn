@@ -480,7 +480,6 @@ unattendedUpgrades() {
 
     if (whiptail --backtitle "Security Updates" --title "Unattended Upgrades" --yesno "Do you want to enable unattended upgrades of security patches to this server?" ${r} ${c}) then
         UNATTUPG="unattended-upgrades"
-        $SUDO apt-get --yes --quiet --no-install-recommends install "$UNATTUPG" > /dev/null & spinner $!
     else
         UNATTUPG=""
     fi
@@ -772,20 +771,19 @@ setClientDNS() {
 }
 
 confOpenVPN() {
-    # Ask user if want to modify default port
-    SERVER_NAME="server"
-
-    # Ask user for desired level of encryption
-    ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
-    "Choose your desired level of encryption:\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications it is recommended to use 2048 bit.  If you are testing or just want to get through it quicker you can use 1024.  If you are paranoid about ... things... then grab a cup of joe and pick 4096." ${r} ${c} 3 \
-    "2048" "Use 2048-bit encryption. Recommended level." ON \
-    "1024" "Use 1024-bit encryption. Test level." OFF \
-    "4096" "Use 4096-bit encryption. Paranoid level." OFF 3>&1 1>&2 2>&3)
-
-    exitstatus=$?
-    if [ $exitstatus != 0 ]; then
-        echo "::: Cancel selected. Exiting..."
-        exit 1
+    if [[ ${useUpdateVars} == false ]]; then
+        # Ask user for desired level of encryption
+        ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
+        "Choose your desired level of encryption:\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications it is recommended to use 2048 bit.  If you are testing or just want to get through it quicker you can use 1024.  If you are paranoid about ... things... then grab a cup of joe and pick 4096." ${r} ${c} 3 \
+        "2048" "Use 2048-bit encryption. Recommended level." ON \
+        "1024" "Use 1024-bit encryption. Test level." OFF \
+        "4096" "Use 4096-bit encryption. Paranoid level." OFF 3>&1 1>&2 2>&3)
+        
+        exitstatus=$?
+        if [ $exitstatus != 0 ]; then
+            echo "::: Cancel selected. Exiting..."
+            exit 1
+        fi
     fi
 
     # If easy-rsa exists, remove it
@@ -826,12 +824,23 @@ EOF
     ${SUDOE} ./easyrsa --batch build-ca nopass
     printf "\n::: CA Complete.\n"
 
-    whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." ${r} ${c}
-
+    if [[ ${useUpdateVars} == false ]]; then
+        whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." ${r} ${c}
+    fi
+    
     # Build the server
     ${SUDOE} ./easyrsa build-server-full server nopass
 
-    if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c})
+    if [[ ${useUpdateVars} == false ]]; then
+        if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c})
+        then
+            DOWNLOAD_DH_PARAM=true
+        else
+            DOWNLOAD_DH_PARAM=false
+        fi
+    fi
+    
+    if [ "$ENCRYPT" -ge "4096" ] && [[ ${DOWNLOAD_DH_PARAM} == true ]]
     then
         # Downloading parameters
         RANDOM_INDEX=$(( RANDOM % 128 ))
@@ -871,6 +880,7 @@ EOF
 
 confUnattendedUpgrades() {
     if [[ $UNATTUPG == "unattended-upgrades" ]]; then
+        $SUDO apt-get --yes --quiet --no-install-recommends install "$UNATTUPG" > /dev/null & spinner $!
         if [[ $PLAT == "Ubuntu" ]]; then
             # Ubuntu 50unattended-upgrades should already just have security enabled
             # so we just need to configure the 10periodic file
@@ -953,37 +963,40 @@ confOVPN() {
     echo 0 > /tmp/REVOKE_STATUS
     $SUDO cp /tmp/REVOKE_STATUS /etc/pivpn/REVOKE_STATUS
 
-    METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server?" ${r} ${c} 2 \
-    "$IPv4pub" "Use this public IP" "ON" \
-    "DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3)
-
-    exitstatus=$?
-    if [ $exitstatus != 0 ]; then
-        echo "::: Cancel selected. Exiting..."
-        exit 1
-    fi
-
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
-    if [ "$METH" == "$IPv4pub" ]; then
-        $SUDO sed -i 's/IPv4pub/'"$IPv4pub"'/' /etc/openvpn/easy-rsa/pki/Default.txt
-    else
-        until [[ $publicDNSCorrect = True ]]
-        do
-            PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" ${r} ${c} 3>&1 1>&2 2>&3)
-            exitstatus=$?
-            if [ $exitstatus != 0 ]; then
+    if [[ ${useUpdateVars} == false ]]; then
+        METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server?" ${r} ${c} 2 \
+        "$IPv4pub" "Use this public IP" "ON" \
+        "DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3)
+    
+        exitstatus=$?
+        if [ $exitstatus != 0 ]; then
             echo "::: Cancel selected. Exiting..."
             exit 1
-            fi
-            if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\n\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
-                publicDNSCorrect=True
-                $SUDO sed -i 's/IPv4pub/'"$PUBLICDNS"'/' /etc/openvpn/easy-rsa/pki/Default.txt
-            else
-                publicDNSCorrect=False
-
-            fi
-        done
+        fi
+    
+        if [ "$METH" == "$IPv4pub" ]; then
+            $SUDO sed -i 's/IPv4pub/'"$IPv4pub"'/' /etc/openvpn/easy-rsa/pki/Default.txt
+        else
+            until [[ $publicDNSCorrect = True ]]
+            do
+                PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" ${r} ${c} 3>&1 1>&2 2>&3)
+                exitstatus=$?
+                if [ $exitstatus != 0 ]; then
+                echo "::: Cancel selected. Exiting..."
+                exit 1
+                fi
+                if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\n\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
+                    publicDNSCorrect=True
+                    $SUDO sed -i 's/IPv4pub/'"$PUBLICDNS"'/' /etc/openvpn/easy-rsa/pki/Default.txt
+                else
+                    publicDNSCorrect=False
+                fi
+            done
+        fi
+    else
+        $SUDO sed -i 's/IPv4pub/'"$PUBLICDNS"'/' /etc/openvpn/easy-rsa/pki/Default.txt
     fi
 
     # if they modified port put value in Default.txt for clients to use
@@ -1006,32 +1019,47 @@ confOVPN() {
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
-        sed -i.update.bak '/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnUser/d;/UNATTUPG/d;' "${setupVars}"
+        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;OVPNDNS1/d;OVPNDNS2/d;SERVER_NAME/d;' "${setupVars}"
     fi
     {
+        echo "pivpnUser=${pivpnUser}"
+        echo "UNATTUPG=${UNATTUPG}"
         echo "pivpnInterface=${pivpnInterface}"
         echo "IPv4dns=${IPv4dns}"
         echo "IPv4addr=${IPv4addr}"
         echo "IPv4gw=${IPv4gw}"
-        echo "pivpnUser=${pivpnUser}"
-        echo "UNATTUPG=${UNATTUPG}"
+        echo "pivpnProto=${pivpnProto}"
+        echo "PORT=${PORT}"
+        echo "ENCRYPT=${ENCRYPT}"
+        echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}"
+        echo "PUBLICDNS=${PUBLICDNS}"
+        echo "OVPNDNS1=${OVPNDNS1}"
+        echo "OVPNDNS2=${OVPNDNS2}"
+        echo "SERVER_NAME=${SERVER_NAME}"
     }>> "${setupVars}"
 }
 
 
-# I suggest replacing these names.
+# I suggest replacing some of these names.
 
 #accountForRefactor() {
 #    # At some point in the future this list can be pruned, for now we'll need it to ensure updates don't break.
 #
 #    # Refactoring of install script has changed the name of a couple of variables. Sort them out here.
+#    sed -i 's/pivpnUser/PIVPN_USER/g' ${setupVars}
+#    #sed -i 's/UNATTUPG/UNATTUPG/g' ${setupVars}
 #    sed -i 's/pivpnInterface/PIVPN_INTERFACE/g' ${setupVars}
 #    sed -i 's/IPv4dns/IPV4_DNS/g' ${setupVars}
 #    sed -i 's/IPv4addr/IPV4_ADDRESS/g' ${setupVars}
 #    sed -i 's/IPv4gw/IPV4_GATEWAY/g' ${setupVars}
-#    sed -i 's/pivpnUser/PIVPN_USER/g' ${setupVars}
-#    sed -i 's/IPv4dns/IPV4_DNS/g' ${setupVars}
-#    #sed -i 's/UNATTUPG/UNATTUPG/g' ${setupVars}
+#    sed -i 's/pivpnProto/TRANSPORT_LAYER/g' ${setupVars}
+#    #sed -i 's/PORT/PORT/g' ${setupVars}
+#    #sed -i 's/ENCRYPT/ENCRYPT/g' ${setupVars}
+#    #sed -i 's/DOWNLOAD_DH_PARAM/DOWNLOAD_DH_PARAM/g' ${setupVars}
+#    #sed -i 's/PUBLICDNS/PUBLICDNS/g' ${setupVars}
+#    #sed -i 's/OVPNDNS1/OVPNDNS1/g' ${setupVars}
+#    #sed -i 's/OVPNDNS2/OVPNDNS2/g' ${setupVars}
+#    #sed -i 's/SERVER_NAME/SERVER_NAME/g' ${setupVars}
 #}
 
 installPiVPN() {
@@ -1043,22 +1071,37 @@ installPiVPN() {
     setCustomPort
     confOpenVPN
     confNetwork
+    SERVER_NAME="server"
     confOVPN
     setClientDNS
     finalExports
 }
 
-updatePiVPN() { # Could be replaced by installPiVPN, but keep structure close to pi-hole
+updatePiVPN() {
     #accountForRefactor
     stopServices
     confUnattendedUpgrades
     installScripts
-    setCustomProto
-    setCustomPort
+    
+    # setCustomProto
+    echo "${pivpnProto}" > /tmp/pivpnPROTO
+    # write out the PROTO
+    PROTO=$pivpnProto
+    $SUDO cp /tmp/pivpnPROTO /etc/pivpn/INSTALL_PROTO
+    
+    #setCustomPort
+    # write out the port
+    echo ${PORT} > /tmp/INSTALL_PORT
+    $SUDO cp /tmp/INSTALL_PORT /etc/pivpn/INSTALL_PORT
+    
     confOpenVPN
     confNetwork
     confOVPN
-    setClientDNS
+    
+	# ?? Is this always OK? Also if you only select one DNS server ??
+    $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+    $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+
     finalExports #re-export setupVars.conf to account for any new vars added in new versions
 }
 
@@ -1143,7 +1186,7 @@ main() {
     
     # Check for supported distribution
     distro_check
-
+    
     # Check arguments for the undocumented flags
     for var in "$@"; do
         case "$var" in
@@ -1212,6 +1255,9 @@ main() {
         
         echo "::: Install Complete..."
     else
+        # Source ${setupVars} for use in the rest of the functions.
+        source ${setupVars}
+        
         # Only try to set static on Raspbian
         if [[ $PLAT != "Raspbian" ]]; then
             echo "::: IP Information"
@@ -1225,13 +1271,10 @@ main() {
         # Clone/Update the repos
         clone_or_update_repos
         
-        # Source ${setupVars} for use in the rest of the functions.
-        source ${setupVars}
-        
         
         updatePiVPN | tee ${tmpLog}
     fi
-        
+    
     #Move the install log into /etc/pivpn for storage
     $SUDO mv ${tmpLog} ${instalLogLoc}
     
