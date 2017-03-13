@@ -86,10 +86,11 @@ fi
 while read -r line || [ -n "${line}" ]; do
     STATUS=$(echo "$line" | awk '{print $1}')
 
-    if [[ "${STATUS}" = "V" ]]; then
+    if [ "${STATUS}" == "V" ]; then
         CERT=$(echo "$line" | sed -e 's:.*/CN=::')
         if [ "${CERT}" == "${NAME}" ]; then
             INUSE="1"
+            break
         fi
     fi
 done <${INDEX}
