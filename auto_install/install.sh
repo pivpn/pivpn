@@ -1012,14 +1012,14 @@ confOVPN() {
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
-    $SUDO mkdir "/home/$pivpnUser/ovpns"
+    $SUDO mkdir -p "/home/$pivpnUser/ovpns"
     $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
-        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;OVPNDNS1/d;OVPNDNS2/d;SERVER_NAME/d;' "${setupVars}"
+        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;/SERVER_NAME/d;' "${setupVars}"
     fi
     {
         echo "pivpnUser=${pivpnUser}"
@@ -1056,9 +1056,9 @@ finalExports() {
 #    #sed -i 's/PORT/PORT/g' ${setupVars}
 #    #sed -i 's/ENCRYPT/ENCRYPT/g' ${setupVars}
 #    #sed -i 's/DOWNLOAD_DH_PARAM/DOWNLOAD_DH_PARAM/g' ${setupVars}
-#    #sed -i 's/PUBLICDNS/PUBLICDNS/g' ${setupVars}
-#    #sed -i 's/OVPNDNS1/OVPNDNS1/g' ${setupVars}
-#    #sed -i 's/OVPNDNS2/OVPNDNS2/g' ${setupVars}
+#    sed -i 's/PUBLICDNS/PUBLIC_DNS/g' ${setupVars}
+#    sed -i 's/OVPNDNS1/OVPN_DNS_1/g' ${setupVars}
+#    sed -i 's/OVPNDNS2/OVPN_DNS_2/g' ${setupVars}
 #    #sed -i 's/SERVER_NAME/SERVER_NAME/g' ${setupVars}
 #}
 
