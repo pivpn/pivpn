@@ -10,11 +10,13 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
-
+set -e
 ######## VARIABLES #########
 
 tmpLog="/tmp/pivpn-install.log"
 instalLogLoc="/etc/pivpn/install.log"
+setupVars=/etc/pivpn/setupVars.conf
+useUpdateVars=false
 
 ### PKG Vars ###
 PKG_MANAGER="apt-get"
@@ -42,6 +44,11 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
+######## Undocumented Flags. Shhh ########
+skipSpaceCheck=false
+reconfigure=false
+runUnattended=false
+
 # Find IP used to route to outside world
 
 IPv4dev=$(ip route get 8.8.8.8 | awk '{for(i=1;i<=NF;i++)if($i~/dev/)print $(i+1)}')
@@ -50,24 +57,6 @@ IPv4gw=$(ip route get 8.8.8.8 | awk '{print $3}')
 
 availableInterfaces=$(ip -o link | grep "state UP" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 dhcpcdFile=/etc/dhcpcd.conf
-
-######## FIRST CHECK ########
-# Must be root to install
-echo ":::"
-if [[ $EUID -eq 0 ]];then
-    echo "::: You are root."
-else
-    echo "::: sudo will be used for the install."
-    # Check if it is actually installed
-    # If it isn't, exit because the install cannot complete
-    if [[ $(dpkg-query -s sudo) ]];then
-        export SUDO="sudo"
-        export SUDOE="sudo -E"
-    else
-        echo "::: Please install sudo or run this as root."
-        exit 1
-    fi
-fi
 
 # Next see if we are on a tested and supported OS
 function noOS_Support() {
@@ -79,44 +68,47 @@ If you think you received this message in error, you can post an issue on the Gi
 
 function maybeOS_Support() {
     if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
-                Currently this installer supports Raspbian jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
-                Would you like to continue anyway?" ${r} ${c}) then
-                echo "::: Did not detect perfectly supported OS but,"
-                echo "::: Continuing installation at user's own risk..."
-            else
-                echo "::: Exiting due to unsupported OS"
-                exit 1
-            fi
+Currently this installer supports Raspbian jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
+Would you like to continue anyway?" ${r} ${c}) then
+        echo "::: Did not detect perfectly supported OS but,"
+        echo "::: Continuing installation at user's own risk..."
+    else
+        echo "::: Exiting due to unsupported OS"
+        exit 1
+    fi
 }
 
-# if lsb_release command is on their system
-if hash lsb_release 2>/dev/null; then
-    PLAT=$(lsb_release -si)
-    OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
-
-    if [[ $PLAT == "Ubuntu" || $PLAT == "Raspbian" || $PLAT == "Debian" ]]; then
-        if [[ $OSCN != "trusty" && $OSCN != "xenial" && $OSCN != "jessie" ]]; then
-            maybeOS_Support
-        fi
-    else
-        noOS_Support
-    fi
-# else get info from os-release
-elif grep -q debian /etc/os-release; then
-    if grep -q jessie /etc/os-release; then
-        PLAT="Raspbian"
-        OSCN="jessie"
-    else
-        PLAT="Ubuntu"
-        OSCN="unknown"
-        maybeOS_Support
-    fi
-# else we prob don't want to install
-else
-    noOS_Support
-fi
-
-echo "${PLAT}" > /tmp/DET_PLATFORM
+# Compatibility
+distro_check() {
+  # if lsb_release command is on their system
+  if hash lsb_release 2>/dev/null; then
+      PLAT=$(lsb_release -si)
+      OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
+  
+      if [[ $PLAT == "Ubuntu" || $PLAT == "Raspbian" || $PLAT == "Debian" ]]; then
+          if [[ $OSCN != "trusty" && $OSCN != "xenial" && $OSCN != "jessie" ]]; then
+              maybeOS_Support
+          fi
+      else
+          noOS_Support
+      fi
+  # else get info from os-release
+  elif grep -q debian /etc/os-release; then
+      if grep -q jessie /etc/os-release; then
+          PLAT="Raspbian"
+          OSCN="jessie"
+      else
+          PLAT="Ubuntu"
+          OSCN="unknown"
+          maybeOS_Support
+      fi
+  # else we prob don't want to install
+  else
+      noOS_Support
+  fi
+  
+  echo "${PLAT}" > /tmp/DET_PLATFORM
+}
 
 ####### FUNCTIONS ##########
 spinner()
@@ -280,6 +272,7 @@ If you are in Amazon then you can not configure a static IP anyway. Just ensure 
 }
 
 getStaticIPv4Settings() {
+    local ipSettingsCorrect
     # Grab their current DNS Server
     IPv4dns=$(nslookup 127.0.0.1 | grep Server: | awk '{print $2}')
     # Ask if the user wants to use DHCP settings as their static IP
@@ -347,7 +340,6 @@ setStaticIPv4() {
     if [[ -f /etc/dhcpcd.conf ]]; then
         if grep -q "${IPv4addr}" ${dhcpcdFile}; then
             echo "::: Static IP already configured."
-            :
         else
             setDHCPCD
             $SUDO ip addr replace dev "${pivpnInterface}" "${IPv4addr}"
@@ -604,17 +596,21 @@ make_repo() {
 }
 
 update_repo() {
-    # Pull the latest commits
-    echo -n ":::     Updating repo in $1..."
-    cd "${1}" || exit 1
-    $SUDO git stash -q > /dev/null & spinner $!
-    $SUDO git pull -q > /dev/null & spinner $!
-    if [ -z "${TESTING+x}" ]; then
-        :
+    if [[ "${reconfigure}" == true ]]; then
+          echo "::: --reconfigure passed to install script. Not downloading/updating local repos"
     else
-        ${SUDOE} git checkout test
+        # Pull the latest commits
+        echo -n ":::     Updating repo in $1..."
+        cd "${1}" || exit 1
+        $SUDO git stash -q > /dev/null & spinner $!
+        $SUDO git pull -q > /dev/null & spinner $!
+        if [ -z "${TESTING+x}" ]; then
+            :
+        else
+            ${SUDOE} git checkout test
+        fi
+        echo " done!"
     fi
-    echo " done!"
 }
 
 setCustomProto() {
@@ -816,7 +812,7 @@ set_var EASYRSA_ALGO       rsa
 set_var EASYRSA_CURVE      secp384r1
 EOF
 
-echo "${String}" | $SUDO tee /etc/openvpn/easy-rsa/vars >/dev/null
+    echo "${String}" | $SUDO tee /etc/openvpn/easy-rsa/vars >/dev/null
 
     # Edit the KEY_SIZE variable in the vars file to set user chosen key size
     cd /etc/openvpn/easy-rsa || exit
@@ -836,15 +832,15 @@ echo "${String}" | $SUDO tee /etc/openvpn/easy-rsa/vars >/dev/null
     ${SUDOE} ./easyrsa build-server-full server nopass
 
     if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c})
-then
-    # Downloading parameters
-    RANDOM_INDEX=$(( RANDOM % 128 ))
-    ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
-else
-    # Generate Diffie-Hellman key exchange
-    ${SUDOE} ./easyrsa gen-dh
-    ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
-fi
+    then
+        # Downloading parameters
+        RANDOM_INDEX=$(( RANDOM % 128 ))
+        ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
+    else
+        # Generate Diffie-Hellman key exchange
+        ${SUDOE} ./easyrsa gen-dh
+        ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
+    fi
 
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret pki/ta.key
@@ -1007,11 +1003,41 @@ confOVPN() {
     $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
+finalExports() {
+    # Update variables in setupVars.conf file
+    if [ -e "${setupVars}" ]; then
+        sed -i.update.bak '/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnUser/d;/UNATTUPG/d;' "${setupVars}"
+    fi
+    {
+        echo "pivpnInterface=${pivpnInterface}"
+        echo "IPv4dns=${IPv4dns}"
+        echo "IPv4addr=${IPv4addr}"
+        echo "IPv4gw=${IPv4gw}"
+        echo "pivpnUser=${pivpnUser}"
+        echo "UNATTUPG=${UNATTUPG}"
+    }>> "${setupVars}"
+}
+
+
+# I suggest replacing these names.
+
+#accountForRefactor() {
+#    # At some point in the future this list can be pruned, for now we'll need it to ensure updates don't break.
+#
+#    # Refactoring of install script has changed the name of a couple of variables. Sort them out here.
+#    sed -i 's/pivpnInterface/PIVPN_INTERFACE/g' ${setupVars}
+#    sed -i 's/IPv4dns/IPV4_DNS/g' ${setupVars}
+#    sed -i 's/IPv4addr/IPV4_ADDRESS/g' ${setupVars}
+#    sed -i 's/IPv4gw/IPV4_GATEWAY/g' ${setupVars}
+#    sed -i 's/pivpnUser/PIVPN_USER/g' ${setupVars}
+#    sed -i 's/IPv4dns/IPV4_DNS/g' ${setupVars}
+#    #sed -i 's/UNATTUPG/UNATTUPG/g' ${setupVars}
+#}
+
 installPiVPN() {
     stopServices
-    confUnattendedUpgrades
     $SUDO mkdir -p /etc/pivpn/
-    getGitFiles ${pivpnFilesDir} ${pivpnGitUrl}
+    confUnattendedUpgrades
     installScripts
     setCustomProto
     setCustomPort
@@ -1019,17 +1045,26 @@ installPiVPN() {
     confNetwork
     confOVPN
     setClientDNS
+    finalExports
 }
+
+updatePiVPN() { # Could be replaced by installPiVPN, but keep structure close to pi-hole
+    #accountForRefactor
+    stopServices
+    confUnattendedUpgrades
+    installScripts
+    setCustomProto
+    setCustomPort
+    confOpenVPN
+    confNetwork
+    confOVPN
+    setClientDNS
+    finalExports #re-export setupVars.conf to account for any new vars added in new versions
+}
+
 
 displayFinalMessage() {
     # Final completion message to user
-    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
-        $SUDO service openvpn start
-    else
-        $SUDO systemctl enable openvpn.service
-        $SUDO systemctl start openvpn.service
-    fi
-
     whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles.
 Run 'pivpn help' to see what else you can do!
 The install log is in /etc/pivpn." ${r} ${c}
@@ -1041,46 +1076,194 @@ The install log is in /etc/pivpn." ${r} ${c}
     fi
 }
 
+update_dialogs() {
+    # reconfigure
+    if [ "${reconfigure}" = true ]; then
+        opt1a="Repair"
+        opt1b="This will retain existing settings"
+        strAdd="You will remain on the same version"
+    else
+        opt1a="Update"
+        opt1b="This will retain existing settings."
+        strAdd="You will be updated to the latest version."
+    fi
+    opt2a="Reconfigure"
+    opt2b="This will allow you to enter new settings"
+    
+    UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\n\nWe have detected an existing install.\n\nPlease choose from the following options: \n($strAdd)" ${r} ${c} 2 \
+    "${opt1a}"  "${opt1b}" \
+    "${opt2a}"  "${opt2b}" 3>&2 2>&1 1>&3) || \
+    { echo "::: Cancel selected. Exiting"; exit 1; }
+    
+    case ${UpdateCmd} in
+        ${opt1a})
+            echo "::: ${opt1a} option selected."
+            useUpdateVars=true
+            ;;
+        ${opt2a})
+            echo "::: ${opt2a} option selected"
+            useUpdateVars=false
+            ;;
+    esac
+}
+
+clone_or_update_repos() {
+    if [[ "${reconfigure}" == true ]]; then
+        echo "::: --reconfigure passed to install script. Not downloading/updating local repos"
+    else
+        # Get Git files
+        getGitFiles ${pivpnFilesDir} ${pivpnGitUrl} || \
+        { echo "!!! Unable to clone ${pivpnGitUrl} into ${pivpnFilesDir}, unable to continue."; \
+            exit 1; \
+        }
+    fi
+}
+
 ######## SCRIPT ############
-# Verify there is enough disk space for the install
-verifyFreeDiskSpace
 
-# Install the packages (we do this first because we need whiptail)
-#checkForDependencies
-update_package_cache
+main() {
 
-notify_package_updates_available
+    ######## FIRST CHECK ########
+    # Must be root to install
+    echo ":::"
+    if [[ $EUID -eq 0 ]];then
+        echo "::: You are root."
+    else
+        echo "::: sudo will be used for the install."
+        # Check if it is actually installed
+        # If it isn't, exit because the install cannot complete
+        if [[ $(dpkg-query -s sudo) ]];then
+            export SUDO="sudo"
+            export SUDOE="sudo -E"
+        else
+            echo "::: Please install sudo or run this as root."
+            exit 1
+        fi
+    fi
+    
+    # Check for supported distribution
+    distro_check
 
-install_dependent_packages PIVPN_DEPS[@]
+    # Check arguments for the undocumented flags
+    for var in "$@"; do
+        case "$var" in
+            "--reconfigure"  ) reconfigure=true;;
+            "--i_do_not_follow_recommendations"   ) skipSpaceCheck=false;;
+            "--unattended"     ) runUnattended=true;;
+        esac
+    done
+    
+    if [[ -f ${setupVars} ]]; then
+        if [[ "${runUnattended}" == true ]]; then
+            echo "::: --unattended passed to install script, no whiptail dialogs will be displayed"
+            useUpdateVars=true
+        else
+            update_dialogs
+        fi
+    fi
+  
+    # Start the installer
+    # Verify there is enough disk space for the install
+    if [[ "${skipSpaceCheck}" == true ]]; then
+        echo "::: --i_do_not_follow_recommendations passed to script, skipping free disk space verification!"
+    else
+        verifyFreeDiskSpace
+    fi
+    
+    # Install the packages (we do this first because we need whiptail)
+    #checkForDependencies
+    update_package_cache
+    
+    # Notify user of package availability
+    notify_package_updates_available
+    
+    # Install packages used by this installation script
+    install_dependent_packages PIVPN_DEPS[@]
+    
+    if [[ ${useUpdateVars} == false ]]; then
+        # Display welcome dialogs
+        welcomeDialogs
+        
+        # Find interfaces and let the user choose one
+        chooseInterface
+        
+        # Only try to set static on Raspbian, otherwise let user do it
+        if [[ $PLAT != "Raspbian" ]]; then
+            avoidStaticIPv4Ubuntu
+        else
+            getStaticIPv4Settings
+            setStaticIPv4
+        fi
+        
+        # Set the Network IP and Mask correctly
+        setNetwork
+        
+        # Choose the user for the ovpns
+        chooseUser
+        
+        # Ask if unattended-upgrades will be enabled
+        unattendedUpgrades
+        
+        # Clone/Update the repos
+        clone_or_update_repos
+        
+        # Install and log everything to a file
+        installPiVPN | tee ${tmpLog}
+        
+        echo "::: Install Complete..."
+    else
+        # Only try to set static on Raspbian
+        if [[ $PLAT != "Raspbian" ]]; then
+            echo "::: IP Information"
+            echo "::: Since we think you are not using Raspbian, we will not configure a static IP for you."
+            echo "::: If you are in Amazon then you can not configure a static IP anyway."
+            echo "::: Just ensure before this installer started you had set an elastic IP on your instance."
+        else
+            setStaticIPv4 # This might be a problem if a user tries to modify the ip in the config file and then runs an update because of the way we check for previous configuration in /etc/dhcpcd.conf
+        fi
+        
+        # Clone/Update the repos
+        clone_or_update_repos
+        
+        # Source ${setupVars} for use in the rest of the functions.
+        source ${setupVars}
+        
+        
+        updatePiVPN | tee ${tmpLog}
+    fi
+        
+    #Move the install log into /etc/pivpn for storage
+    $SUDO mv ${tmpLog} ${instalLogLoc}
+    
+    echo "::: Restarting services..."
+    # Start services
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
+        $SUDO service openvpn start
+    else
+        $SUDO systemctl enable openvpn.service
+        $SUDO systemctl start openvpn.service
+    fi
+    
+    echo "::: done."
+    
+    if [[ "${useUpdateVars}" == false ]]; then
+        displayFinalMessage
+    fi
+    
+    echo ":::"
+    if [[ "${useUpdateVars}" == false ]]; then
+        echo "::: Installation Complete!"
+        echo "::: Now run 'pivpn add' to create the ovpn profiles."
+        echo "::: Run 'pivpn help' to see what else you can do!"
+        echo "::: It is strongly recommended you reboot after installation."
+    else
+        echo "::: Update complete!"
+    fi
+    
+    echo ":::"
+    echo "::: The install log is located at: ${instalLogLoc}"
+}
 
-# Start the installer
-welcomeDialogs
-
-# Find interfaces and let the user choose one
-chooseInterface
-
-# Only try to set static on Raspbian, otherwise let user do it
-if [[ $PLAT != "Raspbian" ]]; then
-    avoidStaticIPv4Ubuntu
-else
-    getStaticIPv4Settings
-    setStaticIPv4
+if [[ "${PVPN_TEST}" != true ]] ; then
+  main "$@"
 fi
-
-setNetwork
-
-# Choose the user for the ovpns
-chooseUser
-
-# Ask if unattended-upgrades will be enabled
-unattendedUpgrades
-
-# Install
-installPiVPN | tee ${tmpLog}
-
-#Move the install log into /etc/pivpn for storage
-$SUDO mv ${tmpLog} ${instalLogLoc}
-
-displayFinalMessage
-
-echo "::: Install Complete..."
