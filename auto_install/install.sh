@@ -1258,6 +1258,8 @@ main() {
         # Source ${setupVars} for use in the rest of the functions.
         source ${setupVars}
         
+		echo "${pivpnInterface}" > /tmp/pivpnINT
+		
         # Only try to set static on Raspbian
         if [[ $PLAT != "Raspbian" ]]; then
             echo "::: IP Information"
