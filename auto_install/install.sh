@@ -771,6 +771,8 @@ setClientDNS() {
 }
 
 confOpenVPN() {
+    SERVER_NAME="server"
+	
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
         ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
@@ -1021,7 +1023,7 @@ confOVPN() {
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
-        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;/SERVER_NAME/d;' "${setupVars}"
+        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
     fi
     {
         echo "pivpnUser=${pivpnUser}"
@@ -1037,7 +1039,6 @@ finalExports() {
         echo "PUBLICDNS=${PUBLICDNS}"
         echo "OVPNDNS1=${OVPNDNS1}"
         echo "OVPNDNS2=${OVPNDNS2}"
-        echo "SERVER_NAME=${SERVER_NAME}"
     }>> "${setupVars}"
 }
 
@@ -1061,7 +1062,6 @@ finalExports() {
 #    sed -i 's/PUBLICDNS/PUBLIC_DNS/g' ${setupVars}
 #    sed -i 's/OVPNDNS1/OVPN_DNS_1/g' ${setupVars}
 #    sed -i 's/OVPNDNS2/OVPN_DNS_2/g' ${setupVars}
-#    #sed -i 's/SERVER_NAME/SERVER_NAME/g' ${setupVars}
 #}
 
 installPiVPN() {
@@ -1073,7 +1073,6 @@ installPiVPN() {
     setCustomPort
     confOpenVPN
     confNetwork
-    SERVER_NAME="server"
     confOVPN
     setClientDNS
     finalExports
