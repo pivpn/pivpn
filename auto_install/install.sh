@@ -798,7 +798,7 @@ confOpenVPN() {
     $SUDO mkdir /etc/openvpn/easy-rsa/pki
 
     # Write out new vars file
-	set +e
+    set +e
     IFS= read -d '' String <<"EOF"
 if [ -z "$EASYRSA_CALLER" ]; then
     echo "Nope." >&2
@@ -812,7 +812,7 @@ set_var EASYRSA_CURVE      secp384r1
 EOF
 
     echo "${String}" | $SUDO tee /etc/openvpn/easy-rsa/vars >/dev/null
-	set -e
+    set -e
 
     # Edit the KEY_SIZE variable in the vars file to set user chosen key size
     cd /etc/openvpn/easy-rsa || exit
