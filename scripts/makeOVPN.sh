@@ -11,56 +11,57 @@ INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 
 helpFunc() {
-	echo "::: Create a client ovpn profile, optional nopass"
-	echo ":::"
-	echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-h|--help]"
-	echo ":::"
-	echo "::: Commands:"
-	echo ":::  nopass               Create a client without a password"
-	echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
-	echo ":::  -p,--password        Password for the Client (no default)"
-	echo ":::  -h,--help            Show this help dialog"
+    echo "::: Create a client ovpn profile, optional nopass"
+    echo ":::"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-h|--help]"
+    echo ":::"
+    echo "::: Commands:"
+    echo ":::  [none]               Interactive mode"
+    echo ":::  nopass               Create a client without a password"
+    echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
+    echo ":::  -p,--password        Password for the Client (no default)"
+    echo ":::  -h,--help            Show this help dialog"
 }
 
 # Parse input arguments
 while test $# -gt 0
 do
-	_key="$1"
-	case "$_key" in
-		-n|--name|--name=*)
-			_val="${_key##--name=}"
-			if test "$_val" = "$_key"
-			then
-				test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
-				_val="$2"
-				shift
-			fi
-			NAME="$_val"
-			;;
-		-p|--password|--password=*)
-			_val="${_key##--password=}"
-			if test "$_val" = "$_key"
-			then
-				test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
-				_val="$2"
-				shift
-			fi
-			PASSWD="$_val"
-			;;
-		-h|--help)
-			helpFunc
-			exit 0
-			;;
-		nopass)
-			NO_PASS="1"
-			;;
-		*)
-			echo "Error: Got an unexpected argument '$1'" 
-			helpFunc
-			exit 1
-			;;
-	esac
-	shift
+    _key="$1"
+    case "$_key" in
+        -n|--name|--name=*)
+            _val="${_key##--name=}"
+            if test "$_val" = "$_key"
+            then
+                test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
+                _val="$2"
+                shift
+            fi
+            NAME="$_val"
+            ;;
+        -p|--password|--password=*)
+            _val="${_key##--password=}"
+            if test "$_val" = "$_key"
+            then
+                test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
+                _val="$2"
+                shift
+            fi
+            PASSWD="$_val"
+            ;;
+        -h|--help)
+            helpFunc
+            exit 0
+            ;;
+        nopass)
+            NO_PASS="1"
+            ;;
+        *)
+            echo "Error: Got an unexpected argument '$1'" 
+            helpFunc
+            exit 1
+            ;;
+    esac
+    shift
 done
 
 # Functions def
@@ -100,7 +101,7 @@ function keyPASS() {
             echo "pivpn add nopass"
             exit 1
         fi
-	fi
+    fi
     if [ ${#PASSWD} -lt 4 ] || [ ${#PASSWD} -gt 1024 ]
     then
         echo "Password must be between from 4 to 1024 characters"
@@ -170,7 +171,7 @@ if [[ "${NO_PASS}" =~ "1" ]]; then
     keynoPASS
 elif [[ -n "${PASSWD}" ]]; then
     echo "Both nopass and password arguments passed to the script. Please use either one."
-	exit 1
+    exit 1
 else
     keyPASS
 fi
