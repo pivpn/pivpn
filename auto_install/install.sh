@@ -1084,21 +1084,19 @@ updatePiVPN() {
     installScripts
     
     # setCustomProto
-    echo "${pivpnProto}" > /tmp/pivpnPROTO
     # write out the PROTO
     PROTO=$pivpnProto
     $SUDO cp /tmp/pivpnPROTO /etc/pivpn/INSTALL_PROTO
     
     #setCustomPort
     # write out the port
-    echo ${PORT} > /tmp/INSTALL_PORT
     $SUDO cp /tmp/INSTALL_PORT /etc/pivpn/INSTALL_PORT
     
     confOpenVPN
     confNetwork
     confOVPN
     
-	# ?? Is this always OK? Also if you only select one DNS server ??
+    # ?? Is this always OK? Also if you only select one DNS server ??
     $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
     $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
 
@@ -1258,8 +1256,17 @@ main() {
         # Source ${setupVars} for use in the rest of the functions.
         source ${setupVars}
         
-		echo "${pivpnInterface}" > /tmp/pivpnINT
-		
+        echo "::: Using IP address: $IPv4addr"
+        echo "${IPv4addr%/*}" > /tmp/pivpnIP
+        echo "::: Using interface: $pivpnInterface"
+        echo "${pivpnInterface}" > /tmp/pivpnINT
+        echo "::: Using User: $pivpnUser"
+        echo "${pivpnUser}" > /tmp/pivpnUSR
+        echo "::: Using protocol: $pivpnProto"
+        echo "${pivpnProto}" > /tmp/pivpnPROTO
+        echo "::: Using port: $PORT"
+        echo ${PORT} > /tmp/INSTALL_PORT
+        
         # Only try to set static on Raspbian
         if [[ $PLAT != "Raspbian" ]]; then
             echo "::: IP Information"
@@ -1309,6 +1316,6 @@ main() {
     echo "::: The install log is located at: ${instalLogLoc}"
 }
 
-if [[ "${PVPN_TEST}" != true ]] ; then
+if [[ "${PIVPN_TEST}" != true ]] ; then
   main "$@"
 fi
