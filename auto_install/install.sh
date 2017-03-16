@@ -772,7 +772,7 @@ setClientDNS() {
 
 confOpenVPN() {
     SERVER_NAME="server"
-	
+    
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
         ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \

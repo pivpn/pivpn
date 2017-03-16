@@ -168,10 +168,11 @@ fi
 cd /etc/openvpn/easy-rsa || exit
 
 if [[ "${NO_PASS}" =~ "1" ]]; then
-    keynoPASS
-elif [[ -n "${PASSWD}" ]]; then
-    echo "Both nopass and password arguments passed to the script. Please use either one."
-    exit 1
+    if [[ -n "${PASSWD}" ]]; then
+        echo "Both nopass and password arguments passed to the script. Please use either one."
+        exit 1
+    else
+        keynoPASS
 else
     keyPASS
 fi
