@@ -173,6 +173,7 @@ if [[ "${NO_PASS}" =~ "1" ]]; then
         exit 1
     else
         keynoPASS
+    fi
 else
     keyPASS
 fi
