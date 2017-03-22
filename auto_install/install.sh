@@ -1016,7 +1016,9 @@ confOVPN() {
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
-    $SUDO mkdir "/home/$pivpnUser/ovpns"
+    if [ ! -d "/home/$pivpnUser/ovpns" ]; then
+        $SUDO mkdir "/home/$pivpnUser/ovpns"
+    fi
     $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
