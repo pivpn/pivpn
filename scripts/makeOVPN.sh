@@ -10,6 +10,60 @@ TA="ta.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 
+helpFunc() {
+    echo "::: Create a client ovpn profile, optional nopass"
+    echo ":::"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-h|--help]"
+    echo ":::"
+    echo "::: Commands:"
+    echo ":::  [none]               Interactive mode"
+    echo ":::  nopass               Create a client without a password"
+    echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
+    echo ":::  -p,--password        Password for the Client (no default)"
+    echo ":::  -h,--help            Show this help dialog"
+}
+
+# Parse input arguments
+while test $# -gt 0
+do
+    _key="$1"
+    case "$_key" in
+        -n|--name|--name=*)
+            _val="${_key##--name=}"
+            if test "$_val" = "$_key"
+            then
+                test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
+                _val="$2"
+                shift
+            fi
+            NAME="$_val"
+            ;;
+        -p|--password|--password=*)
+            _val="${_key##--password=}"
+            if test "$_val" = "$_key"
+            then
+                test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
+                _val="$2"
+                shift
+            fi
+            PASSWD="$_val"
+            ;;
+        -h|--help)
+            helpFunc
+            exit 0
+            ;;
+        nopass)
+            NO_PASS="1"
+            ;;
+        *)
+            echo "Error: Got an unexpected argument '$1'" 
+            helpFunc
+            exit 1
+            ;;
+    esac
+    shift
+done
+
 # Functions def
 
 function keynoPASS() {
@@ -27,24 +81,26 @@ EOF
 
 function keyPASS() {
 
-    stty -echo
-    while true
-    do
-        printf "Enter the password for the client:  "
-        read -r PASSWD
-        printf "\n"
-        printf "Enter the password again to verify:  "
-        read -r PASSWD2
-        printf "\n"
-        [ "${PASSWD}" = "${PASSWD2}" ] && break
-        printf "Passwords do not match! Please try again.\n"
-    done
-    stty echo
     if [[ -z "${PASSWD}" ]]; then
-        echo "You left the password blank"
-        echo "If you don't want a password, please run:"
-        echo "pivpn add nopass"
-        exit 1
+        stty -echo
+        while true
+        do
+            printf "Enter the password for the client:  "
+            read -r PASSWD
+            printf "\n"
+            printf "Enter the password again to verify:  "
+            read -r PASSWD2
+            printf "\n"
+            [ "${PASSWD}" = "${PASSWD2}" ] && break
+            printf "Passwords do not match! Please try again.\n"
+        done
+        stty echo
+        if [[ -z "${PASSWD}" ]]; then
+            echo "You left the password blank"
+            echo "If you don't want a password, please run:"
+            echo "pivpn add nopass"
+            exit 1
+        fi
     fi
     if [ ${#PASSWD} -lt 4 ] || [ ${#PASSWD} -gt 1024 ]
     then
@@ -69,8 +125,10 @@ EOF
 
 }
 
-printf "Enter a Name for the Client:  "
-read -r NAME
+if [ -z "${NAME}" ]; then
+    printf "Enter a Name for the Client:  "
+    read -r NAME
+fi
 
 if [[ "${NAME}" =~ [^a-zA-Z0-9] ]]; then
     echo "Name can only contain alphanumeric characters."
@@ -86,10 +144,11 @@ fi
 while read -r line || [ -n "${line}" ]; do
     STATUS=$(echo "$line" | awk '{print $1}')
 
-    if [[ "${STATUS}" = "V" ]]; then
+    if [ "${STATUS}" == "V" ]; then
         CERT=$(echo "$line" | sed -e 's:.*/CN=::')
         if [ "${CERT}" == "${NAME}" ]; then
             INUSE="1"
+            break
         fi
     fi
 done <${INDEX}
@@ -108,8 +167,13 @@ fi
 
 cd /etc/openvpn/easy-rsa || exit
 
-if [[ "$@" =~ "nopass" ]]; then
-    keynoPASS
+if [[ "${NO_PASS}" =~ "1" ]]; then
+    if [[ -n "${PASSWD}" ]]; then
+        echo "Both nopass and password arguments passed to the script. Please use either one."
+        exit 1
+    else
+        keynoPASS
+    fi
 else
     keyPASS
 fi
