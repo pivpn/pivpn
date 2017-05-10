@@ -173,7 +173,7 @@ chooseUser() {
         fi
         userArray+=("${line}" "" "${mode}")
     done <<< "${availableUsers}"
-    chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose:" ${r} ${c} ${numUsers})
+    chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose (press space to select):" ${r} ${c} ${numUsers})
     chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
     if [[ $? = 0 ]]; then
         for desiredUser in ${chooseUserOptions}; do
@@ -251,7 +251,7 @@ chooseInterface() {
 
     # Find out how many interfaces are available to choose from
     interfaceCount=$(echo "${availableInterfaces}" | wc -l)
-    chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An Interface (press space to select)" ${r} ${c} ${interfaceCount})
+    chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An Interface (press space to select):" ${r} ${c} ${interfaceCount})
     chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty)
     if [[ $? = 0 ]]; then
         for desiredInterface in ${chooseInterfaceOptions}; do
@@ -615,7 +615,7 @@ update_repo() {
 setCustomProto() {
   # Set the available protocols into an array so it can be used with a whiptail dialog
   if protocol=$(whiptail --title "Protocol" --radiolist \
-  "Choose a protocol. Please only choose TCP if you know why you need TCP." ${r} ${c} 2 \
+  "Choose a protocol (press space to select). Please only choose TCP if you know why you need TCP." ${r} ${c} 2 \
   "UDP" "" ON \
   "TCP" "" OFF 3>&1 1>&2 2>&3)
   then
@@ -674,7 +674,7 @@ setCustomPort() {
 }
 
 setClientDNS() {
-    DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients. To use your own, select Custom." ${r} ${c} 6)
+    DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients (press space to select). To use your own, select Custom." ${r} ${c} 6)
     DNSChooseOptions=(Google "" on
             OpenDNS "" off
             Level3 "" off
@@ -776,7 +776,7 @@ confOpenVPN() {
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
         ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
-        "Choose your desired level of encryption:\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications it is recommended to use 2048 bit.  If you are testing or just want to get through it quicker you can use 1024.  If you are paranoid about ... things... then grab a cup of joe and pick 4096." ${r} ${c} 3 \
+        "Choose your desired level of encryption (press space to select):\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications it is recommended to use 2048 bit.  If you are testing or just want to get through it quicker you can use 1024.  If you are paranoid about ... things... then grab a cup of joe and pick 4096." ${r} ${c} 3 \
         "2048" "Use 2048-bit encryption. Recommended level." ON \
         "1024" "Use 1024-bit encryption. Test level." OFF \
         "4096" "Use 4096-bit encryption. Paranoid level." OFF 3>&1 1>&2 2>&3)
@@ -970,7 +970,7 @@ confOVPN() {
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
     if [[ ${useUpdateVars} == false ]]; then
-        METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server?" ${r} ${c} 2 \
+        METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server (press space to select)?" ${r} ${c} 2 \
         "$IPv4pub" "Use this public IP" "ON" \
         "DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3)
     
