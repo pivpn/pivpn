@@ -24,7 +24,7 @@ PKG_CACHE="/var/lib/apt/lists/"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
-PIVPN_DEPS=( openvpn git dhcpcd5 tar wget grep iptables-persistent dnsutils expect whiptail )
+PIVPN_DEPS=( openvpn git dhcpcd5 tar wget grep iptables-persistent dnsutils expect whiptail net-tools)
 ###          ###
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
@@ -100,7 +100,14 @@ distro_check() {
           ;;
       esac
   # else get info from os-release
-  elif grep -q -e debian -e devuan /etc/os-release; then
+  elif grep -q devuan /etc/os-release; then
+      if grep -q jessie /etc/os-release; then
+          PLAT="Raspvuan"
+          OSCN="jessie"
+      else
+          noOS_Support
+      fi
+  elif grep -q debian /etc/os-release; then
       if grep -q jessie /etc/os-release; then
           PLAT="Raspbian"
           OSCN="jessie"
@@ -502,7 +509,7 @@ stopServices() {
     $SUDO echo ":::"
     $SUDO echo -n "::: Stopping OpenVPN service..."
     case ${PLAT} in
-        Ubuntu|Debian|Devuan)
+        Ubuntu|Debian|*vuan)
             $SUDO service openvpn stop || true
             ;;
         *)
@@ -1294,14 +1301,17 @@ main() {
         echo ":::"
 
         # Only try to set static on Raspbian
-        if [[ $PLAT != "Raspbian" ]]; then
+        case ${PLAT} in
+          Rasp*)
+            setStaticIPv4 # This might be a problem if a user tries to modify the ip in the config file and then runs an update because of the way we check for previous configuration in /etc/dhcpcd.conf
+            ;;
+          *)
             echo "::: IP Information"
             echo "::: Since we think you are not using Raspbian, we will not configure a static IP for you."
             echo "::: If you are in Amazon then you can not configure a static IP anyway."
             echo "::: Just ensure before this installer started you had set an elastic IP on your instance."
-        else
-            setStaticIPv4 # This might be a problem if a user tries to modify the ip in the config file and then runs an update because of the way we check for previous configuration in /etc/dhcpcd.conf
-        fi
+            ;;
+          esac
 
         # Clone/Update the repos
         clone_or_update_repos
@@ -1316,7 +1326,7 @@ main() {
     echo "::: Restarting services..."
     # Start services
     case ${PLAT} in
-        Ubuntu|Debian|Devuan)
+        Ubuntu|Debian|*vuan)
             $SUDO service openvpn start
             ;;
         *)
