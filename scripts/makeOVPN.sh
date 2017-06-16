@@ -9,6 +9,7 @@ CA="ca.crt"
 TA="ta.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
+INSTALL_HOME=$(eval echo ~${INSTALL_USER})
 
 # Functions def
 
@@ -170,12 +171,12 @@ echo "tls-auth Private Key found: $TA"
 } > "${NAME}${FILEEXT}"
 
 # Copy the .ovpn profile to the home directory for convenient remote access
-cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
-chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
+cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
+chown "$INSTALL_USER" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
 printf "\n\n"
 printf "========================================================\n"
 printf "\e[1mDone! %s successfully created!\e[0m \n" "$NAME$FILEEXT"
 printf "%s was copied to:\n" "$NAME$FILEEXT"
-printf "  /home/%s/ovpns\n" "$INSTALL_USER"
+printf "  %s/ovpns\n" "$INSTALL_HOME"
 printf "for easy transfer.\n"
 printf "========================================================\n\n"
