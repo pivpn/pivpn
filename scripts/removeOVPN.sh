@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PiVPN: revoke client script
 
-INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
+INSTALL_HOME=$(eval echo ~$(cat /etc/pivpn/INSTALL_USER))
 REVOKE_STATUS=$(cat /etc/pivpn/REVOKE_STATUS)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
@@ -73,6 +73,6 @@ printf "::: Removing certs and client configuration for this profile.\n"
 rm -rf "pki/reqs/${NAME}.req"
 rm -rf "pki/private/${NAME}.key"
 rm -rf "pki/issued/${NAME}.crt"
-rm -rf "/home/${INSTALL_USER}/ovpns/${NAME}.ovpn"
+rm -rf "${INSTALL_HOME}/ovpns/${NAME}.ovpn"
 cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
 printf "::: Completed!\n"
