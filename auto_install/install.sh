@@ -1005,7 +1005,7 @@ confOVPN() {
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
     $SUDO mkdir "$pivpnHome/ovpns"
-    $SUDO chmod 0777 -R "$pivpnHome/ovpns"
+    $SUDO chmod 0755 -R "$pivpnHome/ovpns"
 }
 
 installPiVPN() {
