@@ -799,7 +799,7 @@ setClientDNS() {
 setLoggingPolicy() {
     CONLOGLOC="/var/log/openvpn.log"
     STATUSLOGLOC="/var/log/openvpn-status.log"
-    if (whiptail --backtitle "Logging policy" --title "Disable logging" --yesno --defaultno "Do you want to disable logging of connection information?" ${r} ${c}) then
+    if (whiptail --backtitle "Logging policy" --title "Disable logging" --yesno --defaultno "Do you want to disable logging on the server (e.g. redirect log output to /dev/null)?" ${r} ${c}) then
         CONLOGLOC="/dev/null"
         STATUSLOGLOC="/dev/null"
     fi
@@ -912,13 +912,12 @@ EOF
         $SUDO sed -i "s/1194/${PORT}/g" /etc/openvpn/server.conf
     fi
 
-# TODO: Test these expressions
-    # if they modified logging policy put values in server.conf
+    # if they modified logfile locations put values in server.conf
     if [ $CONLOGLOC != "/var/log/openvpn.log" ]; then
-        $SUDO sed -i "s/(\/var\/log\/openvpn.log)/${CONLOGLOC}/g" /etc/openvpn/server.conf
+        $SUDO sed -i "s#/var/log/openvpn.log#${CONLOGLOC}#g" /etc/openvpn/server.conf
     fi
     if [ $STATUSLOGLOC != "/var/log/openvpn-status.log" ]; then
-        $SUDO sed -i "s/(\/var\/log\/openvpn-status.log)/${CONLOGLOC}/g" /etc/openvpn/server.conf
+        $SUDO sed -i "s#/var/log/openvpn-status.log#${STATUSLOGLOC}#g" /etc/openvpn/server.conf
     fi
 
     # if they modified protocol put value in server.conf
