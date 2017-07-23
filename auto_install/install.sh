@@ -13,8 +13,8 @@
 set -e
 ######## VARIABLES #########
 
-tmpLog="/tmp/pivpn-install.log"
-instalLogLoc="/etc/pivpn/install.log"
+tmpLogLoc="/tmp/pivpn-install.log"
+installLogLoc="/etc/pivpn/install.log"
 setupVars=/etc/pivpn/setupVars.conf
 useUpdateVars=false
 
@@ -796,6 +796,20 @@ setClientDNS() {
     fi
 }
 
+setLoggingPolicy() {
+    CONLOGLOC="/var/log/openvpn.log"
+    STATUSLOGLOC="/var/log/openvpn-status.log"
+    if (whiptail --backtitle "Logging policy" --title "Disable logging" --yesno --defaultno "Do you want to disable logging on the server (e.g. redirect log output to /dev/null)?" ${r} ${c}) then
+        CONLOGLOC="/dev/null"
+        STATUSLOGLOC="/dev/null"
+    fi
+    # write out the log locations
+    echo ${CONLOGLOC} > /tmp/pivpnCONLOGLOC
+    echo ${STATUSLOGLOC} > /tmp/pivpnSTATUSLOGLOC
+    $SUDO cp /tmp/pivpnCONLOGLOC /etc/pivpn/CONLOGLOC
+    $SUDO cp /tmp/pivpnSTATUSLOGLOC /etc/pivpn/STATUSLOGLOC
+}
+
 confOpenVPN() {
     SERVER_NAME="server"
 
@@ -896,6 +910,14 @@ EOF
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
         $SUDO sed -i "s/1194/${PORT}/g" /etc/openvpn/server.conf
+    fi
+
+    # if they modified logfile locations put values in server.conf
+    if [ $CONLOGLOC != "/var/log/openvpn.log" ]; then
+        $SUDO sed -i "s#/var/log/openvpn.log#${CONLOGLOC}#g" /etc/openvpn/server.conf
+    fi
+    if [ $STATUSLOGLOC != "/var/log/openvpn-status.log" ]; then
+        $SUDO sed -i "s#/var/log/openvpn-status.log#${STATUSLOGLOC}#g" /etc/openvpn/server.conf
     fi
 
     # if they modified protocol put value in server.conf
@@ -1054,7 +1076,7 @@ confOVPN() {
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
-        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
+        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/CONLOGLOC/d;/STATUSLOGLOC/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
     fi
     {
         echo "pivpnUser=${pivpnUser}"
@@ -1065,6 +1087,8 @@ finalExports() {
         echo "IPv4gw=${IPv4gw}"
         echo "pivpnProto=${pivpnProto}"
         echo "PORT=${PORT}"
+        echo "CONLOGLOC=${CONLOGLOC}"
+        echo "STATUSLOGLOC=${STATUSLOGLOC}"
         echo "ENCRYPT=${ENCRYPT}"
         echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}"
         echo "PUBLICDNS=${PUBLICDNS}"
@@ -1102,6 +1126,7 @@ installPiVPN() {
     installScripts
     setCustomProto
     setCustomPort
+    setLoggingPolicy
     confOpenVPN
     confNetwork
     confOVPN
@@ -1123,6 +1148,11 @@ updatePiVPN() {
     #setCustomPort
     # write out the port
     $SUDO cp /tmp/INSTALL_PORT /etc/pivpn/INSTALL_PORT
+
+    #setLoggingPolicy
+    # write out the log locations
+    $SUDO cp /tmp/pivpnCONLOGLOC /etc/pivpn/CONLOGLOC
+    $SUDO cp /tmp/pivpnSTATUSLOGLOC /etc/pivpn/STATUSLOGLOC
 
     confOpenVPN
     confNetwork
@@ -1281,7 +1311,7 @@ main() {
         clone_or_update_repos
 
         # Install and log everything to a file
-        installPiVPN | tee ${tmpLog}
+        installPiVPN | tee ${tmpLogLoc}
 
         echo "::: Install Complete..."
     else
@@ -1298,6 +1328,9 @@ main() {
         echo "${pivpnProto}" > /tmp/pivpnPROTO
         echo "::: Using port: $PORT"
         echo ${PORT} > /tmp/INSTALL_PORT
+        echo "::: Logging connection information to: $CONLOGLOC and $STATUSLOGLOC"
+        echo ${CONLOGLOC} > /tmp/pivpnCONLOGLOC
+        echo ${STATUSLOGLOC} > /tmp/pivpnSTATUSLOGLOC
         echo ":::"
 
         # Only try to set static on Raspbian
@@ -1317,11 +1350,11 @@ main() {
         clone_or_update_repos
 
 
-        updatePiVPN | tee ${tmpLog}
+        updatePiVPN | tee ${tmpLogLoc}
     fi
 
     #Move the install log into /etc/pivpn for storage
-    $SUDO mv ${tmpLog} ${instalLogLoc}
+    $SUDO mv ${tmpLogLoc} ${installLogLoc}
 
     echo "::: Restarting services..."
     # Start services
@@ -1352,7 +1385,7 @@ main() {
     fi
 
     echo ":::"
-    echo "::: The install log is located at: ${instalLogLoc}"
+    echo "::: The install log is located at: ${installLogLoc}"
 }
 
 if [[ "${PIVPN_TEST}" != true ]] ; then
