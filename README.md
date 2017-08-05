@@ -6,7 +6,7 @@ About
 
 Visit the [PiVPN](http://pivpn.io) site for more information.
 This is a set of shell scripts that serve to easily turn your Raspberry Pi (TM)
-into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) software. 
+into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) software.
 
 Have you been looking for a good guide or tutorial for installing openvpn on a raspberry pi or ubuntu based server?  Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
 
@@ -31,7 +31,7 @@ You should also setup your Pi with a static IP address (see either source
   1 or 2 at the bottom of this Readme) but it is not required as the script can do this for you.
   You will need to have your router forward UDP port 1194 (or whatever custom port you may have chose in the installer)
   (varies by model & manufacturer; consult your router manufacturer's
-  documentation to do this). 
+  documentation to do this).
   Enabling SSH on your Pi is also highly recommended, so that
   you can run a very compact headless server without a monitor or keyboard and
   be able to access it even more conveniently (This is also covered by source 2).
@@ -54,7 +54,7 @@ If you're unsure or don't have a convincing reason one way or the other I'd use 
 > Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN,) but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
 
 After this, the script will go back to the command line as it builds the server's own
-certificate authority. The script will ask you if you'd like to change the certificate fields, 
+certificate authority. The script will ask you if you'd like to change the certificate fields,
 the default port, client's DNS server, etc.  If you know you want to change these things, feel free,
 and the script will put all the information where it needs to go in the various config files.
 If you aren't sure, it has been designed that you can simply hit 'Enter' through all the questions
@@ -73,7 +73,7 @@ Managing the PiVPN
 
 After the installation is complete you can use the command 'pivpn' to manage the server.
 
-"pivpn add" 
+"pivpn add"
 You will be prompted to enter a name for your client. Pick anything you like and hit 'enter'.
 You will be asked to enter a pass phrase for the client key; make sure it's one you'll remember.
 The script will assemble the client .ovpn file and place it in the directory 'ovpns' within your
@@ -83,10 +83,10 @@ If you need to create a client certificate that is not password protected (IE fo
 then you can use the 'pivpn add nopass' option to generate that.
 
 "pivpn revoke"
-Asks you for the name of the client to revoke.  Once you revoke a client, it will no longer allow you to use 
+Asks you for the name of the client to revoke.  Once you revoke a client, it will no longer allow you to use
 the given client certificate (ovpn config) to connect.  This is useful for many reasons but some ex:
-You have a profile on a mobile phone and it was lost or stolen.  Revoke its cert and generate a new 
-one for your new phone.  Or even if you suspect that a cert may have been compromised in any way, 
+You have a profile on a mobile phone and it was lost or stolen.  Revoke its cert and generate a new
+one for your new phone.  Or even if you suspect that a cert may have been compromised in any way,
 just revoke it and generate a new one.
 
 "pivpn list"
@@ -123,7 +123,7 @@ Removing PiVPN
 If at any point you wish to remove OpenVPN from your Pi and revert it to a
 pre-installation state, such as if you want to undo a failed installation to try again or
 you want to remove OpenVPN without installing a fresh Raspbian image, just run
-'pivpn uninstall' 
+'pivpn uninstall'
 
 Feedback & Support
 --------
@@ -135,14 +135,25 @@ to keep things sorted.
 
 [[DISCONTINUED APRIL 17]] You can also post on the [Google Space](https://goo.gl/spaces/kgp2Mcy5RDfZ5SSf8) I created for PiVPN, especially suited for general questions or discussions.
 
-You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC for community support or general questions. 
+You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC for community support or general questions.
+
+Related Projects
+--------
+[StarshipEngineer/OpenVPN-Setup](https://github.com/StarshipEngineer/OpenVPN-Setup)
+Shell script to set up a OpenVPN server.
+
+[InnovativeInventor/docker-pivpn] (https://github.com/InnovativeInventor/docker-pivpn)
+A secure docker container that sets up PiVPN and SSH.
+
+[OpenVPN] (https://openvpn.net)
+The foundation for all open-source VPN projects.
 
 Contributions
 -------------
 
-I'm also interested in improving this script, please check the current issues to see where you can help. If you have any 
+I'm also interested in improving this script, please check the current issues to see where you can help. If you have any
 feature ideas or requests, or are interested in adding your ideas to it,
-testing it on other platforms, please comment or leave a pull request. 
+testing it on other platforms, please comment or leave a pull request.
 If you contribute often I can add you as a member of the PiVPN project.
 I will be happy to work with you!
 
@@ -158,4 +169,3 @@ sources.
 4. And as always the ever vigilant [EFF] (https://www.eff.org/)
 
 I don't take donations at this time but if you want to show your appreciation to me, then contribute or leave feedback on suggestions or improvements.
-
