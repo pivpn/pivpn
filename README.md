@@ -142,10 +142,10 @@ Related Projects
 [StarshipEngineer/OpenVPN-Setup](https://github.com/StarshipEngineer/OpenVPN-Setup)
 Shell script to set up a OpenVPN server.
 
-[InnovativeInventor/docker-pivpn] (https://github.com/InnovativeInventor/docker-pivpn)
+[InnovativeInventor/docker-pivpn](https://github.com/InnovativeInventor/docker-pivpn)
 A secure docker container that sets up PiVPN and SSH.
 
-[OpenVPN] (https://openvpn.net)
+[OpenVPN](https://openvpn.net)
 The foundation for all open-source VPN projects.
 
 Contributions
