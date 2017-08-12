@@ -186,6 +186,7 @@ chooseUser() {
     if [[ $? = 0 ]]; then
         for desiredUser in ${chooseUserOptions}; do
             pivpnUser=${desiredUser}
+				pivpnHome=$(eval echo ~${desiredUser})
             echo "::: Using User: $pivpnUser"
             echo "${pivpnUser}" > /tmp/pivpnUSR
         done
@@ -1003,8 +1004,8 @@ confOVPN() {
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
-    $SUDO mkdir "/home/$pivpnUser/ovpns"
-    $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
+    $SUDO mkdir "$pivpnHome/ovpns"
+    $SUDO chmod 0755 -R "$pivpnHome/ovpns"
 }
 
 installPiVPN() {
