@@ -797,7 +797,9 @@ setClientDNS() {
 }
 
 confOpenVPN() {
-    SERVER_NAME="server"
+    # Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
+    NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+    SERVER_NAME="server_${NEW_UUID}"
 
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
@@ -859,7 +861,7 @@ EOF
     fi
 
     # Build the server
-    ${SUDOE} ./easyrsa build-server-full server nopass
+    ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
 
     if [[ ${useUpdateVars} == false ]]; then
         if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c})
