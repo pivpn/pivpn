@@ -23,7 +23,6 @@ push "dhcp-option DNS 8.8.4.4"
 # overriding but not wiping out the original default gateway.
 push "redirect-gateway def1"
 client-to-client
-duplicate-cn
 keepalive 10 120
 tls-version-min 1.2
 tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0
