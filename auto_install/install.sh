@@ -884,6 +884,11 @@ EOF
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret pki/ta.key
 
+    # Generate an empty Certificate Revocation List
+    ${SUDOE} ./easyrsa gen-crl
+    cp pki/crl.pem /etc/openvpn/crl.pem
+    chown nobody:nogroup /etc/openvpn/crl.pem
+
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
@@ -991,10 +996,6 @@ confOVPN() {
     fi
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
     $SUDO cp /tmp/DET_PLATFORM /etc/pivpn/DET_PLATFORM
-
-    # Set status that no certs have been revoked
-    echo 0 > /tmp/REVOKE_STATUS
-    $SUDO cp /tmp/REVOKE_STATUS /etc/pivpn/REVOKE_STATUS
 
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 

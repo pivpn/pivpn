@@ -105,22 +105,6 @@ fi
 
 cd /etc/openvpn/easy-rsa || exit
 
-if [ "${REVOKE_STATUS}" == 0 ]; then
-    echo 1 > /etc/pivpn/REVOKE_STATUS
-    printf "\nThis seems to be the first time you have revoked a cert.\n"
-    printf "First we need to initialize the Certificate Revocation List.\n"
-    printf "Then add the CRL to your server config and restart openvpn.\n"
-    ./easyrsa gen-crl
-    cp pki/crl.pem /etc/openvpn/crl.pem
-    chown nobody:nogroup /etc/openvpn/crl.pem
-    sed -i '/#crl-verify/c\crl-verify /etc/openvpn/crl.pem' /etc/openvpn/server.conf
-    if [[ ${PLAT} == "Ubuntu" || ${PLAT} == "Debian" ]]; then
-        service openvpn restart
-    else
-        systemctl restart openvpn.service
-    fi
-fi
-
 for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
     ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
