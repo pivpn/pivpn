@@ -1344,7 +1344,7 @@ main() {
     echo ":::"
     if [[ "${useUpdateVars}" == false ]]; then
         echo "::: Installation Complete!"
-        echo "::: Now run 'pivpn add' to create the ovpn profiles."
+        echo "::: Now run 'pivpn add' to create an ovpn profile for each of your devices."
         echo "::: Run 'pivpn help' to see what else you can do!"
         echo "::: It is strongly recommended you reboot after installation."
     else
