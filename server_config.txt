@@ -24,6 +24,7 @@ push "dhcp-option DNS 8.8.4.4"
 push "redirect-gateway def1"
 client-to-client
 keepalive 10 120
+remote-cert-tls client
 tls-version-min 1.2
 tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0
 cipher AES-256-CBC
