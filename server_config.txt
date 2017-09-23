@@ -33,7 +33,7 @@ user nobody
 group nogroup
 persist-key
 persist-tun
-#crl-verify /etc/openvpn/crl.pem
+crl-verify /etc/openvpn/crl.pem
 status /var/log/openvpn-status.log 20
 status-version 3
 log /var/log/openvpn.log
