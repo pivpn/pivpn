@@ -2,7 +2,6 @@
 # PiVPN: revoke client script
 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
-REVOKE_STATUS=$(cat /etc/pivpn/REVOKE_STATUS)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 
