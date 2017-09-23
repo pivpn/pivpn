@@ -886,8 +886,8 @@ EOF
 
     # Generate an empty Certificate Revocation List
     ${SUDOE} ./easyrsa gen-crl
-    cp pki/crl.pem /etc/openvpn/crl.pem
-    chown nobody:nogroup /etc/openvpn/crl.pem
+    ${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
+    ${SUDOE} chown nobody:nogroup /etc/openvpn/crl.pem
 
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
