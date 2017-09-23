@@ -803,9 +803,9 @@ confOpenVPN() {
         # Ask user for desired level of encryption
         ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption strength" --radiolist \
         "Choose your desired level of encryption (press space to select):\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications, it is recommended to use 2048 bits.  If you are testing, you can use 1024 bits to speed things up, but do not use this for normal use!  If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
-        "1024" "Use 1024-bit encryption (testing only)." OFF \
-        "2048" "Use 2048-bit encryption (recommended level)." ON \
-        "4096" "Use 4096-bit encryption (paranoid level)." OFF 3>&1 1>&2 2>&3)
+        "1024" "Use 1024-bit encryption (testing only)" OFF \
+        "2048" "Use 2048-bit encryption (recommended level)" ON \
+        "4096" "Use 4096-bit encryption (paranoid level)" OFF 3>&1 1>&2 2>&3)
 
         exitstatus=$?
         if [ $exitstatus != 0 ]; then
