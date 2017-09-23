@@ -4,7 +4,7 @@ port 1194
 ca /etc/openvpn/easy-rsa/pki/ca.crt
 cert /etc/openvpn/easy-rsa/pki/issued/server.crt
 key /etc/openvpn/easy-rsa/pki/private/server.key
-dh /etc/openvpn/easy-rsa/pki/dh1024.pem
+dh /etc/openvpn/easy-rsa/pki/dh2048.pem
 topology subnet
 server 10.8.0.0 255.255.255.0
 # server and remote endpoints
