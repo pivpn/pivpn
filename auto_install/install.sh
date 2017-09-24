@@ -367,16 +367,6 @@ setStaticIPv4() {
     fi
 }
 
-#setNetwork() {
-    # Sets the Network IP and Mask correctly
-    #export PATH=${PATH}:/sbin:/usr/sbin
-    #LOCALMASK=$(ifconfig "${pivpnInterface}" | awk '/Mask:/{ print $4;} ' | cut -c6-)
-    #LOCALIP=$(ifconfig "${pivpnInterface}" | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
-    #IFS=. read -r i1 i2 i3 i4 <<< "$LOCALIP"
-    #IFS=. read -r m1 m2 m3 m4 <<< "$LOCALMASK"
-    #LOCALNET=$(printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))")
-#}
-
 function valid_ip()
 {
     local  ip=$1
@@ -886,9 +876,6 @@ EOF
 
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
-
-    #$SUDO sed -i "s/LOCALNET/${LOCALNET}/g" /etc/openvpn/server.conf
-    #$SUDO sed -i "s/LOCALMASK/${LOCALMASK}/g" /etc/openvpn/server.conf
 
     # Set the user encryption key size
     $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
