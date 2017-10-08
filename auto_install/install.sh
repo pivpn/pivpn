@@ -61,14 +61,14 @@ dhcpcdFile=/etc/dhcpcd.conf
 # Next see if we are on a tested and supported OS
 function noOS_Support() {
     whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
-Currently this installer supports Raspbian, Debian or Devuan jessie and stretch and Ubuntu from 14.04 (trusty) to 17.04 (zetsy).
+Currently this installer supports Raspbian (or Devuan) jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
 If you think you received this message in error, you can post an issue on the GitHub at https://github.com/pivpn/pivpn/issues." ${r} ${c}
     exit 1
 }
 
 function maybeOS_Support() {
     if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
-Currently this installer ssupports Raspbian, Debian or Devuan jessie and stretch and Ubuntu from 14.04 (trusty) to 17.04 (zetsy).
+Currently this installer supports Raspbian (or Devuan) jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
 Would you like to continue anyway?" ${r} ${c}) then
         echo "::: Did not detect perfectly supported OS but,"
         echo "::: Continuing installation at user's own risk..."
@@ -88,7 +88,7 @@ distro_check() {
       case ${PLAT} in
           Ubuntu|Raspbian|Debian|Devuan)
           case ${OSCN} in
-              trusty|xenial|jessie|stretch)
+              trusty|xenial|jessie)
                   ;;
               *)
                   maybeOS_Support
@@ -111,9 +111,6 @@ distro_check() {
       if grep -q jessie /etc/os-release; then
           PLAT="Raspbian"
           OSCN="jessie"
-      elif grep -q stretch /etc/os-release; then
-	  PLAT="Raspbian"
-	  OSCN="stretch"
       else
           PLAT="Ubuntu"
           OSCN="unknown"
@@ -438,33 +435,31 @@ update_package_cache() {
   timestampAsDate=$(date -d @"${timestamp}" "+%b %e")
   today=$(date "+%b %e")
 
-#### REMOVE IF TESTING WORKS #####
-#<<<<<<< HEAD
-#  case ${PLAT} in
-#    Ubuntu|Debian|Devuan)
-#      case ${OSCN} in
-#        trusty|jessie|wheezy)
-#          wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-#          echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-#          echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-#          $SUDO apt-get -qq update & spinner $!
-#          echo " done!"
-#          ;;
-#      esac
-#      ;;
-#  esac
-#=======
-#  if [[ ${PLAT} == "Ubuntu" || ${PLAT} == "Debian" ]]; then
-#    if [[ ${OSCN} == "trusty" || ${OSCN} == "jessie" || ${OSCN} == "wheezy" ]]; then
-#      wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-#      echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-#      echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-#      $SUDO apt-get -qq update & spinner $!
-#      echo " done!"
-#    fi
-#  fi
-#>>>>>>> 454b755116d8cad6b67b56ac15a7235ceac02b5a
-##### REMOVE UNTIL THIS POINT######
+<<<<<<< HEAD
+  case ${PLAT} in
+    Ubuntu|Debian|Devuan)
+      case ${OSCN} in
+        trusty|jessie|wheezy)
+          wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+          echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+          echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
+          $SUDO apt-get -qq update & spinner $!
+          echo " done!"
+          ;;
+      esac
+      ;;
+  esac
+=======
+  if [[ ${PLAT} == "Ubuntu" || ${PLAT} == "Debian" ]]; then
+    if [[ ${OSCN} == "trusty" || ${OSCN} == "jessie" || ${OSCN} == "wheezy" ]]; then
+      wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+      echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+      echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
+      $SUDO apt-get -qq update & spinner $!
+      echo " done!"
+    fi
+  fi
+>>>>>>> 454b755116d8cad6b67b56ac15a7235ceac02b5a
 
   if [ ! "${today}" == "${timestampAsDate}" ]; then
     #update package lists
@@ -548,10 +543,11 @@ checkForDependencies() {
     timestampAsDate=$(date -d @"$timestamp" "+%b %e")
     today=$(date "+%b %e")
 
+<<<<<<< HEAD
     case ${PLAT} in
         Ubuntu|Debian|Devuan)
             case ${OSCN} in
-                trusty|jessie|wheezy|stretch)
+                trusty|jessie|wheezy)
                     wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
                     echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
                     echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
@@ -561,8 +557,9 @@ checkForDependencies() {
             esac
             ;;
     esac
+=======
     if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
-        if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" || $OSCN == "stretch" ]]; then
+        if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" ]]; then
             wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
             echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
             echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
@@ -570,6 +567,7 @@ checkForDependencies() {
             echo " done!"
         fi
     fi
+>>>>>>> 454b755116d8cad6b67b56ac15a7235ceac02b5a
 
     if [ ! "$today" == "$timestampAsDate" ]; then
         #update package lists
