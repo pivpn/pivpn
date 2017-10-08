@@ -61,14 +61,14 @@ dhcpcdFile=/etc/dhcpcd.conf
 # Next see if we are on a tested and supported OS
 function noOS_Support() {
     whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
-Currently this installer supports Raspbian, Debian or Devuan jessie and stretch and Ubuntu from 14.04 (trusty) to 17.04 (zetsy).
+Currently this installer supports Raspbian and Debian (Jessie and Stretch), Devuan (Jessie) and Ubuntu from 14.04 (trusty) to 17.04 (zesty).
 If you think you received this message in error, you can post an issue on the GitHub at https://github.com/pivpn/pivpn/issues." ${r} ${c}
     exit 1
 }
 
 function maybeOS_Support() {
     if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
-Currently this installer supports Raspbian, Debian or Devuan jessie and stretch and Ubuntu from 14.04 (trusty) to 17.04 (zetsy).
+Currently this installer supports Raspbian and Debian (Jessie and Stretch), Devuan (Jessie) and Ubuntu from 14.04 (trusty) to 17.04 (zesty).
 Would you like to continue anyway?" ${r} ${c}) then
         echo "::: Did not detect perfectly supported OS but,"
         echo "::: Continuing installation at user's own risk..."
