@@ -435,6 +435,7 @@ update_package_cache() {
   timestampAsDate=$(date -d @"${timestamp}" "+%b %e")
   today=$(date "+%b %e")
 
+<<<<<<< HEAD
   case ${PLAT} in
     Ubuntu|Debian|Devuan)
       case ${OSCN} in
@@ -448,6 +449,17 @@ update_package_cache() {
       esac
       ;;
   esac
+=======
+  if [[ ${PLAT} == "Ubuntu" || ${PLAT} == "Debian" ]]; then
+    if [[ ${OSCN} == "trusty" || ${OSCN} == "jessie" || ${OSCN} == "wheezy" ]]; then
+      wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+      echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+      echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
+      $SUDO apt-get -qq update & spinner $!
+      echo " done!"
+    fi
+  fi
+>>>>>>> 454b755116d8cad6b67b56ac15a7235ceac02b5a
 
   if [ ! "${today}" == "${timestampAsDate}" ]; then
     #update package lists
@@ -531,6 +543,7 @@ checkForDependencies() {
     timestampAsDate=$(date -d @"$timestamp" "+%b %e")
     today=$(date "+%b %e")
 
+<<<<<<< HEAD
     case ${PLAT} in
         Ubuntu|Debian|Devuan)
             case ${OSCN} in
@@ -544,6 +557,17 @@ checkForDependencies() {
             esac
             ;;
     esac
+=======
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
+        if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" ]]; then
+            wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+            echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+            echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
+            $SUDO apt-get -qq update & spinner $!
+            echo " done!"
+        fi
+    fi
+>>>>>>> 454b755116d8cad6b67b56ac15a7235ceac02b5a
 
     if [ ! "$today" == "$timestampAsDate" ]; then
         #update package lists
