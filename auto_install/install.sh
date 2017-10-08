@@ -68,7 +68,7 @@ If you think you received this message in error, you can post an issue on the Gi
 
 function maybeOS_Support() {
     if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
-Currently this installer ssupports Raspbian, Debian or Devuan jessie and stretch and Ubuntu from 14.04 (trusty) to 17.04 (zetsy).
+Currently this installer supports Raspbian, Debian or Devuan jessie and stretch and Ubuntu from 14.04 (trusty) to 17.04 (zetsy).
 Would you like to continue anyway?" ${r} ${c}) then
         echo "::: Did not detect perfectly supported OS but,"
         echo "::: Continuing installation at user's own risk..."
