@@ -2,6 +2,11 @@
 # PiVPN: client status script
 
 STATUS_LOG="/var/log/openvpn-status.log"
+
+function hr() {
+        numfmt --to=iec-i --suffix=B "$1"
+}
+
 printf "\n"
 if [ ! -f "${STATUS_LOG}" ]; then
         echo "The file: $STATUS_LOG was not found!"
