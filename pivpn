@@ -55,7 +55,8 @@ function debugFunc {
 }
 
 function removeOVPNFunc {
-    $SUDO /opt/pivpn/removeOVPN.sh
+    shift
+    $SUDO /opt/pivpn/removeOVPN.sh "$@"
     exit 1
 }
 
@@ -94,7 +95,7 @@ case "$1" in
 "-c" | "clients"            ) listClientsFunc;;
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;
-"-r" | "revoke"             ) removeOVPNFunc;;
+"-r" | "revoke"             ) removeOVPNFunc "$@";;
 "-h" | "help"               ) helpFunc;;
 "-u" | "uninstall"          ) uninstallFunc;;
 "-v"                        ) versionFunc;;
