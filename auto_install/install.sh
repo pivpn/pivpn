@@ -61,14 +61,14 @@ dhcpcdFile=/etc/dhcpcd.conf
 # Next see if we are on a tested and supported OS
 function noOS_Support() {
     whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
-Currently this installer supports Raspbian (or Devuan) jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
+Currently this installer supports Raspbian and Debian (Jessie and Stretch), Devuan (Jessie) and Ubuntu from 14.04 (trusty) to 17.04 (zesty).
 If you think you received this message in error, you can post an issue on the GitHub at https://github.com/pivpn/pivpn/issues." ${r} ${c}
     exit 1
 }
 
 function maybeOS_Support() {
     if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
-Currently this installer supports Raspbian (or Devuan) jessie, Ubuntu 14.04 (trusty), and Ubuntu 16.04 (xenial).
+Currently this installer supports Raspbian and Debian (Jessie and Stretch), Devuan (Jessie) and Ubuntu from 14.04 (trusty) to 17.04 (zesty).
 Would you like to continue anyway?" ${r} ${c}) then
         echo "::: Did not detect perfectly supported OS but,"
         echo "::: Continuing installation at user's own risk..."
@@ -88,7 +88,7 @@ distro_check() {
       case ${PLAT} in
           Ubuntu|Raspbian|Debian|Devuan)
           case ${OSCN} in
-              trusty|xenial|jessie)
+              trusty|xenial|jessie|stretch)
                   ;;
               *)
                   maybeOS_Support
@@ -111,6 +111,9 @@ distro_check() {
       if grep -q jessie /etc/os-release; then
           PLAT="Raspbian"
           OSCN="jessie"
+      elif grep -q stretch /etc/os-release; then
+	  PLAT="Raspbian"
+	  OSCN="stretch"
       else
           PLAT="Ubuntu"
           OSCN="unknown"
@@ -435,19 +438,6 @@ update_package_cache() {
   timestampAsDate=$(date -d @"${timestamp}" "+%b %e")
   today=$(date "+%b %e")
 
-  case ${PLAT} in
-    Ubuntu|Debian|Devuan)
-      case ${OSCN} in
-        trusty|jessie|wheezy)
-          wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-          echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-          echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-          $SUDO apt-get -qq update & spinner $!
-          echo " done!"
-          ;;
-      esac
-      ;;
-  esac
 
   if [ ! "${today}" == "${timestampAsDate}" ]; then
     #update package lists
@@ -534,7 +524,7 @@ checkForDependencies() {
     case ${PLAT} in
         Ubuntu|Debian|Devuan)
             case ${OSCN} in
-                trusty|jessie|wheezy)
+                trusty|jessie|wheezy|stretch)
                     wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
                     echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
                     echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
@@ -544,6 +534,15 @@ checkForDependencies() {
             esac
             ;;
     esac
+    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
+        if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" || $OSCN == "stretch" ]]; then
+            wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
+            echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+            echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
+            $SUDO apt-get -qq update & spinner $!
+            echo " done!"
+        fi
+    fi
 
     if [ ! "$today" == "$timestampAsDate" ]; then
         #update package lists
@@ -797,15 +796,17 @@ setClientDNS() {
 }
 
 confOpenVPN() {
-    SERVER_NAME="server"
+    # Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
+    NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+    SERVER_NAME="server_${NEW_UUID}"
 
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
-        ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption Strength" --radiolist \
-        "Choose your desired level of encryption (press space to select):\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications it is recommended to use 2048 bit.  If you are testing or just want to get through it quicker you can use 1024.  If you are paranoid about ... things... then grab a cup of joe and pick 4096." ${r} ${c} 3 \
-        "2048" "Use 2048-bit encryption. Recommended level." ON \
-        "1024" "Use 1024-bit encryption. Test level." OFF \
-        "4096" "Use 4096-bit encryption. Paranoid level." OFF 3>&1 1>&2 2>&3)
+        ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "Encryption strength" --radiolist \
+        "Choose your desired level of encryption (press space to select):\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications, it is recommended to use 2048 bits.  If you are testing, you can use 1024 bits to speed things up, but do not use this for normal use!  If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
+        "1024" "Use 1024-bit encryption (testing only)" OFF \
+        "2048" "Use 2048-bit encryption (recommended level)" ON \
+        "4096" "Use 4096-bit encryption (paranoid level)" OFF 3>&1 1>&2 2>&3)
 
         exitstatus=$?
         if [ $exitstatus != 0 ]; then
@@ -859,7 +860,7 @@ EOF
     fi
 
     # Build the server
-    ${SUDOE} ./easyrsa build-server-full server nopass
+    ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
 
     if [[ ${useUpdateVars} == false ]]; then
         if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c})
@@ -883,6 +884,11 @@ EOF
 
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret pki/ta.key
+
+    # Generate an empty Certificate Revocation List
+    ${SUDOE} ./easyrsa gen-crl
+    ${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
+    ${SUDOE} chown nobody:nogroup /etc/openvpn/crl.pem
 
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
@@ -991,10 +997,6 @@ confOVPN() {
     fi
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
     $SUDO cp /tmp/DET_PLATFORM /etc/pivpn/DET_PLATFORM
-
-    # Set status that no certs have been revoked
-    echo 0 > /tmp/REVOKE_STATUS
-    $SUDO cp /tmp/REVOKE_STATUS /etc/pivpn/REVOKE_STATUS
 
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
@@ -1344,7 +1346,7 @@ main() {
     echo ":::"
     if [[ "${useUpdateVars}" == false ]]; then
         echo "::: Installation Complete!"
-        echo "::: Now run 'pivpn add' to create the ovpn profiles."
+        echo "::: Now run 'pivpn add' to create an ovpn profile for each of your devices."
         echo "::: Run 'pivpn help' to see what else you can do!"
         echo "::: It is strongly recommended you reboot after installation."
     else
