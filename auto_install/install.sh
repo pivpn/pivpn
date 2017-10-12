@@ -1255,9 +1255,6 @@ main() {
             setStaticIPv4
         fi
 
-        # Set the Network IP and Mask correctly
-        setNetwork
-
         # Choose the user for the ovpns
         chooseUser
 
