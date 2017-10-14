@@ -886,7 +886,7 @@ EOF
     ${SUDOE} openvpn --genkey --secret pki/ta.key
 
     # Generate an empty Certificate Revocation List
-    ${SUDOE} ./easyrsa gen-crl
+    ${SUDOE} ./easyrsa gen-crl --days=3650
     ${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
     ${SUDOE} chown nobody:nogroup /etc/openvpn/crl.pem
 
