@@ -107,7 +107,7 @@ cd /etc/openvpn/easy-rsa || exit
 for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
     ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
-    EASYRSA_CRL_DAYS=3650 ./easyrsa gen-crl
+    ./easyrsa gen-crl --days=3650
     printf "\n::: Certificate revoked, and CRL file updated.\n"
     printf "::: Removing certs and client configuration for this profile.\n"
     rm -rf "pki/reqs/${CERTS_TO_REVOKE[ii]}.req"
