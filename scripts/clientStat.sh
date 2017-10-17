@@ -29,7 +29,6 @@ if grep -q "^CLIENT_LIST" "${STATUS_LOG}"; then
         else
                 awk -F' ' -v s='CLIENT_LIST' '$1 == s {print $2"\t\t"$3"\t"$4"\t"$5"\t\t"$6"\t\t"$8" "$9" "$11" - "$10"\n"}' ${STATUS_LOG}
         fi
->>>>>>> ad6f5b6c8b57cf72d22527cff4b2290a40514a47
 else
     printf "\nNo Clients Connected!\n"
 fi
