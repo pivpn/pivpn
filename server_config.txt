@@ -4,7 +4,7 @@ port 1194
 ca /etc/openvpn/easy-rsa/pki/ca.crt
 cert /etc/openvpn/easy-rsa/pki/issued/server.crt
 key /etc/openvpn/easy-rsa/pki/private/server.key
-dh /etc/openvpn/easy-rsa/pki/dh1024.pem
+dh /etc/openvpn/easy-rsa/pki/dh2048.pem
 topology subnet
 server 10.8.0.0 255.255.255.0
 # server and remote endpoints
@@ -23,8 +23,8 @@ push "dhcp-option DNS 8.8.4.4"
 # overriding but not wiping out the original default gateway.
 push "redirect-gateway def1"
 client-to-client
-duplicate-cn
 keepalive 10 120
+remote-cert-tls client
 tls-version-min 1.2
 tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0
 cipher AES-256-CBC
@@ -34,7 +34,7 @@ user nobody
 group nogroup
 persist-key
 persist-tun
-#crl-verify /etc/openvpn/crl.pem
+crl-verify /etc/openvpn/crl.pem
 status /var/log/openvpn-status.log 20
 status-version 3
 log /var/log/openvpn.log
