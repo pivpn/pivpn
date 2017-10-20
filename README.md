@@ -11,7 +11,7 @@ into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) sof
 Have you been looking for a good guide or tutorial for installing openvpn on a raspberry pi or ubuntu based server?  Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
 
 The master branch of this script installs and configures OpenVPN on Raspbian
-Jessie and has been tested on Ubuntu 14.04 running from an Amazon AWS image.  Personally, I'd recommend using the Jessie Lite image on a raspberry pi in your home so you can VPN into your home from unsecure remote locations and safely use the internet.  However, the scripts do try to detect different distributions and make adjustments accordingly.  They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
+Jessie, Stretch, Devuan and has been tested on Ubuntu 14.04 and 16.04 running from an Amazon AWS image.  Personally, I'd recommend using the Stretch or Jessie Lite image on a raspberry pi in your home so you can VPN into your home from unsecure remote locations and safely use the internet.  However, the scripts do try to detect different distributions and make adjustments accordingly.  They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
 
 This scripts primary mission in life is to allow a user to have a home VPN for as cost effective as possible and without being a technical wizard.  Hence the design of pivpn to work on a Raspberry Pi ($35) and then one command installer.  Followed by easy management of the VPN thereafter with the 'pivpn' command.  That being said...
 
@@ -25,7 +25,7 @@ a Raspberry Pi Model B or later with an ethernet port, an SD or microSD card
 (depending on the model) with Raspbian installed, a power adapter appropriate to
  the power needs of your model, and an ethernet cable or wifi adapter to connect your Pi to your
 router or gateway. It is recommended that you use a fresh image of Raspbian
-Jessie Lite from https://raspberrypi.org/downloads, but if you don't,
+Stretch Lite from https://raspberrypi.org/downloads, but if you don't,
 be sure to make a backup image of your existing installation before proceeding.
 You should also setup your Pi with a static IP address (see either source
   1 or 2 at the bottom of this Readme) but it is not required as the script can do this for you.
