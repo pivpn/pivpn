@@ -2,6 +2,8 @@
 #
 # Convert the original ovpn file of a client to a ovpn file that will work with the "OpenVPN Connect" app for iOS
 #
+# Script created by TimmThaler > github.com/TimmThaler
+# Based on the issue post 364 and the instructions by killermosi
 #
 
 fileext="ovpn"
