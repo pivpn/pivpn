@@ -69,6 +69,10 @@ function versionFunc {
     printf "\e[1mVersion 1.9\e[0m\n"
 }
 
+function convertIOSFunc {
+    $SUDO /opt/pivpn/convertiOS.sh
+}
+
 function helpFunc {
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
@@ -96,6 +100,7 @@ case "$1" in
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;
 "-r" | "revoke"             ) removeOVPNFunc "$@";;
+"-i" | "ios"                ) convertIOSFunc;;
 "-h" | "help"               ) helpFunc;;
 "-u" | "uninstall"          ) uninstallFunc;;
 "-v"                        ) versionFunc;;
