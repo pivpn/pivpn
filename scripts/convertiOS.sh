@@ -61,3 +61,6 @@ rm -f "$ovpnout/$client.tmp.$fileext"
 
 whiptail --title "Done." --msgbox "Alright, the conversion has finished. You'll find the new iOS OVPN file in $ovpnout" 8 78
 
+echo
+echo "Done."
+echo
