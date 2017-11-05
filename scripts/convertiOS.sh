@@ -34,6 +34,13 @@ whiptail --title "Choose client" --radiolist "Please choose a client to work wit
 client=$(cat "$ovpnout/clientlist")
 rm -f $ovpnout/clientlist
 
+# Test if client chosen
+if [ -z "$client" ]; then
+        echo "No client chosen!"
+        echo "Aborting ..."
+        exit 1
+fi
+
 # copy the client's opvn file to a tmp file
 cp "$ovpndir/$client.$fileext" "$ovpnout/$client.tmp.$fileext"
 
