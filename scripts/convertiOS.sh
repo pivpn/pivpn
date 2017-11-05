@@ -19,11 +19,13 @@ fi
 
 # read clients
 client=""
+count=0
 while read -r line || [ -n "$line" ]; do
     STATUS=$(echo "$line" | awk '{print $1}')
     NAME=$(echo "$line" | sed -e 's:.*/CN=::')
     if [ "${STATUS}" == "V" ]; then
-        client="$clients $NAME . OFF"
+        count=$((count+1))
+        client="$client $NAME $count OFF"
     fi
 done <${INDEX}
 
