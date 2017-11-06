@@ -53,7 +53,7 @@ openssl rsa -aes256 -in "$ovpnout/$client.tmp.$fileext" -out "$ovpnout/$client.t
 key=$(cat "$ovpnout/$client.tmp.key")
 
 # replace the rsa key with the new aes key and output to new opvn file
-awk -v values="${key}" '/<key>/{p=1;print;printf values; printf "\n"}/<\/key>/{p=0}!p' "$ovpnout/$client.tmp.$fileext" > "$ovpnout/$client.ios.$fileext"
+awk -v values="${key}" '/<key>/{p=1;print;printf values; printf "\n"}/<\/key>/{p=0}!p' "$ovpnout/$client.tmp.$fileext" > "$ovpnout/$client.openvpnconnect.$fileext"
 
 # delete tmp files
 rm -f "$ovpnout/$client.tmp.key"
