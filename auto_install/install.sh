@@ -474,7 +474,13 @@ install_dependent_packages() {
   echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
   if command -v debconf-apt-progress &> /dev/null; then
-    $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
+    case ${PLAT} in
+      Ubuntu)
+        # ATM debconf-apt-progress seems broken in ubuntu - 2017.12.20
+        $SUDO ${PKG_INSTALL} "${argArray1[@]}";;
+      *)
+        $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}";;
+    esac
   else
     for i in "${argArray1[@]}"; do
       echo -n ":::    Checking for $i..."
