@@ -58,6 +58,12 @@ IPv4gw=$(ip route get 8.8.8.8 | awk '{print $3}')
 availableInterfaces=$(ip -o link | grep "state UP" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 dhcpcdFile=/etc/dhcpcd.conf
 
+#set address for subnet
+IPDIG1=$(( $RANDOM % 201 + 29))
+IPDIG2=$(( $RANDOM % 201 + 29))
+IPv4SubNet="10.$IPDIG1.$IPDIG2"
+echo $IPv4SubNet > /etc/pivpn/vpnSubNet.txt
+
 # Next see if we are on a tested and supported OS
 function noOS_Support() {
     whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
@@ -912,6 +918,9 @@ EOF
     # write out server certs to conf file
     $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/pki\/private\/\).*/\1${SERVER_NAME}.key/" /etc/openvpn/server.conf
     $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/pki\/issued\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
+
+    #change the subnet to the random generated
+    $SUDO sed -i "s/10\.8\.0/${IPv4SubNet}/g" /etc/openvpn/server.conf
 }
 
 confUnattendedUpgrades() {
@@ -958,8 +967,8 @@ confNetwork() {
             $SUDO sed -i 's/IPv4dev/'"$IPv4dev"'/' /tmp/ufw_add.txt
             $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
             $SUDO sed -i -e '/delete these required/r /tmp/ufw_add.txt' -e//N /etc/ufw/before.rules
-            $SUDO ufw allow "${PORT}/${PROTO}"
-            $SUDO ufw allow from 10.8.0.0/24
+            $SUDO ufw allow "${PORT}/${PROTO}"	
+            $SUDO ufw allow from "$IPv4SubNet.0/24"
             $SUDO ufw reload
             echo "::: UFW configuration completed."
         fi
@@ -969,7 +978,8 @@ confNetwork() {
     # else configure iptables
     if [[ $noUFW -eq 1 ]]; then
         echo 1 > /tmp/noUFW
-        $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o "$IPv4dev" -j MASQUERADE
+		$SUDO iptables -t nat -F
+        $SUDO iptables -t nat -A POSTROUTING -s "$IPv4SubNet.0/24" -o "$IPv4dev" -j MASQUERADE        
         case ${PLAT} in
             Ubuntu|Debian|Devuan)
                 $SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
