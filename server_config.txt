@@ -29,6 +29,6 @@ persist-tun
 crl-verify /etc/openvpn/crl.pem
 status /var/log/openvpn-status.log 20
 status-version 3
-log /var/log/openvpn.log
-verb 1
+syslog
+verb 3
 # Generated for use by PiVPN.io
