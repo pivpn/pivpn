@@ -56,7 +56,7 @@ do
             NO_PASS="1"
             ;;
         *)
-            echo "Error: Got an unexpected argument '$1'" 
+            echo "Error: Got an unexpected argument '$1'"
             helpFunc
             exit 1
             ;;
@@ -237,10 +237,17 @@ echo "tls-auth Private Key found: $TA"
     cat "private/${NAME}${KEY}"
     echo "</key>"
 
-    #Finally, append the TA Private Key
-    echo "<tls-auth>"
-    cat "${TA}"
-    echo "</tls-auth>"
+  	#Finally, append the TA Private Key
+  	if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
+    		echo "<tls-crypt>"
+    		cat "${TA}"
+    		echo "</tls-crypt>"
+  	else
+    		echo "<tls-auth>"
+    		cat "${TA}"
+    		echo "</tls-auth>"
+  	fi
+
 } > "${NAME}${FILEEXT}"
 
 # Copy the .ovpn profile to the home directory for convenient remote access
