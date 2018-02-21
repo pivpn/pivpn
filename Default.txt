@@ -13,4 +13,4 @@ verify-x509-name SRVRNAME name
 cipher AES-256-CBC
 auth SHA256
 comp-lzo
-verb 1
+verb 3

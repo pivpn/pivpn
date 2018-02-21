@@ -370,16 +370,6 @@ setStaticIPv4() {
     fi
 }
 
-setNetwork() {
-    # Sets the Network IP and Mask correctly
-    export PATH=${PATH}:/sbin:/usr/sbin
-    LOCALMASK=$(ifconfig "${pivpnInterface}" | awk '/Mask:/{ print $4;} ' | cut -c6-)
-    LOCALIP=$(ifconfig "${pivpnInterface}" | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*')
-    IFS=. read -r i1 i2 i3 i4 <<< "$LOCALIP"
-    IFS=. read -r m1 m2 m3 m4 <<< "$LOCALMASK"
-    LOCALNET=$(printf "%d.%d.%d.%d\n" "$((i1 & m1))" "$((i2 & m2))" "$((i3 & m3))" "$((i4 & m4))")
-}
-
 function valid_ip()
 {
     local  ip=$1
@@ -862,25 +852,36 @@ EOF
     # Build the server
     ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
 
-    if [[ ${useUpdateVars} == false ]]; then
-        if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c})
-        then
-            DOWNLOAD_DH_PARAM=true
+ 	  if [[ ${useUpdateVars} == false ]]; then
+        if (whiptail --backtitle "Setup OpenVPN" --title "Version 2.4 improvements" --yesno --defaultno "OpenVPN 2.4 brings support for stronger key exchange using Elliptic Curves and encrypted control channel, along with faster LZ4 compression.\n\nIf you your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
+            APPLY_TWO_POINT_FOUR=true
+            $SUDO touch /etc/pivpn/TWO_POINT_FOUR
         else
-            DOWNLOAD_DH_PARAM=false
+            APPLY_TWO_POINT_FOUR=false
         fi
     fi
 
-    if [ "$ENCRYPT" -ge "4096" ] && [[ ${DOWNLOAD_DH_PARAM} == true ]]
-    then
-        # Downloading parameters
-        RANDOM_INDEX=$(( RANDOM % 128 ))
-        ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
-    else
-        # Generate Diffie-Hellman key exchange
-        ${SUDOE} ./easyrsa gen-dh
-        ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
+    if [[ ${useUpdateVars} == false ]]; then
+    		if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
+    		    if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
+    		        DOWNLOAD_DH_PARAM=true
+    		    else
+    		        DOWNLOAD_DH_PARAM=false
+    		    fi
+    		fi
     fi
+
+  	if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
+    		if [ "$ENCRYPT" -ge "4096" ] && [[ ${DOWNLOAD_DH_PARAM} == true ]]; then
+    		    # Downloading parameters
+    		    RANDOM_INDEX=$(( RANDOM % 128 ))
+    		    ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
+    		else
+    		    # Generate Diffie-Hellman key exchange
+    		    ${SUDOE} ./easyrsa gen-dh
+    		    ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
+    		fi
+  	fi
 
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret pki/ta.key
@@ -893,11 +894,19 @@ EOF
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
-    $SUDO sed -i "s/LOCALNET/${LOCALNET}/g" /etc/openvpn/server.conf
-    $SUDO sed -i "s/LOCALMASK/${LOCALMASK}/g" /etc/openvpn/server.conf
+  	if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+  		  #If they enabled 2.4 change compression algorithm and use tls-crypt instead of tls-auth to encrypt control channel
+  		  $SUDO sed -i "s/comp-lzo/compress lz4/" /etc/openvpn/server.conf
+  		  $SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server.conf
+  	fi
 
-    # Set the user encryption key size
-    $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
+  	if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+  		  #If they enabled 2.4 disable dh parameters
+  		  $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none/" /etc/openvpn/server.conf
+  	else
+      	# Otherwise set the user encryption key size
+      	$SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
+  	fi
 
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
@@ -1000,6 +1009,12 @@ confOVPN() {
 
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
+  	if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+    		#If they enabled 2.4 change compression algorithm and remove key-direction options since it's not required
+    		$SUDO sed -i "s/comp-lzo/compress lz4/" /etc/openvpn/easy-rsa/pki/Default.txt
+    		$SUDO sed -i "/key-direction 1/d" /etc/openvpn/easy-rsa/pki/Default.txt
+  	fi
+
     if [[ ${useUpdateVars} == false ]]; then
         METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server (press space to select)?" ${r} ${c} 2 \
         "$IPv4pub" "Use this public IP" "ON" \
@@ -1053,6 +1068,42 @@ confOVPN() {
     $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
+confLogging(){
+  # Tell rsyslog to log openvpn messages to a specific file
+  cat << 'EOT' | $SUDO tee /etc/rsyslog.d/30-openvpn.conf >/dev/null
+if $programname == 'ovpn-server' then /var/log/openvpn.log
+if $programname == 'ovpn-server' then ~
+EOT
+
+  # Enable log rotation, it rotates weekly and keeps the current log and the previous uncompressed, with the older 4 compressed
+  cat << 'EOT' | $SUDO tee /etc/logrotate.d/openvpn >/dev/null
+/var/log/openvpn.log
+{
+	rotate 4
+	weekly
+	missingok
+	notifempty
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+		invoke-rc.d rsyslog rotate >/dev/null 2>&1 || true
+	endscript
+}
+EOT
+
+  # Restart the logging service
+  case ${PLAT} in
+      Ubuntu|Debian|*vuan)
+          $SUDO service rsyslog restart || true
+          ;;
+      *)
+          $SUDO systemctl restart rsyslog.service || true
+          ;;
+  esac
+
+}
+
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
@@ -1068,6 +1119,7 @@ finalExports() {
         echo "pivpnProto=${pivpnProto}"
         echo "PORT=${PORT}"
         echo "ENCRYPT=${ENCRYPT}"
+        echo "APPLY_TWO_POINT_FOUR"="${APPLY_TWO_POINT_FOUR}"
         echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}"
         echo "PUBLICDNS=${PUBLICDNS}"
         echo "OVPNDNS1=${OVPNDNS1}"
@@ -1108,6 +1160,7 @@ installPiVPN() {
     confNetwork
     confOVPN
     setClientDNS
+    confLogging
     finalExports
 }
 
@@ -1269,9 +1322,6 @@ main() {
             getStaticIPv4Settings
             setStaticIPv4
         fi
-
-        # Set the Network IP and Mask correctly
-        setNetwork
 
         # Choose the user for the ovpns
         chooseUser
