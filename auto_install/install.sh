@@ -808,9 +808,7 @@ setOptDuplicate() {
 	echo ":: Managing certificates by user."
 	$SUDO sed -i -e 's/#duplicate-cn/duplicate-cn/g' /etc/openvpn/server.conf
 	;;
-    done
-    ;;
-    esac
+        esac
     else
         echo "::: Cancel selected. Exiting..." 
 	exit1
