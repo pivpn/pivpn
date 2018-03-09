@@ -793,6 +793,28 @@ setClientDNS() {
     fi
 }
 
+setOptDuplicate() {
+    #Allow the user to choose between allowing or disallowing duplicate certificates. Allows user to manage access on a per-user or per-device basis. Default is off. 
+    DupeCNCmd=(whiptail --separate-output --radiolist "Will certificates be distributed on a per-client or per-device[recommended] basis?" ${r} ${c} 6)
+    DupeCNChooseOptions=(Per-Device "" on
+            Per-Client "" off)
+    if DupeCNchoices=$("${DupeCNCmd[@]}" "${DupeCNChooseOptions[@]}" 2>&1 >/dev/tty)
+    then
+        case ${DupeCNchoices} in
+	Per-Device)
+	echo "::Managing certificates by device."
+	;;
+	Per-Client)
+	echo ":: Managing certificates by user."
+	$SUDO sed -i -e 's/#duplicate-cn/duplicate-cn/g' /etc/openvpn/server.conf
+	;;
+        esac
+    else
+        echo "::: Cancel selected. Exiting..." 
+	exit1
+    fi
+}
+	    
 confOpenVPN() {
     # Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
     NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
@@ -1168,6 +1190,7 @@ installPiVPN() {
     confNetwork
     confOVPN
     setClientDNS
+    setOptDuplicate
     confLogging
     finalExports
 }
@@ -1404,7 +1427,7 @@ main() {
     echo ":::"
     if [[ "${useUpdateVars}" == false ]]; then
         echo "::: Installation Complete!"
-        echo "::: Now run 'pivpn add' to create an ovpn profile for each of your devices."
+        echo "::: Now run 'pivpn add' to create an ovpn profile for each of your users or devices."
         echo "::: Run 'pivpn help' to see what else you can do!"
         echo "::: It is strongly recommended you reboot after installation."
     else
