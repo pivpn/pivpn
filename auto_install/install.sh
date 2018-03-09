@@ -695,6 +695,7 @@ setClientDNS() {
             Level3 "" off
             DNS.WATCH "" off
             Norton "" off
+	    FamilyShield "" off
             Custom "" off)
 
     if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
@@ -731,6 +732,13 @@ setClientDNS() {
             echo "::: Using Norton ConnectSafe servers."
             OVPNDNS1="199.85.126.10"
             OVPNDNS2="199.85.127.10"
+            $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+            ;;
+	FamilyShield)
+            echo "::: Using FamilyShield servers."
+            OVPNDNS1="208.67.222.123"
+            OVPNDNS2="208.67.220.123"
             $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
             $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
             ;;
