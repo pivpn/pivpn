@@ -798,7 +798,7 @@ setOptDuplicate() {
     DupeCNCmd=(whiptail --separate-output --radiolist "Will certificates be distributed on a per-client or per-device[recommended] basis?" ${r} ${c} 6)
     DupeCNChooseOptions=(Per-Device "" on
             Per-Client "" off)
-    if DupeCNchoices=$("${DupeCNCmd[@]}" "${DCNChooseOptions[@]}" 2>&1 >/dev/tty)
+    if DupeCNchoices=$("${DupeCNCmd[@]}" "${DupeCNChooseOptions[@]}" 2>&1 >/dev/tty)
     then
         case ${DupeCNchoices} in
 	Per-Device)
