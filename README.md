@@ -117,16 +117,8 @@ administrator permissions, right-clicking on the icon in the system tray, and cl
 or on Android by selecting the profile under 'OpenVPN Profile' and pressing 'Connect'. You'll be
 asked to enter the pass phrase you chose. Do so, and you're in! Enjoy your ~$50 USD private VPN.
 
-Removing PiVPN
-----------------
-
-If at any point you wish to remove OpenVPN from your Pi and revert it to a
-pre-installation state, such as if you want to undo a failed installation to try again or
-you want to remove OpenVPN without installing a fresh Raspbian image, just run
-'pivpn uninstall'
-
 Setting up static IP for clients
--------
+--------
 
 1. Add this line `client-config-dir /etc/openvpn/ccd` in 
 `/etc/openvpn/server.conf`
@@ -150,6 +142,15 @@ Add this line  `ifconfig-push 10.8.0.3 255.255.255.0` to  `/etc/openvpn/ccd/exam
 
 (Here 10.8.0.3 is going to be static IP for user `exampleuser`, if you want to configure additional users, repeat from step 4)
 ##### Note: You have to assign static IP for all clients in order to avoid IP address conflict
+
+
+Removing PiVPN
+----------------
+
+If at any point you wish to remove OpenVPN from your Pi and revert it to a
+pre-installation state, such as if you want to undo a failed installation to try again or
+you want to remove OpenVPN without installing a fresh Raspbian image, just run
+'pivpn uninstall'
 
 Feedback & Support
 --------
