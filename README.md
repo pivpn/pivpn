@@ -125,6 +125,32 @@ pre-installation state, such as if you want to undo a failed installation to try
 you want to remove OpenVPN without installing a fresh Raspbian image, just run
 'pivpn uninstall'
 
+Setting up static IP for clients
+-------
+
+1. Add this line `client-config-dir /etc/openvpn/ccd` in 
+`/etc/openvpn/server.conf`
+
+2. Create client config directory
+ `sudo mkdir /etc/openvpn/ccd`
+
+3. Fix permissions
+`sudo chown -R pi:nogroup /etc/openvpn/ccd`
+ (Make sure to enter correct username, in this case it was pi)
+
+4. Adding clients.
+`sudo nano /etc/openvpn/ccd/exampleuser`
+(Add clients with their common name, in this case `exampleuser.ovpn`)
+
+5. Configuring static IP.
+Add this line  `ifconfig-push 10.8.0.3 255.255.255.0` to  `/etc/openvpn/ccd/exampleuser`
+
+6. Restart openvpn
+`sudo service openvpn restart`
+
+(Here 10.8.0.3 is going to be static IP for user `exampleuser`, if you want to configure additional users, repeat from step 4)
+##### Note: You have to assign static IP for all clients in order to avoid IP address conflict
+
 Feedback & Support
 --------
 
