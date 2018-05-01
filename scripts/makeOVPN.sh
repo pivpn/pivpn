@@ -141,8 +141,8 @@ if [ -z "${NAME}" ]; then
     read -r NAME
 fi
 
-if [[ "${NAME}" =~ [^a-zA-Z0-9] ]]; then
-    echo "Name can only contain alphanumeric characters."
+if [[ "${NAME}" =~ [^a-zA-Z0-9\-] ]]; then
+    echo "Name can only contain alphanumeric characters and dashes (-)."
     exit 1
 fi
 
