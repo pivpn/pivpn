@@ -48,6 +48,7 @@ c=$(( c < 70 ? 70 : c ))
 skipSpaceCheck=false
 reconfigure=false
 runUnattended=false
+skipStaticIpSetup=false
 
 # Find IP used to route to outside world
 
@@ -1286,6 +1287,7 @@ main() {
             "--reconfigure"  ) reconfigure=true;;
             "--i_do_not_follow_recommendations"   ) skipSpaceCheck=false;;
             "--unattended"     ) runUnattended=true;;
+	    "--avoid_static_ip"     ) skipStaticIpSetup=true;;
         esac
     done
 
@@ -1324,7 +1326,7 @@ main() {
         chooseInterface
 
         # Only try to set static on Raspbian, otherwise let user do it
-        if [[ $PLAT != "Raspbian" ]]; then
+        if [[ $PLAT != "Raspbian" ]] || [[ "${skipStaticIpSetup}" == true ]]; then
             avoidStaticIPv4Ubuntu
         else
             getStaticIPv4Settings
