@@ -17,7 +17,7 @@ push "block-outside-dns"
 # overriding but not wiping out the original default gateway.
 push "redirect-gateway def1"
 client-to-client
-keepalive 10 120
+keepalive 1800 3600
 remote-cert-tls client
 tls-version-min 1.2
 tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0
