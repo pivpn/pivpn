@@ -82,47 +82,33 @@ Would you like to continue anyway?" ${r} ${c}) then
 distro_check() {
   # if lsb_release command is on their system
   if hash lsb_release 2>/dev/null; then
-      PLAT=$(lsb_release -si)
-      OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
 
-      case ${PLAT} in
-          Ubuntu|Raspbian|Debian|Devuan)
-          case ${OSCN} in
-              trusty|xenial|jessie|stretch)
-                  ;;
-              *)
-                  maybeOS_Support
-                  ;;
-          esac
+    PLAT=$(lsb_release -si)
+    OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
+
+  else # else get info from os-release
+
+    PLAT=$(grep "^NAME" /etc/os-release | awk -F "=" '{print $2}' | tr -d '"' | awk '{print $1}')
+    VER=$(grep "VERSION_ID" /etc/os-release | awk -F "=" '{print $2}' | tr -d '"')
+    declare -A VER_MAP=(["9"]="stretch" ["8"]="jessie" ["16.04"]="xenial" ["14.04"]="trusty")
+    OSCN=${VER_MAP["${VER}"]}
+
+  fi
+
+  case ${PLAT} in
+    Ubuntu|Raspbian|Debian|Devuan)
+      case ${OSCN} in
+        trusty|xenial|jessie|stretch)
           ;;
-      *)
-          noOS_Support
+        *)
+          maybeOS_Support
           ;;
       esac
-  # else get info from os-release
-  elif grep -q devuan /etc/os-release; then
-      if grep -q jessie /etc/os-release; then
-          PLAT="Raspvuan"
-          OSCN="jessie"
-      else
-          noOS_Support
-      fi
-  elif grep -q debian /etc/os-release; then
-      if grep -q jessie /etc/os-release; then
-          PLAT="Raspbian"
-          OSCN="jessie"
-      elif grep -q stretch /etc/os-release; then
-	  PLAT="Raspbian"
-	  OSCN="stretch"
-      else
-          PLAT="Ubuntu"
-          OSCN="unknown"
-          maybeOS_Support
-      fi
-  # else we prob don't want to install
-  else
+      ;;
+    *)
       noOS_Support
-  fi
+      ;;
+  esac
 
   echo "${PLAT}" > /tmp/DET_PLATFORM
 }
@@ -418,6 +404,23 @@ package_check_install() {
     dpkg-query -W -f='${Status}' "${1}" 2>/dev/null | grep -c "ok installed" || ${PKG_INSTALL} "${1}"
 }
 
+addSoftwareRepo() {
+  # Add the official OpenVPN repo for distros that don't have the latest version in their default repos
+  case ${PLAT} in
+    Ubuntu|Debian|Devuan)
+      case ${OSCN} in
+        trusty|xenial|wheezy|jessie)
+          wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
+          echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
+          echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
+          $SUDO apt-get -qq update & spinner $!
+          echo " done!"
+          ;;
+      esac
+      ;;
+  esac
+}
+
 update_package_cache() {
   #Running apt-get update/upgrade with minimal output can cause some issues with
   #requiring user input
@@ -695,60 +698,32 @@ setClientDNS() {
             Level3 "" off
             DNS.WATCH "" off
             Norton "" off
-	    FamilyShield "" off
+            FamilyShield "" off
+            CloudFlare "" off
             Custom "" off)
 
     if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
     then
-        case ${DNSchoices} in
-        Google)
-            echo "::: Using Google DNS servers."
-            OVPNDNS1="8.8.8.8"
-            OVPNDNS2="8.8.4.4"
-            # These are already in the file
-            ;;
-        OpenDNS)
-            echo "::: Using OpenDNS servers."
-            OVPNDNS1="208.67.222.222"
-            OVPNDNS2="208.67.220.220"
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
-            ;;
-        Level3)
-            echo "::: Using Level3 servers."
-            OVPNDNS1="209.244.0.3"
-            OVPNDNS2="209.244.0.4"
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
-            ;;
-        DNS.WATCH)
-            echo "::: Using DNS.WATCH servers."
-            OVPNDNS1="84.200.69.80"
-            OVPNDNS2="84.200.70.40"
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
-            ;;
-        Norton)
-            echo "::: Using Norton ConnectSafe servers."
-            OVPNDNS1="199.85.126.10"
-            OVPNDNS2="199.85.127.10"
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
-            ;;
-	FamilyShield)
-            echo "::: Using FamilyShield servers."
-            OVPNDNS1="208.67.222.123"
-            OVPNDNS2="208.67.220.123"
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
-            $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
-            ;;
-        Custom)
-            until [[ $DNSSettingsCorrect = True ]]
-            do
-                strInvalid="Invalid"
 
-                if OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), seperated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" ${r} ${c} "" 3>&1 1>&2 2>&3)
-                then
+      if [[ ${DNSchoices} != "Custom" ]]; then
+
+        echo "::: Using ${DNSchoices} servers."
+        declare -A DNS_MAP=(["Google"]="8.8.8.8 8.8.4.4" ["OpenDNS"]="208.67.222.222 208.67.220.220" ["Level3"]="209.244.0.3 209.244.0.4" ["DNS.WATCH"]="84.200.69.80 84.200.70.40" ["Norton"]="199.85.126.10 199.85.127.10" ["FamilyShield"]="208.67.222.123 208.67.220.123" ["CloudFlare"]="1.1.1.1 1.0.0.1")
+
+        OVPNDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
+        OVPNDNS2=$(awk '{print $2}' <<< "${DNS_MAP["${DNSchoices}"]}")
+
+        $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
+        $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+
+      else
+
+          until [[ $DNSSettingsCorrect = True ]]
+          do
+              strInvalid="Invalid"
+
+              if OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), seperated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" ${r} ${c} "" 3>&1 1>&2 2>&3)
+              then
                     OVPNDNS1=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
                     OVPNDNS2=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
                     if ! valid_ip "$OVPNDNS1" || [ ! "$OVPNDNS1" ]; then
@@ -757,11 +732,11 @@ setClientDNS() {
                     if ! valid_ip "$OVPNDNS2" && [ "$OVPNDNS2" ]; then
                         OVPNDNS2=$strInvalid
                     fi
-                else
+              else
                     echo "::: Cancel selected, exiting...."
                     exit 1
                 fi
-                if [[ $OVPNDNS1 == "$strInvalid" ]] || [[ $OVPNDNS2 == "$strInvalid" ]]; then
+              if [[ $OVPNDNS1 == "$strInvalid" ]] || [[ $OVPNDNS2 == "$strInvalid" ]]; then
                     whiptail --msgbox --backtitle "Invalid IP" --title "Invalid IP" "One or both entered IP addresses were invalid. Please try again.\n\n    DNS Server 1:   $OVPNDNS1\n    DNS Server 2:   $OVPNDNS2" ${r} ${c}
                     if [[ $OVPNDNS1 == "$strInvalid" ]]; then
                         OVPNDNS1=""
@@ -770,7 +745,7 @@ setClientDNS() {
                         OVPNDNS2=""
                     fi
                     DNSSettingsCorrect=False
-                else
+              else
                     if (whiptail --backtitle "Specify Upstream DNS Provider(s)" --title "Upstream DNS Provider(s)" --yesno "Are these settings correct?\n    DNS Server 1:   $OVPNDNS1\n    DNS Server 2:   $OVPNDNS2" ${r} ${c}) then
                         DNSSettingsCorrect=True
                         $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
@@ -784,12 +759,12 @@ setClientDNS() {
                         DNSSettingsCorrect=False
                     fi
                 fi
-        done
-        ;;
-    esac
+          done
+      fi
+
     else
-        echo "::: Cancel selected. Exiting..."
-        exit 1
+      echo "::: Cancel selected. Exiting..."
+      exit 1
     fi
 }
 
@@ -860,36 +835,41 @@ EOF
     # Build the server
     ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
 
- 	  if [[ ${useUpdateVars} == false ]]; then
-        if (whiptail --backtitle "Setup OpenVPN" --title "Version 2.4 improvements" --yesno --defaultno "OpenVPN 2.4 brings support for stronger key exchange using Elliptic Curves and encrypted control channel, along with faster LZ4 compression.\n\nIf you your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
-            APPLY_TWO_POINT_FOUR=true
-            $SUDO touch /etc/pivpn/TWO_POINT_FOUR
+    if [[ ${useUpdateVars} == false ]]; then
+
+      if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]]; then
+        APPLY_TWO_POINT_FOUR=false
+      else
+        if (whiptail --backtitle "Setup OpenVPN" --title "Version 2.4 improvements" --yesno --defaultno "OpenVPN 2.4 brings support for stronger key exchange using Elliptic Curves and encrypted control channel, along with faster LZ4 compression.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
+          APPLY_TWO_POINT_FOUR=true
+          $SUDO touch /etc/pivpn/TWO_POINT_FOUR
         else
-            APPLY_TWO_POINT_FOUR=false
+          APPLY_TWO_POINT_FOUR=false
         fi
+      fi
     fi
 
     if [[ ${useUpdateVars} == false ]]; then
-    		if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
-    		    if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
-    		        DOWNLOAD_DH_PARAM=true
-    		    else
-    		        DOWNLOAD_DH_PARAM=false
-    		    fi
-    		fi
+      if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
+        if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
+          DOWNLOAD_DH_PARAM=true
+        else
+          DOWNLOAD_DH_PARAM=false
+        fi
+      fi
     fi
 
-  	if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
-    		if [ "$ENCRYPT" -ge "4096" ] && [[ ${DOWNLOAD_DH_PARAM} == true ]]; then
-    		    # Downloading parameters
-    		    RANDOM_INDEX=$(( RANDOM % 128 ))
-    		    ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
-    		else
-    		    # Generate Diffie-Hellman key exchange
-    		    ${SUDOE} ./easyrsa gen-dh
-    		    ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
-    		fi
-  	fi
+    if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
+      if [ "$ENCRYPT" -ge "4096" ] && [[ ${DOWNLOAD_DH_PARAM} == true ]]; then
+        # Downloading parameters
+        RANDOM_INDEX=$(( RANDOM % 128 ))
+        ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
+      else
+        # Generate Diffie-Hellman key exchange
+        ${SUDOE} ./easyrsa gen-dh
+        ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
+      fi
+    fi
 
     # Generate static HMAC key to defend against DDoS
     ${SUDOE} openvpn --genkey --secret pki/ta.key
@@ -902,19 +882,19 @@ EOF
     # Write config file for server using the template .txt file
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
-  	if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
-  		  #If they enabled 2.4 change compression algorithm and use tls-crypt instead of tls-auth to encrypt control channel
-  		  $SUDO sed -i "s/comp-lzo/compress lz4/" /etc/openvpn/server.conf
-  		  $SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server.conf
-  	fi
+    if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+      #If they enabled 2.4 change compression algorithm and use tls-crypt instead of tls-auth to encrypt control channel
+      $SUDO sed -i "s/comp-lzo/compress lz4/" /etc/openvpn/server.conf
+      $SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server.conf
+    fi
 
-  	if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
-  		  #If they enabled 2.4 disable dh parameters
-  		  $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none/" /etc/openvpn/server.conf
-  	else
-      	# Otherwise set the user encryption key size
-      	$SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
-  	fi
+    if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+      #If they enabled 2.4 disable dh parameters, use a specific curve instead
+      $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none\necdh-curve secp384r1/" /etc/openvpn/server.conf
+    else
+      # Otherwise set the user encryption key size
+      $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
+    fi
 
     # if they modified port put value in server.conf
     if [ $PORT != 1194 ]; then
@@ -965,7 +945,7 @@ confNetwork() {
 
     # if ufw enabled, configure that
     if hash ufw 2>/dev/null; then
-        if $SUDO ufw status | grep -q inactive
+        if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive
         then
             noUFW=1
         else
@@ -1017,11 +997,11 @@ confOVPN() {
 
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
-  	if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
-    		#If they enabled 2.4 change compression algorithm and remove key-direction options since it's not required
-    		$SUDO sed -i "s/comp-lzo/compress lz4/" /etc/openvpn/easy-rsa/pki/Default.txt
-    		$SUDO sed -i "/key-direction 1/d" /etc/openvpn/easy-rsa/pki/Default.txt
-  	fi
+    if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+      #If they enabled 2.4 change compression algorithm and remove key-direction options since it's not required
+      $SUDO sed -i "s/comp-lzo/compress lz4/" /etc/openvpn/easy-rsa/pki/Default.txt
+      $SUDO sed -i "/key-direction 1/d" /etc/openvpn/easy-rsa/pki/Default.txt
+    fi
 
     if [[ ${useUpdateVars} == false ]]; then
         METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server (press space to select)?" ${r} ${c} 2 \
@@ -1076,16 +1056,11 @@ confOVPN() {
     $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
 }
 
-confLogging(){
-  # Tell rsyslog to log openvpn messages to a specific file
-  cat << 'EOT' | $SUDO tee /etc/rsyslog.d/30-openvpn.conf >/dev/null
-if $programname == 'ovpn-server' then /var/log/openvpn.log
-if $programname == 'ovpn-server' then ~
-EOT
+confLogging() {
+  echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
+if \$programname == 'ovpn-server' then ~" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
-  # Enable log rotation, it rotates weekly and keeps the current log and the previous uncompressed, with the older 4 compressed
-  cat << 'EOT' | $SUDO tee /etc/logrotate.d/openvpn >/dev/null
-/var/log/openvpn.log
+  echo "/var/log/openvpn.log
 {
 	rotate 4
 	weekly
@@ -1097,25 +1072,23 @@ EOT
 	postrotate
 		invoke-rc.d rsyslog rotate >/dev/null 2>&1 || true
 	endscript
-}
-EOT
+}" | $SUDO tee /etc/logrotate.d/openvpn > /dev/null
 
   # Restart the logging service
   case ${PLAT} in
-      Ubuntu|Debian|*vuan)
-          $SUDO service rsyslog restart || true
-          ;;
-      *)
-          $SUDO systemctl restart rsyslog.service || true
-          ;;
+    Ubuntu|Debian|*vuan)
+      $SUDO service rsyslog restart || true
+      ;;
+    *)
+      $SUDO systemctl restart rsyslog.service || true
+      ;;
   esac
-
 }
 
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
-        sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
+        $SUDO sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
     fi
     {
         echo "pivpnUser=${pivpnUser}"
@@ -1127,12 +1100,12 @@ finalExports() {
         echo "pivpnProto=${pivpnProto}"
         echo "PORT=${PORT}"
         echo "ENCRYPT=${ENCRYPT}"
-        echo "APPLY_TWO_POINT_FOUR"="${APPLY_TWO_POINT_FOUR}"
+        echo "APPLY_TWO_POINT_FOUR=${APPLY_TWO_POINT_FOUR}"
         echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}"
         echo "PUBLICDNS=${PUBLICDNS}"
         echo "OVPNDNS1=${OVPNDNS1}"
         echo "OVPNDNS2=${OVPNDNS2}"
-    }>> "${setupVars}"
+    } | $SUDO tee "${setupVars}" > /dev/null
 }
 
 
@@ -1307,6 +1280,8 @@ main() {
     fi
 
     # Install the packages (we do this first because we need whiptail)
+    addSoftwareRepo
+
     #checkForDependencies
     update_package_cache
 

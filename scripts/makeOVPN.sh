@@ -237,16 +237,16 @@ echo "tls-auth Private Key found: $TA"
     cat "private/${NAME}${KEY}"
     echo "</key>"
 
-  	#Finally, append the TA Private Key
-  	if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
-    		echo "<tls-crypt>"
-    		cat "${TA}"
-    		echo "</tls-crypt>"
-  	else
-    		echo "<tls-auth>"
-    		cat "${TA}"
-    		echo "</tls-auth>"
-  	fi
+    #Finally, append the TA Private Key
+    if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
+      echo "<tls-crypt>"
+      cat "${TA}"
+      echo "</tls-crypt>"
+    else
+      echo "<tls-auth>"
+      cat "${TA}"
+      echo "</tls-auth>"
+    fi
 
 } > "${NAME}${FILEEXT}"
 
