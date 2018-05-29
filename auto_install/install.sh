@@ -699,7 +699,7 @@ setClientDNS() {
             DNS.WATCH "" off
             Norton "" off
             FamilyShield "" off
-	    CloudFlare "" off
+            CloudFlare "" off
             Custom "" off)
 
     if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
