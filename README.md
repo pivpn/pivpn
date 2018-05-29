@@ -90,7 +90,7 @@ one for your new phone.  Or even if you suspect that a cert may have been compro
 just revoke it and generate a new one.
 
 "pivpn list"
-If you add more than a few clients, this gives you a nice list of thier names and whether their certificate
+If you add more than a few clients, this gives you a nice list of their names and whether their certificate
 is still valid or has been revoked.  Great way to keep track of what you did with 'pivpn add' and 'pivpn revoke'.
 
 You can run just 'pivpn' to see all the options.

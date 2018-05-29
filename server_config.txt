@@ -10,6 +10,8 @@ server 10.8.0.0 255.255.255.0
 # Set your primary domain name server address for clients
 push "dhcp-option DNS 8.8.8.8"
 push "dhcp-option DNS 8.8.4.4"
+# Prevent DNS leaks on Windows
+push "block-outside-dns"
 # Override the Client default gateway by using 0.0.0.0/1 and
 # 128.0.0.0/1 rather than 0.0.0.0/0. This has the benefit of
 # overriding but not wiping out the original default gateway.
@@ -31,4 +33,7 @@ status /var/log/openvpn-status.log 20
 status-version 3
 syslog
 verb 3
+#DuplicateCNs allow access control on a less-granular, per user basis.
+#Remove # if you will manage access by user instead of device. 
+#duplicate-cn
 # Generated for use by PiVPN.io
