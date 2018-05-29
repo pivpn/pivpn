@@ -16,7 +16,7 @@
     (yes/no / which issues?) 
   
 
-## Console output of `curl install.pivpn.io | bash`
+## Console output of `curl -L install.pivpn.io | bash`
 ```
   Output Here
 ```
