@@ -121,11 +121,11 @@ function keyPASS() {
     expect eof
 EOF
 
-    #Convert key to des3
+    #Convert key to aes128
     KEY_FILE="pki/private/${NAME}${KEY}"
     expect << EOF
     set timeout -1
-    spawn openssl rsa -in ${KEY_FILE} -des3 -out ${KEY_FILE}
+    spawn openssl rsa -in ${KEY_FILE} -aes128 -out ${KEY_FILE}
     expect "Enter pass phrase" { send "${PASSWD}\r" }
     expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
     expect "Verifying - Enter PEM pass phrase" { send "${PASSWD}\r" }
@@ -141,8 +141,8 @@ if [ -z "${NAME}" ]; then
     read -r NAME
 fi
 
-if [[ "${NAME}" =~ [^a-zA-Z0-9] ]]; then
-    echo "Name can only contain alphanumeric characters."
+if [[ "${NAME}" =~ [^a-zA-Z0-9\-] ]]; then
+    echo "Name can only contain alphanumeric characters and dashes (-)."
     exit 1
 fi
 
