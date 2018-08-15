@@ -502,85 +502,6 @@ stopServices() {
     $SUDO echo " done."
 }
 
-checkForDependencies() {
-    #Running apt-get update/upgrade with minimal output can cause some issues with
-    #requiring user input (e.g password for phpmyadmin see #218)
-    #We'll change the logic up here, to check to see if there are any updates available and
-    # if so, advise the user to run apt-get update/upgrade at their own discretion
-    #Check to see if apt-get update has already been run today
-    # it needs to have been run at least once on new installs!
-
-    timestamp=$(stat -c %Y /var/cache/apt/)
-    timestampAsDate=$(date -d @"$timestamp" "+%b %e")
-    today=$(date "+%b %e")
-
-    case ${PLAT} in
-        Ubuntu|Debian|Devuan)
-            case ${OSCN} in
-                trusty|jessie|wheezy|stretch)
-                    wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-                    echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-                    echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-                    $SUDO apt-get -qq update & spinner $!
-                    echo " done!"
-                    ;;
-            esac
-            ;;
-    esac
-    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
-        if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" || $OSCN == "stretch" ]]; then
-            wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-            echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-            echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-            $SUDO apt-get -qq update & spinner $!
-            echo " done!"
-        fi
-    fi
-
-    if [ ! "$today" == "$timestampAsDate" ]; then
-        #update package lists
-        echo ":::"
-        echo -n "::: apt-get update has not been run today. Running now..."
-        $SUDO apt-get -qq update & spinner $!
-        echo " done!"
-    fi
-    echo ":::"
-    echo -n "::: Checking apt-get for upgraded packages...."
-    updatesToInstall=$($SUDO apt-get -s -o Debug::NoLocking=true upgrade | grep -c ^Inst)
-    echo " done!"
-    echo ":::"
-    if [[ $updatesToInstall -eq "0" ]]; then
-        echo "::: Your pi is up to date! Continuing with PiVPN installation..."
-    else
-        echo "::: There are $updatesToInstall updates availible for your pi!"
-        echo "::: We recommend you run 'sudo apt-get upgrade' after installing PiVPN! "
-        echo ":::"
-    fi
-    echo ":::"
-    echo "::: Checking dependencies:"
-
-    dependencies=( openvpn git dhcpcd5 tar wget grep iptables-persistent dnsutils expect whiptail net-tools)
-    for i in "${dependencies[@]}"; do
-        echo -n ":::    Checking for $i..."
-        if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
-            echo -n " Not found! Installing...."
-            #Supply answers to the questions so we don't prompt user
-            if [[ $i = "iptables-persistent" ]]; then
-                echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
-                echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
-            fi
-            if [[ $i == "expect" ]] || [[ $i == "openvpn" ]]; then
-                ($SUDO apt-get --yes --quiet --no-install-recommends install "$i" > /dev/null || echo "Installation Failed!" && fixApt) & spinner $!
-            else
-                ($SUDO apt-get --yes --quiet install "$i" > /dev/null || echo "Installation Failed!" && fixApt) & spinner $!
-            fi
-            echo " done!"
-        else
-            echo " already installed!"
-        fi
-    done
-}
-
 getGitFiles() {
     # Setup git repos for base files
     echo ":::"
@@ -1285,7 +1206,6 @@ main() {
     # Install the packages (we do this first because we need whiptail)
     addSoftwareRepo
 
-    #checkForDependencies
     update_package_cache
 
     # Notify user of package availability
