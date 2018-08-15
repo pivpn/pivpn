@@ -849,6 +849,10 @@ EOF
       fi
     fi
 
+    if [[ ${runUnattended} == true ]] && [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+      $SUDO touch /etc/pivpn/TWO_POINT_FOUR
+    fi
+
     if [[ ${useUpdateVars} == false ]]; then
       if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
         if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
