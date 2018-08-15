@@ -235,7 +235,7 @@ chooseInterface() {
     # Temporary Whiptail options storage
     local chooseInterfaceOptions
     # Loop sentinel variable
-    local firstLoop=1
+    local firstloop=1
 
     if [[ $(echo "${availableInterfaces}" | wc -l) -eq 1 ]]; then
       pivpnInterface="${availableInterfaces}"
