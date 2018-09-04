@@ -30,7 +30,7 @@ PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whipta
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
 easyrsaVer="3.0.4"
-easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
+easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config 
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/1.4.tar.gz"
@@ -466,22 +466,28 @@ notify_package_updates_available() {
 }
 
 install_dependent_packages() {
-  # Install packages passed in via argument array
-  # No spinner - conflicts with set -e
-  declare -a argArray1=("${!1}")
+    # Install packages passed in via argument array
+    # No spinner - conflicts with set -e
+    declare -a argArray1=("${!1}")
 
-  echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
-  echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
+    echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
+    echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
-  if command -v debconf-apt-progress &> /dev/null; then
-    $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
-  else
-    for i in "${argArray1[@]}"; do
-      echo -n ":::    Checking for $i..."
-      $SUDO package_check_install "${i}" &> /dev/null
-      echo " installed!"
-    done
-  fi
+    if command -v debconf-apt-progress &> /dev/null; then
+
+        # Use appropriate argument if the package manager uses https otherwise the installation will silently fail
+        if grep -q https /etc/apt/sources.list; then
+            $SUDO debconf-apt-progress -- ${PKG_INSTALL} -y apt-transport-https "${argArray1[@]}"
+        else
+            $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
+        fi
+    else
+        for i in "${argArray1[@]}"; do
+            echo -n ":::    Checking for $i..."
+            $SUDO package_check_install "${i}" &> /dev/null
+            echo " installed!"
+        done
+    fi
 }
 
 unattendedUpgrades() {
@@ -708,7 +714,7 @@ confOpenVPN() {
             if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]]; then
                 APPLY_TWO_POINT_FOUR=false
             else
-                if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno --defaultyes "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
+                if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
                     APPLY_TWO_POINT_FOUR=true
                     $SUDO touch /etc/pivpn/TWO_POINT_FOUR
                 else
@@ -776,11 +782,11 @@ EOF
 
     # Set certificate type
     if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
-        echo "set_var EASYRSA_ALGO       rsa" >> vars
-        echo "set_var EASYRSA_KEY_SIZE   ${ENCRYPT}" >> vars
+        echo "set_var EASYRSA_ALGO       rsa" | $SUDO tee -a vars
+        echo "set_var EASYRSA_KEY_SIZE   ${ENCRYPT}" | $SUDO tee -a vars
     else
-        echo "set_var EASYRSA_ALGO       ec" >> vars
-        echo "set_var EASYRSA_CURVE      ${ECDSA_MAP["${ENCRYPT}"]}" >> vars
+        echo "set_var EASYRSA_ALGO       ec" | $SUDO tee -a vars
+        echo "set_var EASYRSA_CURVE      ${ECDSA_MAP["${ENCRYPT}"]}" | $SUDO tee -a vars
     fi
 
     # Remove any previous keys
@@ -877,9 +883,14 @@ confUnattendedUpgrades() {
     APT::Periodic::Unattended-Upgrade "1";
 EOT
         else
-            wget -q -O - "$UNATTUPG_CONFIG" | $SUDO tar xz
-            $SUDO cp unattended-upgrades-1.4/data/50unattended-upgrades.Raspbian 50unattended-upgrades
-            $SUDO rm -rf unattended-upgrades-1.4
+            # Fix Raspbian config
+            if [[ $PLAT == "Raspbian" ]]; then
+                wget -q -O - "$UNATTUPG_CONFIG" | $SUDO tar xz
+                $SUDO cp unattended-upgrades-1.4/data/50unattended-upgrades.Raspbian 50unattended-upgrades
+                $SUDO rm -rf unattended-upgrades-1.4
+            fi
+
+            # Add the remaining settings for all other distributions
             cat << EOT | $SUDO tee 02periodic >/dev/null
     APT::Periodic::Enable "1";
     APT::Periodic::Update-Package-Lists "1";
