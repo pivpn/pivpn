@@ -121,17 +121,6 @@ function keyPASS() {
     expect eof
 EOF
 
-    #Convert key to aes128
-    KEY_FILE="pki/private/${NAME}${KEY}"
-    expect << EOF
-    set timeout -1
-    spawn openssl rsa -in ${KEY_FILE} -aes128 -out ${KEY_FILE}
-    expect "Enter pass phrase" { send "${PASSWD}\r" }
-    expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
-    expect "Verifying - Enter PEM pass phrase" { send "${PASSWD}\r" }
-    expect eof
-EOF
-
     cd pki || exit
 
 }
