@@ -235,7 +235,7 @@ chooseInterface() {
     # Temporary Whiptail options storage
     local chooseInterfaceOptions
     # Loop sentinel variable
-    local firstLoop=1
+    local firstloop=1
 
     if [[ $(echo "${availableInterfaces}" | wc -l) -eq 1 ]]; then
       pivpnInterface="${availableInterfaces}"
@@ -502,85 +502,6 @@ stopServices() {
     $SUDO echo " done."
 }
 
-checkForDependencies() {
-    #Running apt-get update/upgrade with minimal output can cause some issues with
-    #requiring user input (e.g password for phpmyadmin see #218)
-    #We'll change the logic up here, to check to see if there are any updates available and
-    # if so, advise the user to run apt-get update/upgrade at their own discretion
-    #Check to see if apt-get update has already been run today
-    # it needs to have been run at least once on new installs!
-
-    timestamp=$(stat -c %Y /var/cache/apt/)
-    timestampAsDate=$(date -d @"$timestamp" "+%b %e")
-    today=$(date "+%b %e")
-
-    case ${PLAT} in
-        Ubuntu|Debian|Devuan)
-            case ${OSCN} in
-                trusty|jessie|wheezy|stretch)
-                    wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-                    echo "deb http://swupdate.openvpn.net/apt $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-                    echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-                    $SUDO apt-get -qq update & spinner $!
-                    echo " done!"
-                    ;;
-            esac
-            ;;
-    esac
-    if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
-        if [[ $OSCN == "trusty" || $OSCN == "jessie" || $OSCN == "wheezy" || $OSCN == "stretch" ]]; then
-            wget -O - https://swupdate.openvpn.net/repos/repo-public.gpg| $SUDO apt-key add -
-            echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
-            echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-            $SUDO apt-get -qq update & spinner $!
-            echo " done!"
-        fi
-    fi
-
-    if [ ! "$today" == "$timestampAsDate" ]; then
-        #update package lists
-        echo ":::"
-        echo -n "::: apt-get update has not been run today. Running now..."
-        $SUDO apt-get -qq update & spinner $!
-        echo " done!"
-    fi
-    echo ":::"
-    echo -n "::: Checking apt-get for upgraded packages...."
-    updatesToInstall=$($SUDO apt-get -s -o Debug::NoLocking=true upgrade | grep -c ^Inst)
-    echo " done!"
-    echo ":::"
-    if [[ $updatesToInstall -eq "0" ]]; then
-        echo "::: Your pi is up to date! Continuing with PiVPN installation..."
-    else
-        echo "::: There are $updatesToInstall updates availible for your pi!"
-        echo "::: We recommend you run 'sudo apt-get upgrade' after installing PiVPN! "
-        echo ":::"
-    fi
-    echo ":::"
-    echo "::: Checking dependencies:"
-
-    dependencies=( openvpn git dhcpcd5 tar wget grep iptables-persistent dnsutils expect whiptail net-tools)
-    for i in "${dependencies[@]}"; do
-        echo -n ":::    Checking for $i..."
-        if [ "$(dpkg-query -W -f='${Status}' "$i" 2>/dev/null | grep -c "ok installed")" -eq 0 ]; then
-            echo -n " Not found! Installing...."
-            #Supply answers to the questions so we don't prompt user
-            if [[ $i = "iptables-persistent" ]]; then
-                echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
-                echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
-            fi
-            if [[ $i == "expect" ]] || [[ $i == "openvpn" ]]; then
-                ($SUDO apt-get --yes --quiet --no-install-recommends install "$i" > /dev/null || echo "Installation Failed!" && fixApt) & spinner $!
-            else
-                ($SUDO apt-get --yes --quiet install "$i" > /dev/null || echo "Installation Failed!" && fixApt) & spinner $!
-            fi
-            echo " done!"
-        else
-            echo " already installed!"
-        fi
-    done
-}
-
 getGitFiles() {
     # Setup git repos for base files
     echo ":::"
@@ -699,6 +620,7 @@ setClientDNS() {
             DNS.WATCH "" off
             Norton "" off
             FamilyShield "" off
+            CloudFlare "" off
             Custom "" off)
 
     if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
@@ -707,7 +629,7 @@ setClientDNS() {
       if [[ ${DNSchoices} != "Custom" ]]; then
 
         echo "::: Using ${DNSchoices} servers."
-        declare -A DNS_MAP=(["Google"]="8.8.8.8 8.8.4.4" ["OpenDNS"]="208.67.222.222 208.67.220.220" ["Level3"]="209.244.0.3 209.244.0.4" ["DNS.WATCH"]="84.200.69.80 84.200.70.40" ["Norton"]="199.85.126.10 199.85.127.10" ["FamilyShield"]="208.67.222.123 208.67.220.123")
+        declare -A DNS_MAP=(["Google"]="8.8.8.8 8.8.4.4" ["OpenDNS"]="208.67.222.222 208.67.220.220" ["Level3"]="209.244.0.3 209.244.0.4" ["DNS.WATCH"]="84.200.69.80 84.200.70.40" ["Norton"]="199.85.126.10 199.85.127.10" ["FamilyShield"]="208.67.222.123 208.67.220.123" ["CloudFlare"]="1.1.1.1 1.0.0.1")
 
         OVPNDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
         OVPNDNS2=$(awk '{print $2}' <<< "${DNS_MAP["${DNSchoices}"]}")
@@ -848,9 +770,13 @@ EOF
       fi
     fi
 
+    if [[ ${runUnattended} == true ]] && [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
+      $SUDO touch /etc/pivpn/TWO_POINT_FOUR
+    fi
+
     if [[ ${useUpdateVars} == false ]]; then
       if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
-        if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from a pool of the last 128 generated.\nMore information about this service can be found here: https://2ton.com.au/dhtool/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
+        if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
           DOWNLOAD_DH_PARAM=true
         else
           DOWNLOAD_DH_PARAM=false
@@ -861,8 +787,7 @@ EOF
     if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
       if [ "$ENCRYPT" -ge "4096" ] && [[ ${DOWNLOAD_DH_PARAM} == true ]]; then
         # Downloading parameters
-        RANDOM_INDEX=$(( RANDOM % 128 ))
-        ${SUDOE} curl "https://2ton.com.au/dhparam/${ENCRYPT}/${RANDOM_INDEX}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
+        ${SUDOE} curl "https://2ton.com.au/getprimes/random/dhparam/${ENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${ENCRYPT}.pem"
       else
         # Generate Diffie-Hellman key exchange
         ${SUDOE} ./easyrsa gen-dh
@@ -1281,7 +1206,6 @@ main() {
     # Install the packages (we do this first because we need whiptail)
     addSoftwareRepo
 
-    #checkForDependencies
     update_package_cache
 
     # Notify user of package availability
