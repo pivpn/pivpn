@@ -537,7 +537,7 @@ make_repo() {
     # Remove the non-repos interface and clone the interface
     echo -n ":::    Cloning $2 into $1..."
     $SUDO rm -rf "${1}"
-    $SUDO git clone -q "${2}" "${1}" > /dev/null & spinner $!
+    $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
     if [ -z "${TESTING+x}" ]; then
         :
     else
@@ -552,9 +552,9 @@ update_repo() {
     else
         # Pull the latest commits
         echo -n ":::     Updating repo in $1..."
+        $SUDO rm -rf "${1}"
+        $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
         cd "${1}" || exit 1
-        $SUDO git stash -q > /dev/null & spinner $!
-        $SUDO git pull -q > /dev/null & spinner $!
         if [ -z "${TESTING+x}" ]; then
             :
         else
