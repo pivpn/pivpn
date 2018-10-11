@@ -116,8 +116,8 @@ function keyPASS() {
     expect << EOF
     set timeout -1
     spawn ./easyrsa build-client-full "${NAME}"
-    expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
-    expect "Verifying - Enter PEM pass phrase" { send "${PASSWD}\r" }
+    expect "Enter PEM pass phrase" { send -- "${PASSWD}\r" }
+    expect "Verifying - Enter PEM pass phrase" { send -- "${PASSWD}\r" }
     expect eof
 EOF
 
@@ -126,9 +126,9 @@ EOF
     expect << EOF
     set timeout -1
     spawn openssl rsa -in ${KEY_FILE} -aes128 -out ${KEY_FILE}
-    expect "Enter pass phrase" { send "${PASSWD}\r" }
-    expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
-    expect "Verifying - Enter PEM pass phrase" { send "${PASSWD}\r" }
+    expect "Enter pass phrase" { send -- "${PASSWD}\r" }
+    expect "Enter PEM pass phrase" { send -- "${PASSWD}\r" }
+    expect "Verifying - Enter PEM pass phrase" { send -- "${PASSWD}\r" }
     expect eof
 EOF
 
