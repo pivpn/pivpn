@@ -949,13 +949,11 @@ confNetwork() {
 }
 
 confOVPN() {
-    IPv4pub=$(dig +short myip.opendns.com @208.67.222.222)
-    if [ $? -ne 0 ] || [ -z "$IPv4pub" ]; then
-        echo "dig failed, now trying to curl whatismyip.akamai.com"
-        if ! IPv4pub=$(curl -s http://whatismyip.akamai.com)
-        then
-            echo "whatismyip.akamai.com failed, please check your internet connection/DNS"
-            exit $?
+    if ! IPv4pub=$(dig +short myip.opendns.com @208.67.222.222) || ! valid_ip "$IPv4pub"; then
+        echo "dig failed, now trying to curl checkip.amazonaws.com"
+        if ! IPv4pub=$(curl -s https://checkip.amazonaws.com) || ! valid_ip "$IPv4pub"; then
+            echo "checkip.amazonaws.com failed, please check your internet connection/DNS"
+            exit 1
         fi
     fi
     $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
