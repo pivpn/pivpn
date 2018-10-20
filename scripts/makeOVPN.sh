@@ -116,11 +116,10 @@ function keyPASS() {
     expect << EOF
     set timeout -1
     spawn ./easyrsa build-client-full "${NAME}"
-    expect "Enter PEM pass phrase" { send "${PASSWD}\r" }
-    expect "Verifying - Enter PEM pass phrase" { send "${PASSWD}\r" }
+    expect "Enter PEM pass phrase" { send -- "${PASSWD}\r" }
+    expect "Verifying - Enter PEM pass phrase" { send -- "${PASSWD}\r" }
     expect eof
 EOF
-
     cd pki || exit
 
 }
