@@ -48,6 +48,7 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 ######## Undocumented Flags. Shhh ########
+skipDistroCheck=false
 skipSpaceCheck=false
 reconfigure=false
 runUnattended=false
@@ -1213,17 +1214,21 @@ main() {
         fi
     fi
 
-    # Check for supported distribution
-    distro_check
-
     # Check arguments for the undocumented flags
     for var in "$@"; do
         case "$var" in
             "--reconfigure"  ) reconfigure=true;;
-            "--i_do_not_follow_recommendations"   ) skipSpaceCheck=true;;
+            "--i_do_not_follow_recommendations"   ) skipDistroCheck=true ; skipSpaceCheck=true;;
             "--unattended"     ) runUnattended=true;;
         esac
     done
+
+    # Check for supported distribution
+    if [[ "${skipDistroCheck}" == true ]]; then
+        echo "::: --i_do_not_follow_recommendations passed to script, skipping distribution support verification!"
+    else
+        distro_check
+    fi
 
     if [[ -f ${setupVars} ]]; then
         if [[ "${runUnattended}" == true ]]; then
