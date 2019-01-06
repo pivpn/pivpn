@@ -48,7 +48,7 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 ######## Undocumented Flags. Shhh ########
-skipDistroCheck=false
+quietDistroCheck=false
 skipSpaceCheck=false
 reconfigure=false
 runUnattended=false
@@ -64,6 +64,10 @@ dhcpcdFile=/etc/dhcpcd.conf
 
 # Next see if we are on a tested and supported OS
 function noOS_Support() {
+    if [["${quietDistroCheck}" = true]]; then
+        echo "::: Exiting due to an invalid OS"
+        exit 1
+    fi
     whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
 Currently this installer supports Raspbian and Debian (Jessie and Stretch), Devuan (Jessie) and Ubuntu from 14.04 (trusty) to 17.04 (zesty).
 If you think you received this message in error, you can post an issue on the GitHub at https://github.com/pivpn/pivpn/issues." ${r} ${c}
@@ -71,6 +75,10 @@ If you think you received this message in error, you can post an issue on the Gi
 }
 
 function maybeOS_Support() {
+    if [["${quietDistroCheck}" = true]]; then
+        echo "::: Exiting due to unsupported OS"
+        exit 1
+    fi
     if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
 Currently this installer supports Raspbian and Debian (Jessie and Stretch), Devuan (Jessie) and Ubuntu from 14.04 (trusty) to 17.04 (zesty).
 Would you like to continue anyway?" ${r} ${c}) then
@@ -1218,17 +1226,13 @@ main() {
     for var in "$@"; do
         case "$var" in
             "--reconfigure"  ) reconfigure=true;;
-            "--i_do_not_follow_recommendations"   ) skipDistroCheck=true ; skipSpaceCheck=true;;
-            "--unattended"     ) runUnattended=true;;
+            "--i_do_not_follow_recommendations"   ) skipSpaceCheck=true;;
+            "--unattended"     ) quietDistroCheck=true ; runUnattended=true;;
         esac
     done
 
     # Check for supported distribution
-    if [[ "${skipDistroCheck}" == true ]]; then
-        echo "::: --i_do_not_follow_recommendations passed to script, skipping distribution support verification!"
-    else
-        distro_check
-    fi
+    distro_check
 
     if [[ -f ${setupVars} ]]; then
         if [[ "${runUnattended}" == true ]]; then
