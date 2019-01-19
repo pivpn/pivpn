@@ -10,7 +10,6 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
-set -e
 ######## VARIABLES #########
 
 tmpLog="/tmp/pivpn-install.log"
@@ -767,7 +766,6 @@ confOpenVPN() {
     cd /etc/openvpn/easy-rsa || exit
 
     # Write out new vars file
-    set +e
     IFS= read -d '' String <<"EOF"
 if [ -z "$EASYRSA_CALLER" ]; then
     echo "Nope." >&2
@@ -778,7 +776,6 @@ set_var EASYRSA_PKI        "$EASYRSA/pki"
 set_var EASYRSA_CRL_DAYS   3650
 EOF
     echo "${String}" | $SUDO tee vars >/dev/null
-    set -e
 
     # Set certificate type
     if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
