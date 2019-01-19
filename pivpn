@@ -13,17 +13,17 @@ fi
 function makeOVPNFunc {
     shift
     $SUDO /opt/pivpn/makeOVPN.sh "$@"
-    exit 1
+    exit $?
 }
 
 function listClientsFunc {
     $SUDO /opt/pivpn/clientStat.sh
-    exit 1
+    exit $?
 }
 
 function listOVPNFunc {
     $SUDO /opt/pivpn/listOVPN.sh
-    exit 1
+    exit $?
 }
 
 function debugFunc {
@@ -51,18 +51,18 @@ function debugFunc {
             echo "::: Run 'pivpn debug' again to see if we detect issues."
         fi
     fi
-    exit 1
+    exit $?
 }
 
 function removeOVPNFunc {
     shift
     $SUDO /opt/pivpn/removeOVPN.sh "$@"
-    exit 1
+    exit $?
 }
 
 function uninstallFunc {
     $SUDO /opt/pivpn/uninstall.sh
-    exit 1
+    exit $?
 }
 
 function versionFunc {
