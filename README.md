@@ -1,5 +1,20 @@
-PiVPN
+PiVPN is no longer maintained
 ============
+
+I'm stepping down as pivpn maintainer, since it would take too much of my time to maintain it
+properly. @0-kaladin (the owner of the pivpn organisation) didn't give anyone owner rights on the organisation, so I'm not able to add new people as member.
+
+This means that there are no longer any active maintainers for this project, and that issues and PR's will not get resolved. This will eventually result in pivpn not working anymore (as openvpn gets updates, config options might get added/removed/changed).
+
+Now, what can you if you want to keep pivpn alive? Not much really, but you can fork it and ma
+ke your own "pivpn" (please don't call it that to avoid confusion). If you do use our code, please don't forget to mention that in a README or something (our MIT licence requires that).
+
+I'd like to thank @0-kaladin and @cfcolaco for working on this with me, and all contributors
+and people who provided support in the issues.   
+
+-- redfast00
+
+
 
 About
 -----
