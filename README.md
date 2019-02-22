@@ -1,3 +1,6 @@
+0-kaladin:  Sad times.  I love this project just have no time to properly give it the attention it deserves.  I'm still around so if anyone is willing to pick this up and keep it running just create an issue to let me know.  Thanks to all who've kept this going as current life changes don't allow time for hobbies.  Hopefully in the future... I wanted to get this to <pip install pivpn> at one point.
+
+
 PiVPN is no longer maintained
 ============
 
@@ -14,7 +17,6 @@ and people who provided support in the issues.
 
 -- redfast00
 
-0-kaladin:  Sad times.  I love this project just have no time to properly give it the attention it deserves.  I'm still around so if anyone is willing to pick this up and keep it running just create an issue to let me know.  Thanks to all who've kept this going as current life changes don't allow time for hobbies.  Hopefully in the future... I wanted to get this to <pip install pivpn> at one point.
 
 About
 -----
