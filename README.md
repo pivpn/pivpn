@@ -1,22 +1,12 @@
-0-kaladin:  Sad times.  I love this project just have no time to properly give it the attention it deserves.  I'm still around so if anyone is willing to pick this up and keep it running just create an issue to let me know.  Thanks to all who've kept this going as current life changes don't allow time for hobbies.  Hopefully in the future... I wanted to get this to <pip install pivpn> at one point.
-
-
-PiVPN is no longer maintained
+PiVPN is once again maintained
 ============
 
-I'm stepping down as pivpn maintainer, since it would take too much of my time to maintain it
-properly. @0-kaladin (the owner of the pivpn organisation) didn't give anyone owner rights on the organisation, so I'm not able to add new people as member.
+james-lasersoft: 0-kaladin has assigned me as new admin for this project. I will do my best to keep things rolling into the future. I would like to thanks 0-kaladin for creating the most excellent project and I would also like to thank all of the future contributions we will receive from our zealous followers as they keep me on track.
 
-This means that there are no longer any active maintainers for this project, and that issues and PR's will not get resolved. This will eventually result in pivpn not working anymore (as openvpn gets updates, config options might get added/removed/changed).
 
-Now, what can you if you want to keep pivpn alive? Not much really, but you can fork it and ma
-ke your own "pivpn" (please don't call it that to avoid confusion). If you do use our code, please don't forget to mention that in a README or something (our MIT licence requires that).
+-----
 
-I'd like to thank @0-kaladin and @cfcolaco for working on this with me, and all contributors
-and people who provided support in the issues.   
-
--- redfast00
-
+0-kaladin:  Sad times.  I love this project just have no time to properly give it the attention it deserves.  I'm still around so if anyone is willing to pick this up and keep it running just create an issue to let me know.  Thanks to all who've kept this going as current life changes don't allow time for hobbies.  Hopefully in the future... I wanted to get this to <pip install pivpn> at one point.
 
 About
 -----
