@@ -21,6 +21,7 @@ PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 NO_UFW=$(cat /etc/pivpn/NO_UFW)
 PORT=$(cat /etc/pivpn/INSTALL_PORT)
 PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
+IPv4dev="$(cat /etc/pivpn/pivpnINTERFACE)"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
@@ -107,11 +108,10 @@ echo ":::"
     sysctl -p
 
     if [[ $NO_UFW -eq 0 ]]; then
-        $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"DROP\"/" /etc/default/ufw
-        $SUDO sed -i '/START OPENVPN RULES/,/END OPENVPN RULES/ d' /etc/ufw/before.rules
-        $SUDO ufw delete allow from 10.8.0.0/24 >/dev/null
-        $SUDO ufw delete allow ${PORT}/${PROTO} >/dev/null
-        $SUDO ufw reload
+        $SUDO sed -z "s/*nat\n:POSTROUTING ACCEPT \[0:0\]\n-I POSTROUTING -s 10.8.0.0\/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n\n//" -i /etc/ufw/before.rules
+        $SUDO ufw delete allow "$PORT"/"$PROTO" >/dev/null
+        $SUDO ufw route delete allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+        $SUDO ufw reload >/dev/null
     fi
 
     echo ":::"

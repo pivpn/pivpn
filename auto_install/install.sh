@@ -9,12 +9,9 @@
 #
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
-
 set -e
-######## VARIABLES #########
 
-tmpLog="/tmp/pivpn-install.log"
-instalLogLoc="/etc/pivpn/install.log"
+######## VARIABLES #########
 setupVars=/etc/pivpn/setupVars.conf
 useUpdateVars=false
 
@@ -29,11 +26,12 @@ PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whipta
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 pivpnFilesDir="/etc/.pivpn"
-easyrsaVer="3.0.4"
-easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
+easyrsaVer="3.0.6"
+easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
 
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config 
-UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/1.4.tar.gz"
+UNATTUPG_RELEASE="1.9"
+UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
@@ -340,7 +338,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 setDHCPCD() {
     # Append these lines to dhcpcd.conf to enable a static IP
     echo "interface ${pivpnInterface}
-    static ip_address=${IPv4addr}
+    static ip_address=${IPv4addr}/24
     static routers=${IPv4gw}
     static domain_name_servers=${IPv4dns}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
 }
@@ -352,7 +350,7 @@ setStaticIPv4() {
             echo "::: Static IP already configured."
         else
             setDHCPCD
-            $SUDO ip addr replace dev "${pivpnInterface}" "${IPv4addr}"
+            $SUDO ip addr replace dev "${pivpnInterface}" "${IPv4addr}/24"
             echo ":::"
             echo "::: Setting IP to ${IPv4addr}.  You may need to restart after the install is complete."
             echo ":::"
@@ -473,14 +471,13 @@ install_dependent_packages() {
     echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
     echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
-    if command -v debconf-apt-progress &> /dev/null; then
+    # Add support for https repositories if there are any that use it otherwise the installation will silently fail
+    if grep -q https /etc/apt/sources.list; then
+        PIVPN_DEPS+=("apt-transport-https")
+    fi
 
-        # Use appropriate argument if the package manager uses https otherwise the installation will silently fail
-        if grep -q https /etc/apt/sources.list; then
-            $SUDO debconf-apt-progress -- ${PKG_INSTALL} -y apt-transport-https "${argArray1[@]}"
-        else
-            $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
-        fi
+    if command -v debconf-apt-progress &> /dev/null; then
+        $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
     else
         for i in "${argArray1[@]}"; do
             echo -n ":::    Checking for $i..."
@@ -729,20 +726,20 @@ confOpenVPN() {
 
         if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
 
-            ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA encryption strength" --radiolist \
-            "Choose your desired level of encryption (press space to select):\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications, it is recommended to use 2048 bits.  If you are testing, you can use 1024 bits to speed things up, but do not use this for normal use!  If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
-            "1024" "Use 1024-bit encryption (testing only)" OFF \
-            "2048" "Use 2048-bit encryption (recommended level)" ON \
-            "4096" "Use 4096-bit encryption (paranoid level)" OFF 3>&1 1>&2 2>&3)
+            ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA certificate size" --radiolist \
+            "Choose the desired size of your certificate (press space to select):\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 2048 bits.  If you are testing, you can use 1024 bits to speed things up, but do not use this for normal use!  If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
+            "1024" "Use a 1024-bit certificate (testing only)" OFF \
+            "2048" "Use a 2048-bit certificate (recommended level)" ON \
+            "4096" "Use a 4096-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
 
         else
 
             declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
-            ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA encryption strength" --radiolist \
-            "Choose your desired level of encryption (press space to select):\n   This is an encryption key that will be generated on your system.  The larger the key, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
-            "256" "Use 256-bit encryption (recommended level)" ON \
-            "384" "Use 384-bit encryption" OFF \
-            "521" "Use 521-bit encryption (paranoid level)" OFF 3>&1 1>&2 2>&3)
+            ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
+            "Choose the desired size of your certificate (press space to select):\n   This is an certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
+            "256" "Use a 256-bit certificate (recommended level)" ON \
+            "384" "Use a 384-bit certificate" OFF \
+            "521" "Use a 521-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
 
         fi
 
@@ -758,8 +755,8 @@ confOpenVPN() {
         $SUDO rm -rf /etc/openvpn/easy-rsa/
     fi
 
-    # Get the PiVPN easy-rsa
-    wget -q -O - "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-${easyrsaVer} /etc/openvpn/easy-rsa
+    # Get easy-rsa
+    wget -q -O - "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
     # fix ownership
     $SUDO chown -R root:root /etc/openvpn/easy-rsa
     $SUDO mkdir /etc/openvpn/easy-rsa/pki
@@ -799,7 +796,7 @@ EOF
 
     if [[ ${useUpdateVars} == false ]]; then
         if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
-            whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman key, and HMAC key will now be generated." ${r} ${c}
+            whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman parameters, and HMAC key will now be generated." ${r} ${c}
         fi
     fi
 
@@ -886,8 +883,8 @@ EOT
             # Fix Raspbian config
             if [[ $PLAT == "Raspbian" ]]; then
                 wget -q -O - "$UNATTUPG_CONFIG" | $SUDO tar xz
-                $SUDO cp unattended-upgrades-1.4/data/50unattended-upgrades.Raspbian 50unattended-upgrades
-                $SUDO rm -rf unattended-upgrades-1.4
+                $SUDO cp "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" 50unattended-upgrades
+                $SUDO rm -rf "unattended-upgrades-$UNATTUPG_RELEASE"
             fi
 
             # Add the remaining settings for all other distributions
@@ -909,21 +906,20 @@ confNetwork() {
     $SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
     $SUDO sysctl -p
 
-    # if ufw enabled, configure that
-    if hash ufw 2>/dev/null; then
+    # if ufw enabled, configure that (running as root because sometimes the executable is not in the user's $PATH, on Debian for example)
+    if $SUDO bash -c 'hash ufw' 2>/dev/null; then
         if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive
         then
             noUFW=1
         else
             echo "::: Detected UFW is enabled."
             echo "::: Adding UFW rules..."
-            $SUDO cp /etc/.pivpn/ufw_add.txt /tmp/ufw_add.txt
-            $SUDO sed -i 's/IPv4dev/'"$IPv4dev"'/' /tmp/ufw_add.txt
-            $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
-            $SUDO sed -i -e '/delete these required/r /tmp/ufw_add.txt' -e//N /etc/ufw/before.rules
-            $SUDO ufw allow "${PORT}/${PROTO}"
-            $SUDO ufw allow from 10.8.0.0/24
-            $SUDO ufw reload
+            $SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+            # Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
+            $SUDO ufw insert 1 allow "$PORT"/"$PROTO" >/dev/null
+            # Don't forward everything, just the traffic originated from the VPN subnet
+            $SUDO ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+            $SUDO ufw reload >/dev/null
             echo "::: UFW configuration completed."
         fi
     else
@@ -932,7 +928,7 @@ confNetwork() {
     # else configure iptables
     if [[ $noUFW -eq 1 ]]; then
         echo 1 > /tmp/noUFW
-        $SUDO iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o "$IPv4dev" -j MASQUERADE
+        $SUDO iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "$IPv4dev" -j MASQUERADE
         case ${PLAT} in
             Ubuntu|Debian|Devuan)
                 $SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
@@ -1021,7 +1017,7 @@ confOVPN() {
 
 confLogging() {
   echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
-if \$programname == 'ovpn-server' then ~" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
+if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
   echo "/var/log/openvpn.log
 {
@@ -1138,8 +1134,7 @@ updatePiVPN() {
 displayFinalMessage() {
     # Final completion message to user
     whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles.
-Run 'pivpn help' to see what else you can do!
-The install log is in /etc/pivpn." ${r} ${c}
+Run 'pivpn help' to see what else you can do!" ${r} ${c}
     if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" ${r} ${c}); then
         whiptail --title "Rebooting" --msgbox "The system will now reboot." ${r} ${c}
         printf "\nRebooting system...\n"
@@ -1278,9 +1273,11 @@ main() {
         clone_or_update_repos
 
         # Install and log everything to a file
-        installPiVPN | tee ${tmpLog}
-
-        echo "::: Install Complete..."
+        if installPiVPN; then
+            echo "::: Install Complete..."
+        else
+            exit 1
+        fi
     else
         # Source ${setupVars} for use in the rest of the functions.
         source ${setupVars}
@@ -1314,11 +1311,8 @@ main() {
         clone_or_update_repos
 
 
-        updatePiVPN | tee ${tmpLog}
+        updatePiVPN
     fi
-
-    #Move the install log into /etc/pivpn for storage
-    $SUDO mv ${tmpLog} ${instalLogLoc}
 
     echo "::: Restarting services..."
     # Start services
@@ -1349,7 +1343,6 @@ main() {
     fi
 
     echo ":::"
-    echo "::: The install log is located at: ${instalLogLoc}"
 }
 
 if [[ "${PIVPN_TEST}" != true ]] ; then
