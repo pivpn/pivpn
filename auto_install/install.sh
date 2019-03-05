@@ -10,6 +10,8 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
+#Adding custom search domain - atlasalex
+
 set -e
 ######## VARIABLES #########
 
@@ -32,7 +34,7 @@ pivpnFilesDir="/etc/.pivpn"
 easyrsaVer="3.0.4"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
-# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config 
+# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/1.4.tar.gz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
