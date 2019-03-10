@@ -10,8 +10,6 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
-#Adding custom search domain - atlasalex
-
 set -e
 ######## VARIABLES #########
 
@@ -704,6 +702,36 @@ setClientDNS() {
     fi
 }
 
+#This procedure allows a user to specify a custom search domain if they have one.
+setCustomDomain() {
+  DomainSettingsCorrect=False
+
+  if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" 8 78); then
+
+    until [[ $DomainSettingsCorrect = True ]]
+    do
+      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" 8 78 --title "Test" 3>&1 1>&2 2>&3); then
+
+          if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" 8 78); then
+              DomainSettingsCorrect=True
+
+              $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" /' server.conf
+
+          else
+              # If the settings are wrong, the loop continues
+              DomainSettingsCorrect=False
+          fi
+      else
+        echo "::: Cancel selected. Exiting..."
+        exit 1
+      fi
+    done
+
+  else
+    echo sleep 0.1
+  fi
+}
+
 confOpenVPN() {
     # Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
     NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
@@ -1106,6 +1134,7 @@ installPiVPN() {
     confNetwork
     confOVPN
     setClientDNS
+    setCustomDomain
     confLogging
     finalExports
 }
