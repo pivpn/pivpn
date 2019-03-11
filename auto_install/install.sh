@@ -718,13 +718,13 @@ setClientDNS() {
 setCustomDomain() {
   DomainSettingsCorrect=False
 
-  if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" 8 78); then
+  if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" ${r} ${c}); then
 
     until [[ $DomainSettingsCorrect = True ]]
     do
-      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" 8 78 --title "Custom Domain" 3>&1 1>&2 2>&3); then
+      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" ${r} ${c} --title "Custom Domain" 3>&1 1>&2 2>&3); then
           if valid_domain "$CUSTOMDomain"; then
-            if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" 8 78); then
+            if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" ${r} ${c}); then
                 DomainSettingsCorrect=True
 
                 $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" /' server.conf
@@ -734,7 +734,7 @@ setCustomDomain() {
                 DomainSettingsCorrect=False
             fi
           else
-            whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $CUSTOMDomain\n" 8 78
+            whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $CUSTOMDomain\n" ${r} ${c}
             DomainSettingsCorrect=False
           fi
       else
