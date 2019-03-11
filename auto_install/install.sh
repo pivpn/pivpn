@@ -722,16 +722,20 @@ setCustomDomain() {
 
     until [[ $DomainSettingsCorrect = True ]]
     do
-      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" 8 78 --title "Test" 3>&1 1>&2 2>&3); then
+      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" 8 78 --title "Custom Domain" 3>&1 1>&2 2>&3); then
+          if valid_domain "$CUSTOMDomain"; then
+            if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" 8 78); then
+                DomainSettingsCorrect=True
 
-          if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" 8 78); then
-              DomainSettingsCorrect=True
+                $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" /' server.conf
 
-              $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" /' /etc/openvpn/server.conf
-
+            else
+                # If the settings are wrong, the loop continues
+                DomainSettingsCorrect=False
+            fi
           else
-              # If the settings are wrong, the loop continues
-              DomainSettingsCorrect=False
+            whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $CUSTOMDomain\n" 8 78
+            DomainSettingsCorrect=False
           fi
       else
         echo "::: Cancel selected. Exiting..."
