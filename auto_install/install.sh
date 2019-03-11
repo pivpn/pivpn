@@ -380,6 +380,18 @@ function valid_ip()
     return $stat
 }
 
+#Call this function to use a regex to check user input for a valid custom domain
+function valid_domain()
+{
+  local domain=$1
+  local stat=1
+
+  if [[ $domain =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}\.[a-zA-Z]{2,}$ ]]; then
+    stat=$?
+  fi
+  return $stat
+}
+
 installScripts() {
     # Install the scripts from /etc/.pivpn to their various locations
     $SUDO echo ":::"
