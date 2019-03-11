@@ -727,7 +727,7 @@ setCustomDomain() {
             if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" ${r} ${c}); then
                 DomainSettingsCorrect=True
 
-                $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" /' server.conf
+                $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" /' /etc/openvpn/server.conf
 
             else
                 # If the settings are wrong, the loop continues
