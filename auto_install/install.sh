@@ -1021,7 +1021,7 @@ confOVPN() {
 
 confLogging() {
   echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
-if \$programname == 'ovpn-server' then ~" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
+if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
   echo "/var/log/openvpn.log
 {
