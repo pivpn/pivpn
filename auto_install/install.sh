@@ -32,7 +32,7 @@ pivpnFilesDir="/etc/.pivpn"
 easyrsaVer="3.0.4"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
-# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config 
+# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/1.4.tar.gz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
@@ -380,6 +380,18 @@ function valid_ip()
     return $stat
 }
 
+#Call this function to use a regex to check user input for a valid custom domain
+function valid_domain()
+{
+  local domain=$1
+  local stat=1
+
+  if [[ $domain =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}\.[a-zA-Z]{2,}$ ]]; then
+    stat=$?
+  fi
+  return $stat
+}
+
 installScripts() {
     # Install the scripts from /etc/.pivpn to their various locations
     $SUDO echo ":::"
@@ -700,6 +712,40 @@ setClientDNS() {
       echo "::: Cancel selected. Exiting..."
       exit 1
     fi
+}
+
+#This procedure allows a user to specify a custom search domain if they have one.
+setCustomDomain() {
+  DomainSettingsCorrect=False
+
+  if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" ${r} ${c}); then
+
+    until [[ $DomainSettingsCorrect = True ]]
+    do
+      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" ${r} ${c} --title "Custom Domain" 3>&1 1>&2 2>&3); then
+          if valid_domain "$CUSTOMDomain"; then
+            if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" ${r} ${c}); then
+                DomainSettingsCorrect=True
+
+                $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" \n&/' /etc/openvpn/server.conf
+
+            else
+                # If the settings are wrong, the loop continues
+                DomainSettingsCorrect=False
+            fi
+          else
+            whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $CUSTOMDomain\n" ${r} ${c}
+            DomainSettingsCorrect=False
+          fi
+      else
+        echo "::: Cancel selected. Exiting..."
+        exit 1
+      fi
+    done
+
+  else
+    echo sleep 0.1
+  fi
 }
 
 confOpenVPN() {
@@ -1104,6 +1150,7 @@ installPiVPN() {
     confNetwork
     confOVPN
     setClientDNS
+    setCustomDomain
     confLogging
     finalExports
 }
