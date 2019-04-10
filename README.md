@@ -1,5 +1,12 @@
-PiVPN
+PiVPN is once again maintained
 ============
+
+james-lasersoft: 0-kaladin has assigned me as new admin for this project. I will do my best to keep things rolling into the future. I would like to thanks 0-kaladin for creating the most excellent project and I would also like to thank all of the future contributions we will receive from our zealous followers as they keep me on track.
+
+
+-----
+
+0-kaladin:  Sad times.  I love this project just have no time to properly give it the attention it deserves.  I'm still around so if anyone is willing to pick this up and keep it running just create an issue to let me know.  Thanks to all who've kept this going as current life changes don't allow time for hobbies.  Hopefully in the future... I wanted to get this to <pip install pivpn> at one point.
 
 About
 -----

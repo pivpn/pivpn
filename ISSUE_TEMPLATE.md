@@ -12,9 +12,9 @@
 ## Issue
 
 
-## Have you searched for similar issues and solutions? 
-    (yes/no / which issues?) 
-  
+## Have you searched for similar issues and solutions?
+    (yes/no / which issues?)
+
 
 ## Console output of `curl -L install.pivpn.io | bash`
 ```
@@ -47,7 +47,7 @@
   Output Here
 ```
 
-## Have you taken any steps towards solving your issue? 
-     which? 
+## Have you taken any steps towards solving your issue?
+     which?
 
 <!-- If something else fails, please state the command you used and it's output -->
