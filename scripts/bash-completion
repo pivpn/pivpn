@@ -5,7 +5,7 @@ _pivpn()
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
     dashopts="-a -c -d -l -r -h -u"
-    opts="debug add clients list revoke uninstall help"
+    opts="crl debug add clients list revoke uninstall help"
     if [ "${#COMP_WORDS[@]}" -eq 2 ]
     then
         if [[ ${cur} == -* ]] ; then

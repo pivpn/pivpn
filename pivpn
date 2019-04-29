@@ -69,6 +69,12 @@ function versionFunc {
     printf "\e[1mVersion 1.9\e[0m\n"
 }
 
+function updateCRL {
+	shift
+	$SUDO /opt/pivpn/updateCRL.sh "$@"
+	exit 1
+}
+
 function helpFunc {
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
@@ -80,6 +86,7 @@ function helpFunc {
     echo ":::  -d, debug            Start a debugging session if having trouble"
     echo ":::  -l, list             List all valid and revoked certificates"
     echo ":::  -r, revoke           Revoke a client ovpn profile"
+    echo ":::    , crl              Update Certificate Revocation List"
     echo ":::  -h, help             Show this help dialog"
     echo ":::  -u, uninstall        Uninstall PiVPN from your system!"
     exit 1
@@ -96,6 +103,7 @@ case "$1" in
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;
 "-r" | "revoke"             ) removeOVPNFunc "$@";;
+       "crl"                ) updateCRL "$@";;
 "-h" | "help"               ) helpFunc;;
 "-u" | "uninstall"          ) uninstallFunc;;
 "-v"                        ) versionFunc;;

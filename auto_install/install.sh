@@ -396,7 +396,8 @@ installScripts() {
     $SUDO cp /etc/.pivpn/scripts/uninstall.sh /opt/pivpn/uninstall.sh
     $SUDO cp /etc/.pivpn/scripts/pivpnDebug.sh /opt/pivpn/pivpnDebug.sh
     $SUDO cp /etc/.pivpn/scripts/fix_iptables.sh /opt/pivpn/fix_iptables.sh
-    $SUDO chmod 0755 /opt/pivpn/{makeOVPN,clientStat,listOVPN,removeOVPN,uninstall,pivpnDebug,fix_iptables}.sh
+    $SUDO cp /etc/.pivpn/scripts/updateCRL.sh /opt/pivpn/updateCRL.sh
+    $SUDO chmod 0755 /opt/pivpn/{makeOVPN,clientStat,listOVPN,removeOVPN,uninstall,pivpnDebug,fix_iptables,updateCRL}.sh
     $SUDO cp /etc/.pivpn/pivpn /usr/local/bin/pivpn
     $SUDO chmod 0755 /usr/local/bin/pivpn
     $SUDO cp /etc/.pivpn/scripts/bash-completion /etc/bash_completion.d/pivpn
