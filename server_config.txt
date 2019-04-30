@@ -20,7 +20,7 @@ client-to-client
 keepalive 1800 3600
 remote-cert-tls client
 tls-version-min 1.2
-tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0
+tls-crypt /etc/openvpn/easy-rsa/pki/ta.key
 cipher AES-256-CBC
 auth SHA256
 user nobody

@@ -841,11 +841,6 @@ EOF
     $SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
 
     if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
-      #If they enabled 2.4 use tls-crypt instead of tls-auth to encrypt control channel
-      $SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server.conf
-    fi
-
-    if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
       #If they enabled 2.4 disable dh parameters since the key exchange will use the matching curve from the ECDSA certificate
       $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none/" /etc/openvpn/server.conf
     else
