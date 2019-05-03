@@ -378,6 +378,18 @@ function valid_ip()
     return $stat
 }
 
+#Call this function to use a regex to check user input for a valid custom domain
+function valid_domain()
+{
+  local domain=$1
+  local stat=1
+
+  if [[ $domain =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}\.[a-zA-Z]{2,}$ ]]; then
+    stat=$?
+  fi
+  return $stat
+}
+
 installScripts() {
     # Install the scripts from /etc/.pivpn to their various locations
     $SUDO echo ":::"
@@ -534,7 +546,7 @@ make_repo() {
     # Remove the non-repos interface and clone the interface
     echo -n ":::    Cloning $2 into $1..."
     $SUDO rm -rf "${1}"
-    $SUDO git clone -q "${2}" "${1}" > /dev/null & spinner $!
+    $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
     if [ -z "${TESTING+x}" ]; then
         :
     else
@@ -549,9 +561,9 @@ update_repo() {
     else
         # Pull the latest commits
         echo -n ":::     Updating repo in $1..."
+        $SUDO rm -rf "${1}"
+        $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
         cd "${1}" || exit 1
-        $SUDO git stash -q > /dev/null & spinner $!
-        $SUDO git pull -q > /dev/null & spinner $!
         if [ -z "${TESTING+x}" ]; then
             :
         else
@@ -697,6 +709,40 @@ setClientDNS() {
       echo "::: Cancel selected. Exiting..."
       exit 1
     fi
+}
+
+#This procedure allows a user to specify a custom search domain if they have one.
+setCustomDomain() {
+  DomainSettingsCorrect=False
+
+  if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" ${r} ${c}); then
+
+    until [[ $DomainSettingsCorrect = True ]]
+    do
+      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" ${r} ${c} --title "Custom Domain" 3>&1 1>&2 2>&3); then
+          if valid_domain "$CUSTOMDomain"; then
+            if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" ${r} ${c}); then
+                DomainSettingsCorrect=True
+
+                $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" \n&/' /etc/openvpn/server.conf
+
+            else
+                # If the settings are wrong, the loop continues
+                DomainSettingsCorrect=False
+            fi
+          else
+            whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $CUSTOMDomain\n" ${r} ${c}
+            DomainSettingsCorrect=False
+          fi
+      else
+        echo "::: Cancel selected. Exiting..."
+        exit 1
+      fi
+    done
+
+  else
+    echo sleep 0.1
+  fi
 }
 
 confOpenVPN() {
@@ -1100,6 +1146,7 @@ installPiVPN() {
     confNetwork
     confOVPN
     setClientDNS
+    setCustomDomain
     confLogging
     finalExports
 }
@@ -1272,7 +1319,7 @@ main() {
         # Clone/Update the repos
         clone_or_update_repos
 
-        # Install and log everything to a file
+        # Install
         if installPiVPN; then
             echo "::: Install Complete..."
         else

@@ -148,8 +148,22 @@ fi
 if [ "$ERR" -eq 1 ]; then
     echo -e "[INFO] Run \e[1mpivpn -d\e[0m again to see if we detect issues"
 fi
+
 printf "=============================================\n"
 echo -e "::::      \e[4mSnippet of the server log\e[0m      ::::"
 tail -20 /var/log/openvpn.log
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mDebug complete\e[0m\t\t ::::"
+
+# Telekom Hybrid Check
+wget -O /tmp/hybcheck http://speedport.ip &>/dev/null
+if grep -Fq "Speedport Pro" /tmp/hybcheck || grep -Fq "Speedport Hybrid" /tmp/hybcheck
+then
+    printf ":::\t\t\t\t\t:::\n::\tTelekom Hybrid Check\t\t ::\n:::\t\t\t\t\t:::\n"
+    echo "Are you using Telekom Hybrid (found a hybrid compatible router)?"
+    echo "If yes and you have problems with the connections you can test the following:"
+    echo "Add 'tun-mtu 1316' in /etc/openvpn/easy-rsa/pki/Default.txt to set a hybrid compatible MTU size (new .ovpn files)."
+    echo "For already existing .ovpn files 'tun-mtu 1316' can also be inserted there manually."
+    echo "With Telekom hybrid connections, you may have to experiment a little with MTU (tun-mtu, link-mtu and mssfix)."
+fi
+rm /tmp/hybcheck
