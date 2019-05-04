@@ -31,22 +31,6 @@
   Output Here
 ```
 
-## Console Output of `sudo iptables -t nat -S`
-```
-  Output Here
-```
-
-## Console Output of `sudo iptables -S`
-```
-  Output Here
-```
-
-## output of `sudo netstat -uanp | grep openvpn`
-
-```
-  Output Here
-```
-
 ## Have you taken any steps towards solving your issue?
      which?
 

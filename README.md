@@ -54,11 +54,13 @@ curl -L https://install.pivpn.io | bash
 
 The script will first update your APT repositories, upgrade packages, and install OpenVPN,
 which will take some time.
-It will ask which encryption method you wish the guts of your server to use, 1024-bit, 2048-bit, or 4096-bit.
+It will ask which authentication method you wish the guts of your server to use, 1024-bit, 2048-bit, or 4096-bit.
 If you're unsure or don't have a convincing reason one way or the other I'd use 2048 today.  From the OpenVPN site:
 > For asymmetric keys, general wisdom is that 1024-bit keys are no longer sufficient to protect against well-equipped adversaries. Use of 2048-bit is a good minimum. It is wise to ensure all keys across your active PKI (including the CA root keypair) are using at least 2048-bit keys.
 
-> Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN,) but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
+> Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN), but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
+
+Luckily, OpenVPN 2.4 supports ECDSA certificates, which are based on Elliptic Curves, allowing much smaller keys while providing an equivalent security level (256 bit long, equivalent to 3072 bit RSA). For this reason, PiVPN now uses ECDSA certs if you choose to enable OpenVPN 2.4 features. If not, the usual RSA certificates are generated in case the user has clients running an older version of OpenVPN.
 
 After this, the script will go back to the command line as it builds the server's own
 certificate authority. The script will ask you if you'd like to change the certificate fields,
@@ -70,7 +72,11 @@ and have a working configuration at the end.
 Finally, the script will take some time to build the server's Diffie-Hellman key
 exchange. If you chose 1024-bit encryption, this will just take a few minutes, but if you
 chose 2048-bit, it will take much longer (anywhere from 40 minutes to several hours on a
-Model B+). The script will also make some changes to your system to allow it to forward
+Model B+).
+
+NOTE: Diffie-Hellman parameters are NOT generated if you choose not to use OpenVPN 2.4.
+
+The script will also make some changes to your system to allow it to forward
 internet traffic and allow VPN connections through the Pi's firewall. When the script
 informs you that it has finished configuring OpenVPN, it will ask if you want to reboot.  
 I have it where you do not need to reboot when done but it also can't hurt.
