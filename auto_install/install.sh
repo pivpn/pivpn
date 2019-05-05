@@ -1331,6 +1331,10 @@ main() {
             $SUDO systemctl start openvpn.service
             ;;
     esac
+    
+    # Ensure that cached writes reach persistent storage
+    echo "::: Flushing writes to disk..."
+    sync
 
     echo "::: done."
 
