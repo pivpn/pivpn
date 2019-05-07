@@ -706,12 +706,12 @@ confOpenVPN() {
     # Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
     NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
     SERVER_NAME="server_${NEW_UUID}"
-
+    
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
-
+        OVPN_VERSION=`openvpn --version | grep OpenVPN | head -n 1 | awk '{print $2}'`
         if [[ ${useUpdateVars} == false ]]; then
-            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]]; then
+            if dpkg --compare-versions $OVPN_VERSION lt 2.4 ; then
                 APPLY_TWO_POINT_FOUR=false
             else
                 if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
