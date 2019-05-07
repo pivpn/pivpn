@@ -709,9 +709,9 @@ confOpenVPN() {
 
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
-
+         OVPN_VERSION=`openvpn --version | grep OpenVPN | head -n 1 | awk '{print $2}'`
         if [[ ${useUpdateVars} == false ]]; then
-            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]]; then
+            if dpkg --compare-versions $OVPN_VERSION lt 2.4 ; then
                 APPLY_TWO_POINT_FOUR=false
             else
                 if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
