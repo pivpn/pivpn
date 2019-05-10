@@ -13,11 +13,12 @@ INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
     echo ":::"
-    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-h|--help]"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-h|--help]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  nopass               Create a client without a password"
+    echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
     echo ":::  -p,--password        Password for the Client (no default)"
     echo ":::  -h,--help            Show this help dialog"
@@ -48,6 +49,16 @@ do
             fi
             PASSWD="$_val"
             ;;
+        -d|--days|--days=*)
+            _val="${_key##--days=}"
+            if test "$_val" = "$_key"
+            then
+                test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
+                _val="$2"
+                shift
+            fi
+            DAYS="$_val"
+            ;;
         -h|--help)
             helpFunc
             exit 0
@@ -71,6 +82,7 @@ function keynoPASS() {
     #Build the client key
     expect << EOF
     set timeout -1
+    set env(EASYRSA_CERT_EXPIRE) "${DAYS}"
     spawn ./easyrsa build-client-full "${NAME}" nopass
     expect eof
 EOF
@@ -115,6 +127,7 @@ function keyPASS() {
 
     expect << EOF
     set timeout -1
+    set env(EASYRSA_CERT_EXPIRE) "${DAYS}"
     spawn ./easyrsa build-client-full "${NAME}"
     expect "Enter PEM pass phrase" { send -- "${PASSWD}\r" }
     expect "Verifying - Enter PEM pass phrase" { send -- "${PASSWD}\r" }
@@ -129,8 +142,13 @@ if [ -z "${NAME}" ]; then
     read -r NAME
 fi
 
-if [[ "${NAME}" =~ [^a-zA-Z0-9\-] ]]; then
-    echo "Name can only contain alphanumeric characters and dashes (-)."
+if [[ ${NAME::1} == "." ]] || [[ ${NAME::1} == "-" ]]; then
+    echo "Names cannot start with a dot (.) or a dash (-)."
+    exit 1
+fi
+
+if [[ "${NAME}" =~ [^a-zA-Z0-9\.\-\@\_] ]]; then
+    echo "Name can only contain alphanumeric characters and these characters (.-@_)."
     exit 1
 fi
 
@@ -162,6 +180,18 @@ fi
 if [ "${NAME}" == "ta" ] || [ "${NAME}" == "server" ] || [ "${NAME}" == "ca" ]; then
     echo "Sorry, this is in use by the server and cannot be used by clients."
     exit 1
+fi
+
+#As of EasyRSA 3.0.6, by default certificates last 1080 days, see https://github.com/OpenVPN/easy-rsa/blob/6b7b6bf1f0d3c9362b5618ad18c66677351cacd1/easyrsa3/vars.example
+if [ -z "${DAYS}" ]; then
+    read -r -e -p "How many days should the certificate last?  " -i 1080 DAYS
+fi
+
+if [[ ! "$DAYS" =~ ^[0-9]+$ ]] || [ "$DAYS" -lt 1 ] || [ "$DAYS" -gt 3650 ]; then
+    #The CRL lasts 3650 days so it doesn't make much sense that certificates would last longer
+    echo "Please input a valid number of days, between 1 and 3650 inclusive."
+    exit 1
+
 fi
 
 cd /etc/openvpn/easy-rsa || exit
