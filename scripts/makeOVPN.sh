@@ -185,10 +185,13 @@ fi
 #As of EasyRSA 3.0.6, by default certificates last 1080 days, see https://github.com/OpenVPN/easy-rsa/blob/6b7b6bf1f0d3c9362b5618ad18c66677351cacd1/easyrsa3/vars.example
 if [ -z "${DAYS}" ]; then
     read -r -e -p "How many days should the certificate last?  " -i 1080 DAYS
-elif [[ ! "$DAYS" =~ ^[0-9]+$ ]] || [ "$DAYS" -lt 1 ] || [ "$DAYS" -gt 3650 ]; then
+fi
+
+if [[ ! "$DAYS" =~ ^[0-9]+$ ]] || [ "$DAYS" -lt 1 ] || [ "$DAYS" -gt 3650 ]; then
     #The CRL lasts 3650 days so it doesn't make much sense that certificates would last longer
     echo "Please input a valid number of days, between 1 and 3650 inclusive."
     exit 1
+
 fi
 
 cd /etc/openvpn/easy-rsa || exit
