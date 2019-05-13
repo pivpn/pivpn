@@ -1,24 +1,15 @@
-PiVPN is once again maintained
-============
-
-james-lasersoft: 0-kaladin has assigned me as new admin for this project. I will do my best to keep things rolling into the future. I would like to thanks 0-kaladin for creating the most excellent project and I would also like to thank all of the future contributions we will receive from our zealous followers as they keep me on track.
-
-
------
-
-0-kaladin:  Sad times.  I love this project just have no time to properly give it the attention it deserves.  I'm still around so if anyone is willing to pick this up and keep it running just create an issue to let me know.  Thanks to all who've kept this going as current life changes don't allow time for hobbies.  Hopefully in the future... I wanted to get this to <pip install pivpn> at one point.
-
 About
 -----
 
 Visit the [PiVPN](http://pivpn.io) site for more information.
-This is a set of shell scripts that serve to easily turn your Raspberry Pi (TM)
+This is a set of shell scripts developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
 into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) software.
 
 Have you been looking for a good guide or tutorial for installing openvpn on a raspberry pi or ubuntu based server?  Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
 
 The master branch of this script installs and configures OpenVPN on Raspbian
-Jessie, Stretch, Devuan and has been tested on Ubuntu 14.04 and 16.04 running from an Amazon AWS image.  Personally, I'd recommend using the Stretch or Jessie Lite image on a raspberry pi in your home so you can VPN into your home from unsecure remote locations and safely use the internet.  However, the scripts do try to detect different distributions and make adjustments accordingly.  They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
+Jessie, Stretch, Devuan and has been tested on Ubuntu 14.04 and 16.04 running from an Amazon AWS image.
+We recommend using the Stretch or Jessie Lite image on a raspberry pi in your home so you can VPN into your home from unsecure remote locations and safely use the internet.  However, the scripts do try to detect different distributions and make adjustments accordingly.  They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
 
 This scripts primary mission in life is to allow a user to have a home VPN for as cost effective as possible and without being a technical wizard.  Hence the design of pivpn to work on a Raspberry Pi ($35) and then one command installer.  Followed by easy management of the VPN thereafter with the 'pivpn' command.  That being said...
 
@@ -81,6 +72,7 @@ internet traffic and allow VPN connections through the Pi's firewall. When the s
 informs you that it has finished configuring OpenVPN, it will ask if you want to reboot.  
 I have it where you do not need to reboot when done but it also can't hurt.
 
+
 Managing the PiVPN
 ----------------------
 
@@ -141,14 +133,16 @@ you want to remove OpenVPN without installing a fresh Raspbian image, just run
 Feedback & Support
 --------
 
-I am interested in making this script work for as many people as possible, so I
-welcome any feedback on your experience. If you have problems using it, feel
-free to post an issue here on github.  I'll classify the issues the best I can
-to keep things sorted.
+PiVPN is purely community driven, and we are interested in making this script work for as many people as possible, we welcome any feedback on your experience.
 
-[[DISCONTINUED APRIL 17]] You can also post on the [Google Space](https://goo.gl/spaces/kgp2Mcy5RDfZ5SSf8) I created for PiVPN, especially suited for general questions or discussions.
+for community support or general questions.
+Feel free to post on our subreddit <https://www.reddit.com/r/pivpn/>
+You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC 
 
-You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC for community support or general questions.
+For code related issues, code contributions, feature requests, feel free to open an issue here at github.
+We will classify the issues the best we can to keep things sorted.
+
+
 
 Related Projects
 --------
@@ -164,7 +158,7 @@ The foundation for all open-source VPN projects.
 Contributions
 -------------
 
-I'm also interested in improving this script, please check the current issues to see where you can help. If you have any
+Please check the current issues to see where you can help. If you have any
 feature ideas or requests, or are interested in adding your ideas to it,
 testing it on other platforms, please comment or leave a pull request.
 If you contribute often I can add you as a member of the PiVPN project.
@@ -181,4 +175,4 @@ sources.
 
 4. And as always the ever vigilant [EFF](https://www.eff.org/)
 
-I don't take donations at this time but if you want to show your appreciation to me, then contribute or leave feedback on suggestions or improvements.
+PiVPN is not taking donations at this time but if you want to show your appreciation, then contribute or leave feedback on suggestions or improvements.
