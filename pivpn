@@ -27,30 +27,12 @@ function listOVPNFunc {
 }
 
 function debugFunc {
-    noUFW=$(cat /etc/pivpn/NO_UFW)
     echo "::: Generating Debug Output"
     $SUDO /opt/pivpn/pivpnDebug.sh | tee /tmp/debug.txt
     echo "::: "
     echo "::: Debug output completed above."
     echo "::: Copy saved to /tmp/debug.txt"
     echo "::: "
-    if [[ ${noUFW} -eq 1 ]]; then
-        IPTABLES_FIX=`$SUDO iptables -t nat -L -n -v | grep -c 'MASQUERADE.*10.8.0.0\/24'`
-        $SUDO iptables -t nat -L -n -v | grep -q 'MASQUERADE.*10.8.0.0\/24'
-        if [ $? -ne 0 ]; then
-            IPTABLES_FIX=2
-        fi
-        if [[ ${IPTABLES_FIX} -gt 1 ]]; then
-            echo "::: We detected some potential issues with your iptables."
-            read -p "::: Would you like us to try to fix this? [y/n]: " -n 1 -r
-            echo
-            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-                $SUDO /opt/pivpn/fix_iptables.sh
-            fi
-            echo "::: Attempt at fix completed."
-            echo "::: Run 'pivpn debug' again to see if we detect issues."
-        fi
-    fi
     exit 1
 }
 

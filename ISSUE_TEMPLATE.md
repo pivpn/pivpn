@@ -64,4 +64,6 @@ For any output requested below, you may alternatively post it on http://pastebin
 ```
 
 ### Have you taken any steps towards solving your issue?
-     which?
+```
+  which?
+```

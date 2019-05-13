@@ -1,9 +1,0 @@
-# START OPENVPN RULES
-# NAT table rules
-*nat
-:POSTROUTING ACCEPT [0:0] 
-# Allow traffic from OpenVPN client to masquerade 
--A POSTROUTING -s 10.8.0.0/24 -o IPv4dev -j MASQUERADE
-COMMIT
-# END OPENVPN RULES
-
