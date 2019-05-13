@@ -800,6 +800,7 @@ confOpenVPN() {
         $SUDO rm -rf /etc/openvpn/easy-rsa/
     fi
 
+
     # Get easy-rsa
     wget -q -O - "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
     # fix ownership
