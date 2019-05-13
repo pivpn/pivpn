@@ -338,7 +338,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 setDHCPCD() {
     # Append these lines to dhcpcd.conf to enable a static IP
     echo "interface ${pivpnInterface}
-    static ip_address=${IPv4addr}/24
+    static ip_address=${IPv4addr}
     static routers=${IPv4gw}
     static domain_name_servers=${IPv4dns}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
 }
@@ -350,7 +350,7 @@ setStaticIPv4() {
             echo "::: Static IP already configured."
         else
             setDHCPCD
-            $SUDO ip addr replace dev "${pivpnInterface}" "${IPv4addr}/24"
+            $SUDO ip addr replace dev "${pivpnInterface}" "${IPv4addr}"
             echo ":::"
             echo "::: Setting IP to ${IPv4addr}.  You may need to restart after the install is complete."
             echo ":::"

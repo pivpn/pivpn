@@ -9,29 +9,30 @@
 <!-- If the install failed: can you please copy-paste the console output after running `curl install.pivpn.io | bash` between the backticks -->
 
 <!-- Please explain your issue. Feel free to format your text -->
-## Issue
+### Issue
 
 
-## Have you searched for similar issues and solutions?
+### Have you searched for similar issues and solutions?
     (yes/no / which issues?)
 
 
-## Console output of `curl -L install.pivpn.io | bash`
+### Console output of `curl -L install.pivpn.io | bash`
 ```
   Output Here
 ```
 <!-- If the generation of an .ovpn file fails / the ovpns folder stays empty, please paste the output of `pivpn add` or `pivpn add nopass` between the backticks -->
-## Console output of `pivpn add` or `pivpn add nopass`
+### Console output of `pivpn add` or `pivpn add nopass`
 ```
   Output Here
 ```
 <!-- Please paste the output of `pivpn debug` between the backticks, don't forget to substitute your public IP address if you don't want the world to know it -->
-## Console output of `pivpn debug`
+### Console output of `pivpn debug`
 ```
   Output Here
 ```
 
-## Have you taken any steps towards solving your issue?
-     which?
-
+### Have you taken any steps towards solving your issue?
+```
+  which?
+```
 <!-- If something else fails, please state the command you used and it's output -->
