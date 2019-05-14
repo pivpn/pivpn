@@ -46,23 +46,6 @@ For any output requested below, you may alternatively post it on http://pastebin
 ```
   Output Here
 ```
-
-### Console Output of      `sudo iptables -t nat -S`
-```
-  Output Here
-```
-
-### Console Output of      `sudo iptables -S`
-```
-  Output Here
-```
-
-### Console Output of      `sudo netstat -uanp | grep openvpn`
-
-```
-  Output Here
-```
-
 ### Have you taken any steps towards solving your issue?
 ```
   which?
