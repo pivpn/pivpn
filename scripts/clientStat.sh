@@ -20,7 +20,7 @@ printf "\e[1m::: Client Status List :::\e[0m\n"
 printf "\t\t\t\t\t\t\t\tBytes\t\tBytes\t\n"
 printf "\e[4mName\e[0m\t\t\t\e[4mRemote IP\e[0m\t\t\e[4mVirtual IP\e[0m\t\e[4mReceived\e[0m\t\e[4mSent\e[0m\t\t\e[4mConnected Since\e[0m \n"
 if grep -q "^CLIENT_LIST" "${STATUS_LOG}"; then
-        if [ -n $(type -t numfmt) ]; then
+        if [ -n "$(type -t numfmt)" ]; then
                 while read -r line; do
                         read -r -a array <<< $line
                         [[ ${array[0]} = CLIENT_LIST ]] || continue
