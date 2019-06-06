@@ -133,7 +133,10 @@ you want to remove OpenVPN without installing a fresh Raspbian image, just run
 Feedback & Support
 --------
 
+#### Please read carefully the [issue template](https://github.com/pivpn/pivpn/blob/master/ISSUE_TEMPLATE.md) and the [contributors' guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md), we will close all incomplete issue templates.
+
 PiVPN is purely community driven, and we are interested in making this script work for as many people as possible, we welcome any feedback on your experience.
+Please be respectful and be aware that this is maintained with our free time!
 
 for community support or general questions.
 Feel free to post on our subreddit <https://www.reddit.com/r/pivpn/>
@@ -141,7 +144,6 @@ You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC
 
 For code related issues, code contributions, feature requests, feel free to open an issue here at github.
 We will classify the issues the best we can to keep things sorted.
-
 
 
 Related Projects
