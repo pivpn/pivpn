@@ -1,4 +1,4 @@
-##How to contribute to PiVPN
+## How to contribute to PiVPN
 
 ### **Before Getting Started**
 
