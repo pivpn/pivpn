@@ -1181,7 +1181,8 @@ updatePiVPN() {
 displayFinalMessage() {
     # Final completion message to user
     whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles.
-Run 'pivpn help' to see what else you can do!" ${r} ${c}
+Run 'pivpn help' to see what else you can do!\n\nIf you run into any issue, please read all our documentation carefully.
+All incomplete posts or bug reports will be ignored or deleted.\n\nThank you for using PiVPN." ${r} ${c}
     if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" ${r} ${c}); then
         whiptail --title "Rebooting" --msgbox "The system will now reboot." ${r} ${c}
         printf "\nRebooting system...\n"
@@ -1232,6 +1233,7 @@ clone_or_update_repos() {
         }
     fi
 }
+
 
 ######## SCRIPT ############
 
