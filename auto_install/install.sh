@@ -745,9 +745,12 @@ setCustomDomain() {
 }
 
 confOpenVPN() {
-    # Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
+    # Grab the existing Hostname
+	HOST_NAME=$(hostname)
+	# Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
     NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
-    SERVER_NAME="server_${NEW_UUID}"
+    # Create a unique server name using the host name and UUID
+	SERVER_NAME="${HOST_NAME}_${NEW_UUID}"
 
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
