@@ -268,6 +268,17 @@ echo "tls-auth Private Key found: $TA"
 
 } > "${NAME}${FILEEXT}"
 
+
+## Added new step to create an .ovpn12 file that can be stored on iOS keychain
+## This step is more secure method and does not require the end-user to keep entering passwords, or storing the client private cert where it can be easily tampered
+## https://openvpn.net/faq/how-do-i-use-a-client-certificate-and-private-key-from-the-ios-keychain/
+printf "========================================================\n"
+printf "Generating an .ovpn12 file for use with iOS devices\n"
+printf "You will be prompted to re-enter some information from the cert you just created\n"
+printf "========================================================\n"
+
+sudo openssl pkcs12 -export -in issued/${NAME}${CRT} -inkey private/${NAME}${KEY} -certfile ${CA} -name ${NAME} -out /home/$INSTALL_USER/ovpns/$NAME.ovpn12
+
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
 chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
