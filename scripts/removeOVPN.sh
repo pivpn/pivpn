@@ -113,7 +113,7 @@ for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     rm -rf "pki/reqs/${CERTS_TO_REVOKE[ii]}.req"
     rm -rf "pki/private/${CERTS_TO_REVOKE[ii]}.key"
     rm -rf "pki/issued/${CERTS_TO_REVOKE[ii]}.crt"
-    rm -rf "/home/${INSTALL_USER}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
+    rm -rf "/home/${INSTALL_USER}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn*"
     rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
     cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
 done
