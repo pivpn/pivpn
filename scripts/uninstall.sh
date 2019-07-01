@@ -7,6 +7,8 @@ NO_UFW=$(cat /etc/pivpn/NO_UFW)
 PORT=$(cat /etc/pivpn/INSTALL_PORT)
 PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
 IPv4dev="$(cat /etc/pivpn/pivpnINTERFACE)"
+INPUT_CHAIN_EDITED="$(cat /etc/pivpn/INPUT_CHAIN_EDITED)"
+FORWARD_CHAIN_EDITED="$(cat /etc/pivpn/FORWARD_CHAIN_EDITED)"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
@@ -100,11 +102,11 @@ echo ":::"
     else
         iptables -t nat -D POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE
 
-        if [ "$(cat /etc/pivpn/INPUT_CHAIN_EDITED)" -eq 1 ]; then
+        if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
             iptables -D INPUT -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
         fi
 
-        if [ "$(cat /etc/pivpn/FORWARD_CHAIN_EDITED)" -eq 1 ]; then
+        if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
             iptables -D FORWARD -d 10.8.0.0/24 -i "$IPv4dev" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
             iptables -D FORWARD -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT
         fi
