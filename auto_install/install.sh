@@ -974,7 +974,41 @@ confNetwork() {
     # else configure iptables
     if [[ $noUFW -eq 1 ]]; then
         echo 1 > /tmp/noUFW
+
+        # Now some checks to detect which rules we need to add. On a newly installed system all policies
+        # should be ACCEPT, so the only required rule would be the MASQUERADE one.
+
         $SUDO iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "$IPv4dev" -j MASQUERADE
+
+        # Count how many rules are in the INPUT and FORWARD chain. When parsing input from
+        # iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
+        # installed but not enabled).
+
+        INPUT_RULES_COUNT="$($SUDO iptables -S INPUT | grep -vcE '(^-P|ufw-)')"
+        FORWARD_RULES_COUNT="$($SUDO iptables -S FORWARD | grep -vcE '(^-P|ufw-)')"
+
+        INPUT_POLICY="$($SUDO iptables -S INPUT | grep '^-P' | awk '{print $3}')"
+        FORWARD_POLICY="$($SUDO iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
+
+        # If rules count is not zero, we assume we need to explicitly allow traffic. Same conclusion if
+        # there are no rules and the policy is not ACCEPT. Note that rules are being added to the top of the
+        # chain (using -I).
+
+        if [ "$INPUT_RULES_COUNT" -ne 0 ] || [ "$INPUT_POLICY" != "ACCEPT" ]; then
+            $SUDO iptables -I INPUT 1 -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
+            INPUT_CHAIN_EDITED=1
+        else
+            INPUT_CHAIN_EDITED=0
+        fi
+
+        if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
+            $SUDO iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$IPv4dev" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+            $SUDO iptables -I FORWARD 2 -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT
+            FORWARD_CHAIN_EDITED=1
+        else
+            FORWARD_CHAIN_EDITED=0
+        fi
+
         case ${PLAT} in
             Ubuntu|Debian|Devuan)
                 $SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
@@ -987,7 +1021,12 @@ confNetwork() {
         echo 0 > /tmp/noUFW
     fi
 
+    echo "$INPUT_CHAIN_EDITED" > /tmp/INPUT_CHAIN_EDITED
+    echo "$FORWARD_CHAIN_EDITED" > /tmp/FORWARD_CHAIN_EDITED
+
     $SUDO cp /tmp/noUFW /etc/pivpn/NO_UFW
+    $SUDO cp /tmp/INPUT_CHAIN_EDITED /etc/pivpn/INPUT_CHAIN_EDITED
+    $SUDO cp /tmp/FORWARD_CHAIN_EDITED /etc/pivpn/FORWARD_CHAIN_EDITED
 }
 
 confOVPN() {
