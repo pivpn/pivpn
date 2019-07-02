@@ -56,8 +56,36 @@ if [ "$(cat /etc/pivpn/NO_UFW)" -eq 1 ]; then
             iptables -t nat -F
             iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE
             iptables-save > /etc/iptables/rules.v4
-            iptables-restore < /etc/iptables/rules.v4
             echo "Done"
+        fi
+    fi
+
+    if [ "$(cat /etc/pivpn/INPUT_CHAIN_EDITED)" -eq 1 ]; then
+        if iptables -C INPUT -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT &> /dev/null; then
+            echo ":: [OK] Iptables INPUT rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Iptables INPUT rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                iptables -I INPUT 1 -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
+                iptables-save > /etc/iptables/rules.v4
+                echo "Done"
+            fi
+        fi
+    fi
+
+    if [ "$(cat /etc/pivpn/FORWARD_CHAIN_EDITED)" -eq 1 ]; then
+        if iptables -C FORWARD -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT &> /dev/null; then
+            echo ":: [OK] Iptables FORWARD rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Iptables FORWARD rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$IPv4dev" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+                iptables -I FORWARD 2 -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT
+                iptables-save > /etc/iptables/rules.v4
+                echo "Done"
+            fi
         fi
     fi
 
