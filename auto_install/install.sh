@@ -92,7 +92,7 @@ distro_check() {
         source /etc/os-release
         PLAT=$(awk '{print $1}' <<< "$NAME")
         VER="$VERSION_ID"
-        declare -A VER_MAP=(["9"]="stretch" ["8"]="jessie" ["18.04"]="bionic" ["16.04"]="xenial" ["14.04"]="trusty")
+        declare -A VER_MAP=(["10"]="buster" ["9"]="stretch" ["8"]="jessie" ["18.04"]="bionic" ["16.04"]="xenial" ["14.04"]="trusty")
         OSCN=${VER_MAP["${VER}"]}
     fi
 
@@ -103,7 +103,7 @@ distro_check() {
     case ${PLAT} in
         Ubuntu|Raspbian|Debian|Devuan)
         case ${OSCN} in
-            trusty|xenial|jessie|stretch)
+            trusty|xenial|jessie|stretch|buster)
             ;;
             *)
             maybeOS_Support
@@ -479,6 +479,8 @@ install_dependent_packages() {
     # No spinner - conflicts with set -e
     declare -a argArray1=("${!1}")
 
+    $SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
+    $SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
     echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
     echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
@@ -753,7 +755,7 @@ confOpenVPN() {
         # Ask user for desired level of encryption
 
         if [[ ${useUpdateVars} == false ]]; then
-            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]]; then
+            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]] && [[ ${OSCN} != "buster" ]] ; then
                 APPLY_TWO_POINT_FOUR=false
             else
                 if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
