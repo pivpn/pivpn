@@ -13,8 +13,9 @@ echo -e "::::\t\t\e[4mLatest commit\e[0m\t\t ::::"
 git --git-dir /etc/.pivpn/.git log -n 1
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
+# Use the wildcard so setupVars.conf.update.bak from the previous install is not shown
 for filename in /etc/pivpn/*; do
-    if [ "$filename" != "/etc/pivpn/setupVars.conf" ]; then
+    if [[ "$filename" != "/etc/pivpn/setupVars.conf"* ]]; then
         echo "$filename -> $(cat "$filename")"
     fi
 done
@@ -179,7 +180,17 @@ fi
 
 printf "=============================================\n"
 echo -e "::::      \e[4mSnippet of the server log\e[0m      ::::"
-tail -20 /var/log/openvpn.log
+tail -20 /var/log/openvpn.log > /tmp/snippet
+
+# Regular expession taken from https://superuser.com/a/202835, it will match invalid IPs
+# like 123.456.789.012 but it's fine because the log only contains valid ones.
+declare -a IPS_TO_HIDE=($(grepcidr -v 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 /tmp/snippet | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | uniq))
+for IP in "${IPS_TO_HIDE[@]}"; do
+    sed -i "s/$IP/REDACTED/g" /tmp/snippet
+done
+
+cat /tmp/snippet
+rm /tmp/snippet
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mDebug complete\e[0m\t\t ::::"
 
