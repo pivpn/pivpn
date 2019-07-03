@@ -479,8 +479,10 @@ install_dependent_packages() {
     # No spinner - conflicts with set -e
     declare -a argArray1=("${!1}")
 
-    $SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
-    $SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+    if [[ ${OSCN} == "buster" ]]; then
+        $SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
+        $SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+    fi
     echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
     echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
