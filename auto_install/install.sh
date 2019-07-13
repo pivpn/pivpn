@@ -532,7 +532,7 @@ getGitFiles() {
     echo ":::"
     echo "::: Checking for existing base files..."
     if is_repo "${1}"; then
-        update_repo "${1}"
+        update_repo "${1}" "${2}"
     else
         make_repo "${1}" "${2}"
     fi
@@ -565,6 +565,7 @@ update_repo() {
         # Pull the latest commits
         echo -n ":::     Updating repo in $1..."
         $SUDO rm -rf "${1}"
+        cd /etc
         $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
         cd "${1}" || exit 1
         if [ -z "${TESTING+x}" ]; then
@@ -851,7 +852,7 @@ EOF
     fi
 
     # Build the server
-    ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
+    EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
 
     if [[ ${useUpdateVars} == false ]]; then
       if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
