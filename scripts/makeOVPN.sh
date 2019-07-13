@@ -147,7 +147,7 @@ if [[ ${NAME::1} == "." ]] || [[ ${NAME::1} == "-" ]]; then
     exit 1
 fi
 
-if [[ "${NAME}" =~ [^a-zA-Z0-9\.\\-\@\_] ]]; then
+if [[ "${NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
     echo "Name can only contain alphanumeric characters and these characters (.-@_)."
     exit 1
 fi
