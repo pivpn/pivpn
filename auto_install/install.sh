@@ -789,7 +789,7 @@ confOpenVPN() {
         else
 
             ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
-            "Choose the desired size of your certificate (press space to select):\n   This is an certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
+            "Choose the desired size of your certificate (press space to select):\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
             "256" "Use a 256-bit certificate (recommended level)" ON \
             "384" "Use a 384-bit certificate" OFF \
             "521" "Use a 521-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
