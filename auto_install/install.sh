@@ -565,6 +565,8 @@ update_repo() {
         # Pull the latest commits
         echo -n ":::     Updating repo in $1..."
         $SUDO rm -rf "${1}"
+        # Go back to /etc otherwhise git will complain when the current working directory has
+        # just been deleted (/etc/.pivpn).
         cd /etc
         $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
         cd "${1}" || exit 1
@@ -754,6 +756,8 @@ confOpenVPN() {
     NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
     SERVER_NAME="server_${NEW_UUID}"
 
+    declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
+
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
 
@@ -784,7 +788,6 @@ confOpenVPN() {
 
         else
 
-            declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
             ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
             "Choose the desired size of your certificate (press space to select):\n   This is an certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
             "256" "Use a 256-bit certificate (recommended level)" ON \
@@ -989,8 +992,10 @@ confNetwork() {
         # iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
         # installed but not enabled).
 
-        INPUT_RULES_COUNT="$($SUDO iptables -S INPUT | grep -vcE '(^-P|ufw-)')"
-        FORWARD_RULES_COUNT="$($SUDO iptables -S FORWARD | grep -vcE '(^-P|ufw-)')"
+        # Grep returns non 0 exit code where there are no matches, however that would make the script exit,
+        # for this reasons we use '|| true' to force exit code 0
+        INPUT_RULES_COUNT="$($SUDO iptables -S INPUT | grep -vcE '(^-P|ufw-)' || true)"
+        FORWARD_RULES_COUNT="$($SUDO iptables -S FORWARD | grep -vcE '(^-P|ufw-)' || true)"
 
         INPUT_POLICY="$($SUDO iptables -S INPUT | grep '^-P' | awk '{print $3}')"
         FORWARD_POLICY="$($SUDO iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
