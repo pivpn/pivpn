@@ -4,6 +4,7 @@
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 NO_UFW=$(cat /etc/pivpn/NO_UFW)
+OLD_UFW=$(cat /etc/pivpn/NO_UFW)
 PORT=$(cat /etc/pivpn/INSTALL_PORT)
 PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
 IPv4dev="$(cat /etc/pivpn/pivpnINTERFACE)"
@@ -97,7 +98,11 @@ echo ":::"
     if [[ $NO_UFW -eq 0 ]]; then
         sed -z "s/*nat\n:POSTROUTING ACCEPT \[0:0\]\n-I POSTROUTING -s 10.8.0.0\/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n\n//" -i /etc/ufw/before.rules
         ufw delete allow "$PORT"/"$PROTO" >/dev/null
-        ufw route delete allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+        if [ "$OLD_UFW" -eq 1 ]; then
+            sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"DROP\"/" /etc/default/ufw
+        else
+            ufw route delete allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+        fi
         ufw reload >/dev/null
     else
         iptables -t nat -D POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE
