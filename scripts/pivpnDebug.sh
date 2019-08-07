@@ -5,6 +5,10 @@ PORT=$(cat /etc/pivpn/INSTALL_PORT)
 PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
 IPv4dev="$(cat /etc/pivpn/pivpnINTERFACE)"
 REMOTE="$(grep 'remote ' /etc/openvpn/easy-rsa/pki/Default.txt | awk '{print $2}')"
+NO_UFW=$(cat /etc/pivpn/NO_UFW)
+OLD_UFW=$(cat /etc/pivpn/NO_UFW)
+INPUT_CHAIN_EDITED="$(cat /etc/pivpn/INPUT_CHAIN_EDITED)"
+FORWARD_CHAIN_EDITED="$(cat /etc/pivpn/FORWARD_CHAIN_EDITED)"
 ERR=0
 
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
@@ -46,7 +50,7 @@ else
     fi
 fi
 
-if [ "$(cat /etc/pivpn/NO_UFW)" -eq 1 ]; then
+if [ "$NO_UFW" -eq 1 ]; then
 
     if iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
@@ -61,7 +65,7 @@ if [ "$(cat /etc/pivpn/NO_UFW)" -eq 1 ]; then
         fi
     fi
 
-    if [ "$(cat /etc/pivpn/INPUT_CHAIN_EDITED)" -eq 1 ]; then
+    if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
         if iptables -C INPUT -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT &> /dev/null; then
             echo ":: [OK] Iptables INPUT rule set"
         else
@@ -75,7 +79,7 @@ if [ "$(cat /etc/pivpn/NO_UFW)" -eq 1 ]; then
         fi
     fi
 
-    if [ "$(cat /etc/pivpn/FORWARD_CHAIN_EDITED)" -eq 1 ]; then
+    if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
         if iptables -C FORWARD -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT &> /dev/null; then
             echo ":: [OK] Iptables FORWARD rule set"
         else
@@ -126,15 +130,30 @@ else
         fi
     fi
 
-    if iptables -C ufw-user-forward -i tun0 -o "${IPv4dev}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
-        echo ":: [OK] Ufw forwarding rule set"
+    if [ "$OLD_UFW" -eq 1 ]; then
+        FORWARD_POLICY="$(iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
+        if [ "$FORWARD_POLICY" = "ACCEPT" ]; then
+            echo ":: [OK] Ufw forwarding policy is accept"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Ufw forwarding policy is not 'ACCEPT', attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
+                ufw reload > /dev/null
+                echo "Done"
+            fi
+        fi
     else
-        ERR=1
-        read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-            ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
-            ufw reload
-            echo "Done"
+        if iptables -C ufw-user-forward -i tun0 -o "${IPv4dev}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
+            echo ":: [OK] Ufw forwarding rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
+                ufw reload
+                echo "Done"
+            fi
         fi
     fi
 
