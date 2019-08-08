@@ -283,12 +283,12 @@ if [ ! -f "${CA}" ]; then
 fi
 echo "CA public Key found: $CA"
 
-#Confirm the tls-auth ta key file exists
+#Confirm the tls key file exists
 if [ ! -f "${TA}" ]; then
-    echo "[ERROR]: tls-auth Key not found: $TA"
+    echo "[ERROR]: tls Private Key not found: $TA"
     exit
 fi
-echo "tls-auth Private Key found: $TA"
+echo "tls Private Key found: $TA"
 
 #Ready to make a new .ovpn file
 {
@@ -310,7 +310,7 @@ echo "tls-auth Private Key found: $TA"
     cat "private/${NAME}${KEY}"
     echo "</key>"
 
-    #Finally, append the TA Private Key
+    #Finally, append the tls Private Key
     if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
       echo "<tls-crypt>"
       cat "${TA}"
@@ -322,6 +322,11 @@ echo "tls-auth Private Key found: $TA"
     fi
 
 } > "${NAME}${FILEEXT}"
+
+if [ ! -d "/home/$INSTALL_USER/ovpns" ]; then
+    mkdir "/home/$INSTALL_USER/ovpns"
+    chmod 0777 -R "/home/$INSTALL_USER/ovpns"
+fi
 
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"

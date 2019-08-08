@@ -21,7 +21,9 @@ PKG_CACHE="/var/lib/apt/lists/"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
+
 PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools grepcidr jq)
+
 ###          ###
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
@@ -769,7 +771,9 @@ confOpenVPN() {
         # Ask user for desired level of encryption
 
         if [[ ${useUpdateVars} == false ]]; then
-            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]] && [[ ${OSCN} != "buster" ]]; then
+
+            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]] && [[ ${OSCN} != "buster" ]] ; then
+
                 APPLY_TWO_POINT_FOUR=false
             else
                 if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
@@ -795,7 +799,6 @@ confOpenVPN() {
 
         else
 
-            declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
             ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
             "Choose the desired size of your certificate (press space to select):\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
             "256" "Use a 256-bit certificate (recommended level)" ON \
@@ -979,8 +982,21 @@ confNetwork() {
             $SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
             # Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
             $SUDO ufw insert 1 allow "$PORT"/"$PROTO" >/dev/null
-            # Don't forward everything, just the traffic originated from the VPN subnet
-            $SUDO ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+
+            # https://askubuntu.com/a/712202
+            INSTALLED_UFW=$(dpkg-query --showformat='${Version}' --show ufw)
+            MINIMUM_UFW=0.34
+
+            if $SUDO dpkg --compare-versions "$INSTALLED_UFW" ge "$MINIMUM_UFW"; then
+                # Don't forward everything, just the traffic originated from the VPN subnet
+                $SUDO ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+                echo 0 > /tmp/OLD_UFW
+            else
+                # This ufw version does not support route command, fallback to policy change
+                $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
+                echo 1 > /tmp/OLD_UFW
+            fi
+
             $SUDO ufw reload >/dev/null
             echo "::: UFW configuration completed."
         fi
@@ -1043,6 +1059,7 @@ confNetwork() {
     echo "$FORWARD_CHAIN_EDITED" > /tmp/FORWARD_CHAIN_EDITED
 
     $SUDO cp /tmp/noUFW /etc/pivpn/NO_UFW
+    $SUDO cp /tmp/OLD_UFW /etc/pivpn/OLD_UFW
     $SUDO cp /tmp/INPUT_CHAIN_EDITED /etc/pivpn/INPUT_CHAIN_EDITED
     $SUDO cp /tmp/FORWARD_CHAIN_EDITED /etc/pivpn/FORWARD_CHAIN_EDITED
 }
