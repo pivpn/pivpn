@@ -17,6 +17,7 @@ else
 fi
 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
+INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 NO_UFW=$(cat /etc/pivpn/NO_UFW)
 PORT=$(cat /etc/pivpn/INSTALL_PORT)
@@ -83,7 +84,7 @@ echo ":::"
     echo "::: Removing pivpn system files..."
     $SUDO rm -rf /opt/pivpn &> /dev/null
     $SUDO rm -rf /etc/.pivpn &> /dev/null
-    $SUDO rm -rf /home/$INSTALL_USER/ovpns &> /dev/null
+    $SUDO rm -rf $INSTALL_HOME/ovpns &> /dev/null
 
     $SUDO rm -rf /var/log/*pivpn* &> /dev/null
     $SUDO rm -rf /var/log/*openvpn* &> /dev/null

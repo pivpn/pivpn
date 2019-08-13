@@ -1055,10 +1055,11 @@ confOVPN() {
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
-    if [ ! -d "/home/$pivpnUser/ovpns" ]; then
-        $SUDO mkdir "/home/$pivpnUser/ovpns"
+    INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
+	if [ ! -d "$INSTALL_HOME/ovpns" ]; then
+        $SUDO mkdir "$INSTALL_HOME/ovpns"
     fi
-    $SUDO chmod 0777 -R "/home/$pivpnUser/ovpns"
+    $SUDO chmod 0777 -R "$INSTALL_HOME/ovpns"
 }
 
 confLogging() {
