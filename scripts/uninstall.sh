@@ -96,6 +96,7 @@ echo ":::"
     sysctl -p
 
     if [[ $NO_UFW -eq 0 ]]; then
+
         sed -z "s/*nat\n:POSTROUTING ACCEPT \[0:0\]\n-I POSTROUTING -s 10.8.0.0\/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n\n//" -i /etc/ufw/before.rules
         ufw delete allow "$PORT"/"$PROTO" >/dev/null
         if [ "$OLD_UFW" -eq 1 ]; then

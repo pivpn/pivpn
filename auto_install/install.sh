@@ -21,7 +21,9 @@ PKG_CACHE="/var/lib/apt/lists/"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
-PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools grepcidr)
+
+PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools grepcidr jq)
+
 ###          ###
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
@@ -29,7 +31,7 @@ pivpnFilesDir="/etc/.pivpn"
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
 
-# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config 
+# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_RELEASE="1.9"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
@@ -98,6 +100,7 @@ distro_check() {
 
     if [[ ${OSCN} != "bionic" ]]; then
         PIVPN_DEPS+=(dhcpcd5)
+
     fi
 
     case ${PLAT} in
@@ -474,6 +477,12 @@ notify_package_updates_available() {
   fi
 }
 
+install_bitwarden() {
+    # Install Bitwarden through NPM - this is the preferred installation method since NPM makes it easy to update the package
+    apt-get install -y nodejs npm
+    npm install -g @bitwarden/cli
+}
+
 install_dependent_packages() {
     # Install packages passed in via argument array
     # No spinner - conflicts with set -e
@@ -762,7 +771,9 @@ confOpenVPN() {
         # Ask user for desired level of encryption
 
         if [[ ${useUpdateVars} == false ]]; then
+
             if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]] && [[ ${OSCN} != "buster" ]] ; then
+
                 APPLY_TWO_POINT_FOUR=false
             else
                 if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
@@ -1357,6 +1368,9 @@ main() {
     # Notify user of package availability
     notify_package_updates_available
 
+    # Install packages for Bitwarden
+    install_bitwarden
+
     # Install packages used by this installation script
     install_dependent_packages PIVPN_DEPS[@]
 
@@ -1437,7 +1451,7 @@ main() {
             $SUDO systemctl start openvpn.service
             ;;
     esac
-    
+
     # Ensure that cached writes reach persistent storage
     echo "::: Flushing writes to disk..."
     sync

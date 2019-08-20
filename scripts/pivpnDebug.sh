@@ -65,7 +65,9 @@ if [ "$NO_UFW" -eq 1 ]; then
         fi
     fi
 
+
     if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
+
         if iptables -C INPUT -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT &> /dev/null; then
             echo ":: [OK] Iptables INPUT rule set"
         else
@@ -80,6 +82,7 @@ if [ "$NO_UFW" -eq 1 ]; then
     fi
 
     if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
+
         if iptables -C FORWARD -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT &> /dev/null; then
             echo ":: [OK] Iptables FORWARD rule set"
         else
