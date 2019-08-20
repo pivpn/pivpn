@@ -271,7 +271,7 @@ echo "tls-auth Private Key found: $TA"
 # Copy the .ovpn profile to the home directory for convenient remote access
 INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
-chown "$INSTALL_HOME" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
+chown "$INSTALL_USER" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
 chmod o-r "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
 chmod o-r "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
 printf "\n\n"
