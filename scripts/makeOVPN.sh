@@ -328,6 +328,24 @@ if [ ! -d "/home/$INSTALL_USER/ovpns" ]; then
     chmod 0777 -R "/home/$INSTALL_USER/ovpns"
 fi
 
+# If user is using Bitwarden, have them login again to submit their .ovpn file to their vault
+printf "Would you like to export your .ovpn file to your Bitwarden vault? (y or n)"
+read -r RESPONSE
+if [ $RESPONSE == "y" ] || [ $RESPONSE == "Y" ]; then
+    $OVPN_FILE="$(< "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT")"
+    # Login to Bitwarden
+    printf "****Bitwarden Login****"
+    printf "\n"
+    SESSION_KEY=`bw login --raw`
+    export BW_SESSION=$SESSION_KEY
+    printf "Successfully Logged in!"
+    printf "\n"
+    # Create a Bitwarden secure note to export the .ovpn file 
+    bw get template item | jq '.name = "PiVPN OVPN File"' | jq '.type = 2' | jq -r --arg VAL "$OVPN_FILE" '.notes = $VAL' | jq ".secureNote = $(bw get template item.secureNote)" | bw encode | bw create item
+    bw logout
+    exit
+  fi
+
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
 chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
