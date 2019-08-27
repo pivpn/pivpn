@@ -21,7 +21,7 @@ PKG_CACHE="/var/lib/apt/lists/"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
-PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools grepcidr jq uuidgen)
+PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools grepcidr jq)
 
 ###          ###
 
@@ -763,7 +763,7 @@ confOpenVPN() {
     # Grab the existing Hostname
 	HOST_NAME=$(hostname -s)
 	# Generate a random UUID for this server so that we can use verify-x509-name later that is unique for this server installation.
-    NEW_UUID=$uuidgen -r
+    $NEW_UUID=$(</proc/sys/kernel/random/uuid)
     # Create a unique server name using the host name and UUID
 	SERVER_NAME="${HOST_NAME}_${NEW_UUID}"
 
