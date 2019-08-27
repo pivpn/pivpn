@@ -18,6 +18,7 @@ helpFunc() {
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  nopass               Create a client without a password"
+    echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
     echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
     echo ":::  -p,--password        Password for the Client (no default)"
@@ -70,6 +71,9 @@ do
         nopass)
             NO_PASS="1"
             ;;
+        -b|--bitwarden)
+            BITWARDEN="2"
+            ;;
         *)
             echo "Error: Got an unexpected argument '$1'"
             helpFunc
@@ -92,6 +96,52 @@ function keynoPASS() {
 EOF
 
     cd pki || exit
+
+}
+
+function useBitwarden() {
+
+    # login and unlock vault
+    printf "****Bitwarden Login****"
+    printf "\n"
+    SESSION_KEY=`bw login --raw`
+    export BW_SESSION=$SESSION_KEY
+    printf "Successfully Logged in!"
+    printf "\n"
+
+    # ask user for username
+    printf "Enter the username:  "
+    read -r NAME
+
+    # check name
+    until [[ "$NAME" =~ ^[a-zA-Z0-9.@_-]+$ && ${NAME::1} != "." && ${NAME::1} != "-"  ]]
+    do
+      	echo "Name can only contain alphanumeric characters and these characters (.-@_). The name also cannot start with a dot (.) or a dash (-). Please try again."
+      	# ask user for username again
+      	printf "Enter the username: "
+      	read -r NAME
+    done
+
+
+    # ask user for length of password
+    printf "Please enter the length of characters you want your password to be (minimum 12): "
+    read -r LENGTH
+
+    # check length
+    until [[ "$LENGTH" -gt 11 && "$LENGTH" -lt 129 ]]
+    do
+      	echo "Password must be between from 12 to 128 characters, please try again."
+      	# ask user for length of password
+      	printf "Enter the length of characters you want your password to be (minimum 12): "
+      	read -r LENGTH
+    done
+
+    printf "Creating a PiVPN item for your vault..."
+    printf "\n"
+    # create a new item for your PiVPN Password
+    PASSWD=`bw generate -usln --length $LENGTH`
+    bw get template item | jq '.login.type = "1"'| jq '.name = "PiVPN"' | jq -r --arg NAME "$NAME" '.login.username = $NAME' | jq -r --arg PASSWD "$PASSWD" '.login.password = $PASSWD' |  bw encode | bw create item
+    bw logout
 
 }
 
@@ -141,6 +191,11 @@ EOF
 
 }
 
+# bitWarden first
+if [[ "${BITWARDEN}" =~ "2" ]]; then
+    useBitwarden
+fi
+
 if [ -z "${NAME}" ]; then
     printf "Enter a Name for the Client:  "
     read -r NAME
@@ -151,7 +206,7 @@ if [[ ${NAME::1} == "." ]] || [[ ${NAME::1} == "-" ]]; then
     exit 1
 fi
 
-if [[ "${NAME}" =~ [^a-zA-Z0-9\.\-\@\_] ]]; then
+if [[ "${NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
     echo "Name can only contain alphanumeric characters and these characters (.-@_)."
     exit 1
 fi
@@ -232,12 +287,12 @@ if [ ! -f "${CA}" ]; then
 fi
 echo "CA public Key found: $CA"
 
-#Confirm the tls-auth ta key file exists
+#Confirm the tls key file exists
 if [ ! -f "${TA}" ]; then
-    echo "[ERROR]: tls-auth Key not found: $TA"
+    echo "[ERROR]: tls Private Key not found: $TA"
     exit
 fi
-echo "tls-auth Private Key found: $TA"
+echo "tls Private Key found: $TA"
 
 
 ## Added new step to create an .ovpn12 file that can be stored on iOS keychain
@@ -309,7 +364,7 @@ else
     cat "private/${NAME}${KEY}"
     echo "</key>"
 
-    #Finally, append the TA Private Key
+    #Finally, append the tls Private Key
     if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
       echo "<tls-crypt>"
       cat "${TA}"
@@ -323,6 +378,29 @@ else
 	} > "${NAME}${FILEEXT}"
 
 fi
+
+if [ ! -d "/home/$INSTALL_USER/ovpns" ]; then
+    mkdir "/home/$INSTALL_USER/ovpns"
+    chmod 0777 -R "/home/$INSTALL_USER/ovpns"
+fi
+
+# If user is using Bitwarden, have them login again to submit their .ovpn file to their vault
+printf "Would you like to export your .ovpn file to your Bitwarden vault? (y or n)"
+read -r RESPONSE
+if [ $RESPONSE == "y" ] || [ $RESPONSE == "Y" ]; then
+    $OVPN_FILE="$(< "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT")"
+    # Login to Bitwarden
+    printf "****Bitwarden Login****"
+    printf "\n"
+    SESSION_KEY=`bw login --raw`
+    export BW_SESSION=$SESSION_KEY
+    printf "Successfully Logged in!"
+    printf "\n"
+    # Create a Bitwarden secure note to export the .ovpn file 
+    bw get template item | jq '.name = "PiVPN OVPN File"' | jq '.type = 2' | jq -r --arg VAL "$OVPN_FILE" '.notes = $VAL' | jq ".secureNote = $(bw get template item.secureNote)" | bw encode | bw create item
+    bw logout
+    exit
+  fi
 
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
