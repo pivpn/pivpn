@@ -21,7 +21,8 @@ PKG_CACHE="/var/lib/apt/lists/"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
-PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools uuidgen)
+PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools grepcidr jq uuidgen)
+
 ###          ###
 
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
@@ -29,7 +30,7 @@ pivpnFilesDir="/etc/.pivpn"
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
 
-# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config 
+# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_RELEASE="1.9"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
@@ -92,18 +93,19 @@ distro_check() {
         source /etc/os-release
         PLAT=$(awk '{print $1}' <<< "$NAME")
         VER="$VERSION_ID"
-        declare -A VER_MAP=(["9"]="stretch" ["8"]="jessie" ["18.04"]="bionic" ["16.04"]="xenial" ["14.04"]="trusty")
+        declare -A VER_MAP=(["10"]="buster" ["9"]="stretch" ["8"]="jessie" ["18.04"]="bionic" ["16.04"]="xenial" ["14.04"]="trusty")
         OSCN=${VER_MAP["${VER}"]}
     fi
 
     if [[ ${OSCN} != "bionic" ]]; then
         PIVPN_DEPS+=(dhcpcd5)
+
     fi
 
     case ${PLAT} in
         Ubuntu|Raspbian|Debian|Devuan)
         case ${OSCN} in
-            trusty|xenial|jessie|stretch)
+            trusty|xenial|jessie|stretch|buster)
             ;;
             *)
             maybeOS_Support
@@ -474,11 +476,21 @@ notify_package_updates_available() {
   fi
 }
 
+install_bitwarden() {
+    # Install Bitwarden through NPM - this is the preferred installation method since NPM makes it easy to update the package
+    apt-get install -y nodejs npm
+    npm install -g @bitwarden/cli
+}
+
 install_dependent_packages() {
     # Install packages passed in via argument array
     # No spinner - conflicts with set -e
     declare -a argArray1=("${!1}")
 
+    if [[ ${OSCN} == "buster" ]]; then
+        $SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
+        $SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+    fi
     echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
     echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
@@ -528,7 +540,7 @@ getGitFiles() {
     echo ":::"
     echo "::: Checking for existing base files..."
     if is_repo "${1}"; then
-        update_repo "${1}"
+        update_repo "${1}" "${2}"
     else
         make_repo "${1}" "${2}"
     fi
@@ -561,6 +573,9 @@ update_repo() {
         # Pull the latest commits
         echo -n ":::     Updating repo in $1..."
         $SUDO rm -rf "${1}"
+        # Go back to /etc otherwhise git will complain when the current working directory has
+        # just been deleted (/etc/.pivpn).
+        cd /etc
         $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
         cd "${1}" || exit 1
         if [ -z "${TESTING+x}" ]; then
@@ -664,7 +679,7 @@ setClientDNS() {
           do
               strInvalid="Invalid"
 
-              if OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), seperated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" ${r} ${c} "" 3>&1 1>&2 2>&3)
+              if OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), separated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" ${r} ${c} "" 3>&1 1>&2 2>&3)
               then
                     OVPNDNS1=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
                     OVPNDNS2=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
@@ -752,11 +767,15 @@ confOpenVPN() {
     # Create a unique server name using the host name and UUID
 	SERVER_NAME="${HOST_NAME}_${NEW_UUID}"
 
+    declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
+
     if [[ ${useUpdateVars} == false ]]; then
         # Ask user for desired level of encryption
 
         if [[ ${useUpdateVars} == false ]]; then
-            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]]; then
+
+            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]] && [[ ${OSCN} != "buster" ]] ; then
+
                 APPLY_TWO_POINT_FOUR=false
             else
                 if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
@@ -782,9 +801,8 @@ confOpenVPN() {
 
         else
 
-            declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
             ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
-            "Choose the desired size of your certificate (press space to select):\n   This is an certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
+            "Choose the desired size of your certificate (press space to select):\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
             "256" "Use a 256-bit certificate (recommended level)" ON \
             "384" "Use a 384-bit certificate" OFF \
             "521" "Use a 521-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
@@ -850,7 +868,7 @@ EOF
     fi
 
     # Build the server
-    ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
+    EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
 
     if [[ ${useUpdateVars} == false ]]; then
       if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
@@ -966,8 +984,21 @@ confNetwork() {
             $SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
             # Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
             $SUDO ufw insert 1 allow "$PORT"/"$PROTO" >/dev/null
-            # Don't forward everything, just the traffic originated from the VPN subnet
-            $SUDO ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+
+            # https://askubuntu.com/a/712202
+            INSTALLED_UFW=$(dpkg-query --showformat='${Version}' --show ufw)
+            MINIMUM_UFW=0.34
+
+            if $SUDO dpkg --compare-versions "$INSTALLED_UFW" ge "$MINIMUM_UFW"; then
+                # Don't forward everything, just the traffic originated from the VPN subnet
+                $SUDO ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any >/dev/null
+                echo 0 > /tmp/OLD_UFW
+            else
+                # This ufw version does not support route command, fallback to policy change
+                $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
+                echo 1 > /tmp/OLD_UFW
+            fi
+
             $SUDO ufw reload >/dev/null
             echo "::: UFW configuration completed."
         fi
@@ -977,7 +1008,43 @@ confNetwork() {
     # else configure iptables
     if [[ $noUFW -eq 1 ]]; then
         echo 1 > /tmp/noUFW
+
+        # Now some checks to detect which rules we need to add. On a newly installed system all policies
+        # should be ACCEPT, so the only required rule would be the MASQUERADE one.
+
         $SUDO iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "$IPv4dev" -j MASQUERADE
+
+        # Count how many rules are in the INPUT and FORWARD chain. When parsing input from
+        # iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
+        # installed but not enabled).
+
+        # Grep returns non 0 exit code where there are no matches, however that would make the script exit,
+        # for this reasons we use '|| true' to force exit code 0
+        INPUT_RULES_COUNT="$($SUDO iptables -S INPUT | grep -vcE '(^-P|ufw-)' || true)"
+        FORWARD_RULES_COUNT="$($SUDO iptables -S FORWARD | grep -vcE '(^-P|ufw-)' || true)"
+
+        INPUT_POLICY="$($SUDO iptables -S INPUT | grep '^-P' | awk '{print $3}')"
+        FORWARD_POLICY="$($SUDO iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
+
+        # If rules count is not zero, we assume we need to explicitly allow traffic. Same conclusion if
+        # there are no rules and the policy is not ACCEPT. Note that rules are being added to the top of the
+        # chain (using -I).
+
+        if [ "$INPUT_RULES_COUNT" -ne 0 ] || [ "$INPUT_POLICY" != "ACCEPT" ]; then
+            $SUDO iptables -I INPUT 1 -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
+            INPUT_CHAIN_EDITED=1
+        else
+            INPUT_CHAIN_EDITED=0
+        fi
+
+        if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
+            $SUDO iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$IPv4dev" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+            $SUDO iptables -I FORWARD 2 -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT
+            FORWARD_CHAIN_EDITED=1
+        else
+            FORWARD_CHAIN_EDITED=0
+        fi
+
         case ${PLAT} in
             Ubuntu|Debian|Devuan)
                 $SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
@@ -990,7 +1057,13 @@ confNetwork() {
         echo 0 > /tmp/noUFW
     fi
 
+    echo "$INPUT_CHAIN_EDITED" > /tmp/INPUT_CHAIN_EDITED
+    echo "$FORWARD_CHAIN_EDITED" > /tmp/FORWARD_CHAIN_EDITED
+
     $SUDO cp /tmp/noUFW /etc/pivpn/NO_UFW
+    $SUDO cp /tmp/OLD_UFW /etc/pivpn/OLD_UFW
+    $SUDO cp /tmp/INPUT_CHAIN_EDITED /etc/pivpn/INPUT_CHAIN_EDITED
+    $SUDO cp /tmp/FORWARD_CHAIN_EDITED /etc/pivpn/FORWARD_CHAIN_EDITED
 }
 
 confOVPN() {
@@ -1297,6 +1370,9 @@ main() {
     # Notify user of package availability
     notify_package_updates_available
 
+    # Install packages for Bitwarden
+    install_bitwarden
+
     # Install packages used by this installation script
     install_dependent_packages PIVPN_DEPS[@]
 
@@ -1377,7 +1453,7 @@ main() {
             $SUDO systemctl start openvpn.service
             ;;
     esac
-    
+
     # Ensure that cached writes reach persistent storage
     echo "::: Flushing writes to disk..."
     sync
