@@ -763,8 +763,8 @@ confOpenVPN() {
     # Grab the existing Hostname
 	HOST_NAME=$(hostname -s)
 	# Generate a random UUID for this server so that we can use verify-x509-name later that is unique for this server installation.
-    $NEW_UUID=$(</proc/sys/kernel/random/uuid)
-    # Create a unique server name using the host name and UUID
+    	NEW_UUID=$(</proc/sys/kernel/random/uuid)
+   	# Create a unique server name using the host name and UUID
 	SERVER_NAME="${HOST_NAME}_${NEW_UUID}"
 
     declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
