@@ -281,7 +281,7 @@ if [ "$iOS" = "1" ]; then
 	printf "========================================================\n"
 	openssl pkcs12 -passin pass:$PASSWD -passin pass:$PASSWD -export -in issued/${NAME}${CRT} -inkey private/${NAME}${KEY} -certfile ${CA} -name ${NAME} -out /home/$INSTALL_USER/ovpns/$NAME.ovpn12
 	chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
-	chmod o-r "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
+	chmod 600 "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
 	printf "========================================================\n"
 	printf "\e[1mDone! %s successfully created!\e[0m \n" "$NAME.ovpn12"
 	printf "You will need to transfer both the .ovpn and .ovpn12 files\n"
