@@ -21,7 +21,6 @@ PKG_CACHE="/var/lib/apt/lists/"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
-
 PIVPN_DEPS=(openvpn git tar wget grep iptables-persistent dnsutils expect whiptail net-tools grepcidr jq)
 
 ###          ###
@@ -761,9 +760,12 @@ setCustomDomain() {
 }
 
 confOpenVPN() {
-    # Generate a random, alphanumeric identifier of 16 characters for this server so that we can use verify-x509-name later that is unique for this server installation. Source: Earthgecko (https://gist.github.com/earthgecko/3089509)
-    NEW_UUID=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
-    SERVER_NAME="server_${NEW_UUID}"
+    # Grab the existing Hostname
+	HOST_NAME=$(hostname -s)
+	# Generate a random UUID for this server so that we can use verify-x509-name later that is unique for this server installation.
+    	NEW_UUID=$(</proc/sys/kernel/random/uuid)
+   	# Create a unique server name using the host name and UUID
+	SERVER_NAME="${HOST_NAME}_${NEW_UUID}"
 
     declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
 
