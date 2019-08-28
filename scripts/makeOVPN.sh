@@ -13,7 +13,7 @@ INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
     echo ":::"
-    echo "::: Usage: pivpn <-a|add> [-b|--bitwarden] [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-h|--help]"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-i|--iOS] [-h|--help]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
@@ -22,6 +22,7 @@ helpFunc() {
     echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
     echo ":::  -p,--password        Password for the Client (no default)"
+	echo ":::  -i,--iOS             Generate a certificate that leverages iOS keychain"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -60,7 +61,10 @@ do
             fi
             DAYS="$_val"
             ;;
-        -h|--help)
+        -i|--iOS)
+			iOS=1
+			;;
+		-h|--help)
             helpFunc
             exit 0
             ;;
@@ -290,8 +294,58 @@ if [ ! -f "${TA}" ]; then
 fi
 echo "tls Private Key found: $TA"
 
+
+## Added new step to create an .ovpn12 file that can be stored on iOS keychain
+## This step is more secure method and does not require the end-user to keep entering passwords, or storing the client private cert where it can be easily tampered
+## https://openvpn.net/faq/how-do-i-use-a-client-certificate-and-private-key-from-the-ios-keychain/
+if [ "$iOS" = "1" ]; then
+	#Generates the .ovpn file WITHOUT the client private key
+	{
+    # Start by populating with the default file
+    cat "${DEFAULT}"
+
+    #Now, append the CA Public Cert
+    echo "<ca>"
+    cat "${CA}"
+    echo "</ca>"
+
+    #Next append the client Public Cert
+    echo "<cert>"
+    sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
+    echo "</cert>"
+
+    #Finally, append the TA Private Key
+    if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
+      echo "<tls-crypt>"
+      cat "${TA}"
+      echo "</tls-crypt>"
+    else
+      echo "<tls-auth>"
+      cat "${TA}"
+      echo "</tls-auth>"
+    fi
+
+	} > "${NAME}${FILEEXT}"
+	
+	# Copy the .ovpn profile to the home directory for convenient remote access
+		
+	printf "========================================================\n"
+	printf "Generating an .ovpn12 file for use with iOS devices\n"
+	printf "Please remember the export password\n"
+	printf "as you will need this import the certificate on your iOS device\n"
+	printf "========================================================\n"
+	openssl pkcs12 -passin env:$PASSWD -export -in issued/${NAME}${CRT} -inkey private/${NAME}${KEY} -certfile ${CA} -name ${NAME} -out /home/$INSTALL_USER/ovpns/$NAME.ovpn12
+	chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
+	chmod 600 "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
+	printf "========================================================\n"
+	printf "\e[1mDone! %s successfully created!\e[0m \n" "$NAME.ovpn12"
+	printf "You will need to transfer both the .ovpn and .ovpn12 files\n"
+	printf "to your iOS device.\n"
+	printf "========================================================\n\n"
+else
+	#This is the standard non-iOS configuration
 #Ready to make a new .ovpn file
-{
+	{
     # Start by populating with the default file
     cat "${DEFAULT}"
 
@@ -321,7 +375,9 @@ echo "tls Private Key found: $TA"
       echo "</tls-auth>"
     fi
 
-} > "${NAME}${FILEEXT}"
+	} > "${NAME}${FILEEXT}"
+
+fi
 
 if [ ! -d "/home/$INSTALL_USER/ovpns" ]; then
     mkdir "/home/$INSTALL_USER/ovpns"
