@@ -187,9 +187,9 @@ chooseUser() {
     chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
     if [[ $? = 0 ]]; then
         for desiredUser in ${chooseUserOptions}; do
-            pivpnUser=${desiredUser}
-            echo "::: Using User: $pivpnUser"
-            echo "${pivpnUser}" > /tmp/pivpnUSR
+            INSTALL_USER=${desiredUser}
+            echo "::: Using User: $INSTALL_USER"
+            echo "${INSTALL_USER}" > /tmp/INSTALL_USER
         done
     else
         echo "::: Cancel selected, exiting...."
@@ -398,7 +398,7 @@ installScripts() {
     $SUDO echo -n "::: Installing scripts to /opt/pivpn..."
     if [ ! -d /opt/pivpn ]; then
         $SUDO mkdir /opt/pivpn
-        $SUDO chown "$pivpnUser":root /opt/pivpn
+        $SUDO chown "$INSTALL_USER":root /opt/pivpn
         $SUDO chmod 0755 /opt/pivpn
     fi
     $SUDO cp /etc/.pivpn/scripts/makeOVPN.sh /opt/pivpn/makeOVPN.sh
@@ -1074,7 +1074,7 @@ confOVPN() {
             exit 1
         fi
     fi
-    $SUDO cp /tmp/pivpnUSR /etc/pivpn/INSTALL_USER
+    $SUDO cp /tmp/INSTALL_USER /etc/pivpn/INSTALL_USER
     $SUDO cp /tmp/DET_PLATFORM /etc/pivpn/DET_PLATFORM
 
     $SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
@@ -1132,10 +1132,10 @@ confOVPN() {
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
     INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
-	if [ ! -d "$INSTALL_HOME/ovpns" ]; then
+    if [ ! -d "$INSTALL_HOME/ovpns" ]; then
         $SUDO mkdir "$INSTALL_HOME/ovpns"
     fi
-    $SUDO chmod 0750 -R "$INSTALL_HOME/ovpns"
+    $SUDO chmod 0750 "$INSTALL_HOME/ovpns"
 }
 
 confLogging() {
@@ -1170,10 +1170,10 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
-        $SUDO sed -i.update.bak '/pivpnUser/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
+        $SUDO sed -i.update.bak '/INSTALL_USER/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
     fi
     {
-        echo "pivpnUser=${pivpnUser}"
+        echo "INSTALL_USER=${INSTALL_USER}"
         echo "UNATTUPG=${UNATTUPG}"
         echo "pivpnInterface=${pivpnInterface}"
         echo "IPv4dns=${IPv4dns}"
@@ -1197,7 +1197,7 @@ finalExports() {
 #    # At some point in the future this list can be pruned, for now we'll need it to ensure updates don't break.
 #
 #    # Refactoring of install script has changed the name of a couple of variables. Sort them out here.
-#    sed -i 's/pivpnUser/PIVPN_USER/g' ${setupVars}
+#    sed -i 's/INSTALL_USER/PIVPN_USER/g' ${setupVars}
 #    #sed -i 's/UNATTUPG/UNATTUPG/g' ${setupVars}
 #    sed -i 's/pivpnInterface/PIVPN_INTERFACE/g' ${setupVars}
 #    sed -i 's/IPv4dns/IPV4_DNS/g' ${setupVars}
@@ -1415,8 +1415,8 @@ main() {
         echo "${IPv4addr%/*}" > /tmp/pivpnIP
         echo "::: Using interface: $pivpnInterface"
         echo "${pivpnInterface}" > /tmp/pivpnINT
-        echo "::: Using User: $pivpnUser"
-        echo "${pivpnUser}" > /tmp/pivpnUSR
+        echo "::: Using User: $INSTALL_USER"
+        echo "${INSTALL_USER}" > /tmp/INSTALL_USER
         echo "::: Using protocol: $pivpnProto"
         echo "${pivpnProto}" > /tmp/pivpnPROTO
         echo "::: Using port: $PORT"

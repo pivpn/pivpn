@@ -9,6 +9,7 @@ CA="ca.crt"
 TA="ta.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
+INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
 
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
@@ -22,7 +23,7 @@ helpFunc() {
     echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
     echo ":::  -p,--password        Password for the Client (no default)"
-	echo ":::  -i,--iOS             Generate a certificate that leverages iOS keychain"
+    echo ":::  -i,--iOS             Generate a certificate that leverages iOS keychain"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -62,9 +63,9 @@ do
             DAYS="$_val"
             ;;
         -i|--iOS)
-			iOS=1
-			;;
-		-h|--help)
+            iOS=1
+            ;;
+        -h|--help)
             helpFunc
             exit 0
             ;;
@@ -191,7 +192,13 @@ EOF
 
 }
 
-# bitWarden first
+#make sure ovpns dir exists
+if [ ! -d "$INSTALL_HOME/ovpns" ]; then
+    mkdir "$INSTALL_HOME/ovpns"
+    chmod 0750 "$INSTALL_HOME/ovpns"
+fi
+
+#bitWarden
 if [[ "${BITWARDEN}" =~ "2" ]]; then
     useBitwarden
 fi
@@ -379,31 +386,8 @@ else
 
 fi
 
-if [ ! -d "/home/$INSTALL_USER/ovpns" ]; then
-    mkdir "/home/$INSTALL_USER/ovpns"
-    chmod 0750 "/home/$INSTALL_USER/ovpns"
-fi
-
-# If user is using Bitwarden, have them login again to submit their .ovpn file to their vault
-printf "Would you like to export your .ovpn file to your Bitwarden vault? (y or n)"
-read -r RESPONSE
-if [ $RESPONSE == "y" ] || [ $RESPONSE == "Y" ]; then
-    $OVPN_FILE="$(< "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT")"
-    # Login to Bitwarden
-    printf "****Bitwarden Login****"
-    printf "\n"
-    SESSION_KEY=`bw login --raw`
-    export BW_SESSION=$SESSION_KEY
-    printf "Successfully Logged in!"
-    printf "\n"
-    # Create a Bitwarden secure note to export the .ovpn file 
-    bw get template item | jq '.name = "PiVPN OVPN File"' | jq '.type = 2' | jq -r --arg VAL "$OVPN_FILE" '.notes = $VAL' | jq ".secureNote = $(bw get template item.secureNote)" | bw encode | bw create item
-    bw logout
-    exit
-  fi
 
 # Copy the .ovpn profile to the home directory for convenient remote access
-INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
 chown "$INSTALL_USER" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
 chmod 640 "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
