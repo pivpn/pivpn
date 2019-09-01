@@ -8,8 +8,9 @@ KEY=".key"
 CA="ca.crt"
 TA="ta.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
-INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
-INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
+INSTALL_USER=$(</etc/pivpn/INSTALL_USER)
+INSTALL_HOME=$(grep -m1 "^${INSTALL_USER}:" /etc/passwd | cut -d: -f6)
+INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
 
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
