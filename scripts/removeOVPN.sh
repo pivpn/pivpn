@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # PiVPN: revoke client script
 
-INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
-PLAT=$(cat /etc/pivpn/DET_PLATFORM)
+INSTALL_USER=$(</etc/pivpn/INSTALL_USER)
+PLAT=$(</etc/pivpn/DET_PLATFORM)
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 
 helpFunc() {
@@ -104,7 +104,8 @@ fi
 
 cd /etc/openvpn/easy-rsa || exit
 
-INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
+INSTALL_HOME=$(grep -m1 "^${INSTALL_USER}:" /etc/passwd | cut -d: -f6)
+INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
 for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
     ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
