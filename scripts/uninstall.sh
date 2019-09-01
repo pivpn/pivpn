@@ -2,7 +2,8 @@
 # PiVPN: Uninstall Script
 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
-INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
+INSTALL_HOME=$(grep -m1 "^${INSTALL_USER}:" /etc/passwd | cut -d: -f6)
+INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 NO_UFW=$(cat /etc/pivpn/NO_UFW)
 OLD_UFW=$(cat /etc/pivpn/NO_UFW)

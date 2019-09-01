@@ -1131,8 +1131,9 @@ confOVPN() {
     # verify server name to strengthen security
     $SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
 
-    INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
-	if [ ! -d "$INSTALL_HOME/ovpns" ]; then
+    INSTALL_HOME=$(grep -m1 "^${INSTALL_USER}:" /etc/passwd | cut -d: -f6)
+    INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
+    if [ ! -d "$INSTALL_HOME/ovpns" ]; then
         $SUDO mkdir "$INSTALL_HOME/ovpns"
     fi
     $SUDO chmod 0777 -R "$INSTALL_HOME/ovpns"
