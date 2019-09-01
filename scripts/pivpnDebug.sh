@@ -5,6 +5,10 @@ PORT=$(cat /etc/pivpn/INSTALL_PORT)
 PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
 IPv4dev="$(cat /etc/pivpn/pivpnINTERFACE)"
 REMOTE="$(grep 'remote ' /etc/openvpn/easy-rsa/pki/Default.txt | awk '{print $2}')"
+NO_UFW=$(cat /etc/pivpn/NO_UFW)
+OLD_UFW=$(cat /etc/pivpn/NO_UFW)
+INPUT_CHAIN_EDITED="$(cat /etc/pivpn/INPUT_CHAIN_EDITED)"
+FORWARD_CHAIN_EDITED="$(cat /etc/pivpn/FORWARD_CHAIN_EDITED)"
 ERR=0
 
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
@@ -13,8 +17,9 @@ echo -e "::::\t\t\e[4mLatest commit\e[0m\t\t ::::"
 git --git-dir /etc/.pivpn/.git log -n 1
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
+# Use the wildcard so setupVars.conf.update.bak from the previous install is not shown
 for filename in /etc/pivpn/*; do
-    if [ "$filename" != "/etc/pivpn/setupVars.conf" ]; then
+    if [[ "$filename" != "/etc/pivpn/setupVars.conf"* ]]; then
         echo "$filename -> $(cat "$filename")"
     fi
 done
@@ -45,7 +50,7 @@ else
     fi
 fi
 
-if [ "$(cat /etc/pivpn/NO_UFW)" -eq 1 ]; then
+if [ "$NO_UFW" -eq 1 ]; then
 
     if iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
@@ -56,8 +61,39 @@ if [ "$(cat /etc/pivpn/NO_UFW)" -eq 1 ]; then
             iptables -t nat -F
             iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE
             iptables-save > /etc/iptables/rules.v4
-            iptables-restore < /etc/iptables/rules.v4
             echo "Done"
+        fi
+    fi
+
+
+    if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
+
+        if iptables -C INPUT -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT &> /dev/null; then
+            echo ":: [OK] Iptables INPUT rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Iptables INPUT rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                iptables -I INPUT 1 -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
+                iptables-save > /etc/iptables/rules.v4
+                echo "Done"
+            fi
+        fi
+    fi
+
+    if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
+
+        if iptables -C FORWARD -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT &> /dev/null; then
+            echo ":: [OK] Iptables FORWARD rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Iptables FORWARD rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$IPv4dev" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+                iptables -I FORWARD 2 -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT
+                iptables-save > /etc/iptables/rules.v4
+                echo "Done"
+            fi
         fi
     fi
 
@@ -97,15 +133,30 @@ else
         fi
     fi
 
-    if iptables -C ufw-user-forward -i tun0 -o "${IPv4dev}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
-        echo ":: [OK] Ufw forwarding rule set"
+    if [ "$OLD_UFW" -eq 1 ]; then
+        FORWARD_POLICY="$(iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
+        if [ "$FORWARD_POLICY" = "ACCEPT" ]; then
+            echo ":: [OK] Ufw forwarding policy is accept"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Ufw forwarding policy is not 'ACCEPT', attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
+                ufw reload > /dev/null
+                echo "Done"
+            fi
+        fi
     else
-        ERR=1
-        read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-            ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
-            ufw reload
-            echo "Done"
+        if iptables -C ufw-user-forward -i tun0 -o "${IPv4dev}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
+            echo ":: [OK] Ufw forwarding rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+                ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
+                ufw reload
+                echo "Done"
+            fi
         fi
     fi
 
@@ -151,7 +202,17 @@ fi
 
 printf "=============================================\n"
 echo -e "::::      \e[4mSnippet of the server log\e[0m      ::::"
-tail -20 /var/log/openvpn.log
+tail -20 /var/log/openvpn.log > /tmp/snippet
+
+# Regular expession taken from https://superuser.com/a/202835, it will match invalid IPs
+# like 123.456.789.012 but it's fine because the log only contains valid ones.
+declare -a IPS_TO_HIDE=($(grepcidr -v 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 /tmp/snippet | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | uniq))
+for IP in "${IPS_TO_HIDE[@]}"; do
+    sed -i "s/$IP/REDACTED/g" /tmp/snippet
+done
+
+cat /tmp/snippet
+rm /tmp/snippet
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mDebug complete\e[0m\t\t ::::"
 
