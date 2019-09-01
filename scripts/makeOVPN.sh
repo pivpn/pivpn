@@ -381,7 +381,7 @@ fi
 
 if [ ! -d "/home/$INSTALL_USER/ovpns" ]; then
     mkdir "/home/$INSTALL_USER/ovpns"
-    chmod 0777 -R "/home/$INSTALL_USER/ovpns"
+    chmod 0750 "/home/$INSTALL_USER/ovpns"
 fi
 
 # If user is using Bitwarden, have them login again to submit their .ovpn file to their vault

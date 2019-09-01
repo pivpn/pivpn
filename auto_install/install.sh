@@ -399,7 +399,7 @@ installScripts() {
     if [ ! -d /opt/pivpn ]; then
         $SUDO mkdir /opt/pivpn
         $SUDO chown "$pivpnUser":root /opt/pivpn
-        $SUDO chmod u+srwx /opt/pivpn
+        $SUDO chmod 0755 /opt/pivpn
     fi
     $SUDO cp /etc/.pivpn/scripts/makeOVPN.sh /opt/pivpn/makeOVPN.sh
     $SUDO cp /etc/.pivpn/scripts/clientStat.sh /opt/pivpn/clientStat.sh
@@ -1135,7 +1135,7 @@ confOVPN() {
 	if [ ! -d "$INSTALL_HOME/ovpns" ]; then
         $SUDO mkdir "$INSTALL_HOME/ovpns"
     fi
-    $SUDO chmod 0777 -R "$INSTALL_HOME/ovpns"
+    $SUDO chmod 0750 -R "$INSTALL_HOME/ovpns"
 }
 
 confLogging() {
