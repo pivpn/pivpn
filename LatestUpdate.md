@@ -7,7 +7,7 @@ Everytime Test branch is merged into master, a new entry should be created with 
 
 ## Sept 1st 2019
 
-changes Merged into master branch with last merge from master.
+Latest changes merged from test branch
 
 * Added support for Buster
 * .ovpn12 files making use of iOS keychain
