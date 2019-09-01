@@ -403,15 +403,16 @@ if [ $RESPONSE == "y" ] || [ $RESPONSE == "Y" ]; then
   fi
 
 # Copy the .ovpn profile to the home directory for convenient remote access
-cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
-chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
-chmod o-r "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
-chmod o-r "/home/$INSTALL_USER/ovpns/$NAME$FILEEXT"
+INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
+cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
+chown "$INSTALL_USER" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
+chmod 640 "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
+chmod 640 "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
 printf "\n\n"
 printf "========================================================\n"
 printf "\e[1mDone! %s successfully created!\e[0m \n" "$NAME$FILEEXT"
 printf "%s was copied to:\n" "$NAME$FILEEXT"
-printf "  /home/%s/ovpns\n" "$INSTALL_USER"
+printf "  %s/ovpns\n" "$INSTALL_HOME"
 printf "for easy transfer. Please use this profile only on one\n"
 printf "device and create additional profiles for other devices.\n"
 printf "========================================================\n\n"

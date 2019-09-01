@@ -2,6 +2,7 @@
 # PiVPN: Uninstall Script
 
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
+INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
 PLAT=$(cat /etc/pivpn/DET_PLATFORM)
 NO_UFW=$(cat /etc/pivpn/NO_UFW)
 OLD_UFW=$(cat /etc/pivpn/NO_UFW)
@@ -69,9 +70,10 @@ echo ":::"
     echo ":::"
     # Removing pivpn files
     echo "::: Removing pivpn system files..."
-    rm -rf /opt/pivpn &> /dev/null
-    rm -rf /etc/.pivpn &> /dev/null
-    rm -rf /home/$INSTALL_USER/ovpns &> /dev/null
+
+    $SUDO rm -rf /opt/pivpn &> /dev/null
+    $SUDO rm -rf /etc/.pivpn &> /dev/null
+    $SUDO rm -rf $INSTALL_HOME/ovpns &> /dev/null
 
     rm -rf /var/log/*pivpn* &> /dev/null
     rm -rf /var/log/*openvpn* &> /dev/null

@@ -104,6 +104,7 @@ fi
 
 cd /etc/openvpn/easy-rsa || exit
 
+INSTALL_HOME=$(cat /etc/passwd | grep "$INSTALL_USER" | cut -d: -f6)
 for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
     ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
@@ -113,7 +114,8 @@ for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     rm -rf "pki/reqs/${CERTS_TO_REVOKE[ii]}.req"
     rm -rf "pki/private/${CERTS_TO_REVOKE[ii]}.key"
     rm -rf "pki/issued/${CERTS_TO_REVOKE[ii]}.crt"
-    rm -rf "/home/${INSTALL_USER}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn*"
+
+    rm -rf "${INSTALL_HOME}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
     rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
     cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
 done
