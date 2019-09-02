@@ -58,7 +58,6 @@ function helpFunc {
     echo ":::"
     echo "::: Commands:"
     echo ":::  -a, add [nopass]     Create a client ovpn profile, optional nopass"
-    echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
     echo ":::  -c, clients          List any connected clients to the server"
     echo ":::  -d, debug            Start a debugging session if having trouble"
     echo ":::  -l, list             List all valid and revoked certificates"
@@ -75,7 +74,6 @@ fi
 # Handle redirecting to specific functions based on arguments
 case "$1" in
 "-a" | "add"                ) makeOVPNFunc "$@";;
-"-b" | "bitwarden"          ) makeOVPNFunc "$@";;
 "-c" | "clients"            ) listClientsFunc;;
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;

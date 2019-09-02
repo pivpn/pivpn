@@ -15,18 +15,24 @@ INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
     echo ":::"
-    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-i|--iOS] [-h|--help]"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-h|--help]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  nopass               Create a client without a password"
-    echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
-    echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
     echo ":::  -p,--password        Password for the Client (no default)"
+    echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
+    echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
     echo ":::  -i,--iOS             Generate a certificate that leverages iOS keychain"
     echo ":::  -h,--help            Show this help dialog"
 }
+
+if [ ! -f /etc/pivpn/HELP_SHOWN ]; then
+    helpFunc
+    echo
+    touch /etc/pivpn/HELP_SHOWN
+fi
 
 # Parse input arguments
 while test $# -gt 0
@@ -348,7 +354,7 @@ if [ "$iOS" = "1" ]; then
 	printf "Please remember the export password\n"
 	printf "as you will need this import the certificate on your iOS device\n"
 	printf "========================================================\n"
-	openssl pkcs12 -passin env:$PASSWD -export -in issued/${NAME}${CRT} -inkey private/${NAME}${KEY} -certfile ${CA} -name ${NAME} -out /home/$INSTALL_USER/ovpns/$NAME.ovpn12
+	openssl pkcs12 -passin pass:"$PASSWD" -export -in "issued/${NAME}${CRT}" -inkey "private/${NAME}${KEY}" -certfile ${CA} -name "${NAME}" -out "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
 	chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
 	chmod 600 "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
 	printf "========================================================\n"
