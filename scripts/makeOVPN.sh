@@ -74,7 +74,13 @@ do
             NO_PASS="1"
             ;;
         -b|--bitwarden)
-            BITWARDEN="2"
+            if which bw; then
+                BITWARDEN="2"
+            else
+               echo "Bitwarden not found, please install bitwarden"
+               exit 1
+            fi
+
             ;;
         *)
             echo "Error: Got an unexpected argument '$1'"
