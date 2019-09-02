@@ -28,6 +28,12 @@ helpFunc() {
     echo ":::  -h,--help            Show this help dialog"
 }
 
+if [ ! -f /etc/pivpn/HELP_SHOWN ]; then
+    helpFunc
+    echo
+    touch /etc/pivpn/HELP_SHOWN
+fi
+
 # Parse input arguments
 while test $# -gt 0
 do
@@ -342,7 +348,7 @@ if [ "$iOS" = "1" ]; then
 	printf "Please remember the export password\n"
 	printf "as you will need this import the certificate on your iOS device\n"
 	printf "========================================================\n"
-	openssl pkcs12 -passin env:$PASSWD -export -in issued/${NAME}${CRT} -inkey private/${NAME}${KEY} -certfile ${CA} -name ${NAME} -out /home/$INSTALL_USER/ovpns/$NAME.ovpn12
+	openssl pkcs12 -passin pass:"$PASSWD" -export -in "issued/${NAME}${CRT}" -inkey "private/${NAME}${KEY}" -certfile ${CA} -name "${NAME}" -out "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
 	chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
 	chmod 600 "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
 	printf "========================================================\n"
