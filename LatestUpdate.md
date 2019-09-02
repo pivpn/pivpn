@@ -24,4 +24,22 @@ Latest changes merged from test branch
     -  $pivPNUser renamed to $INSTALL_USER
     -  /tmp/pivpnUSR renamed to INSTALL_USER
 
+###Merge Patch, Sept 2nd 2019
+
+* Bitwarden integration:
+    - Made it optional, asks for user in the end of installation.
+    - added error handling during bitwarden install
+    - integrated bitwarden install step with pivpndebug
+    - bugfixes with pivpn add
+    - pivpn add -b will fail if bitwarden is not found
+
+* File and dirs permissions:
+    - fixed bug where ovpns being owned by root
+
+* IOS integration
+    - fixed bug where ovpn12 files not being properly generated
+
+* General improvments:
+    - when runing updates, sudo password prompt now shows up in a new line
+
 ----
