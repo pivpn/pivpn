@@ -476,27 +476,6 @@ notify_package_updates_available() {
   fi
 }
 
-install_bitwarden() {
-    # Install Bitwarden through NPM - this is the preferred installation method since NPM makes it easy to update the package
-    if (whiptail --backtitle "Instal Bitwarden" --title "Install Bitwarden" --yesno "PiVPN Has support for bitwarden password manager, would you like to install it?\n\nNote: this will install nodejs and npm" ${r} ${c}) then
-        echo "::: Installing Bitwarden"
-        $SUDO apt-get -qq install nodejs npm 
-        $SUDO npm install -g @bitwarden/cli
-        if [[ $? -ne 0 ]]; then
-            BITWARDEN="FAILED"
-            echo ":: Bitwarden Failed to install, not critical, moving on"
-            true
-        else
-            echo ":: Bitwarden Installed"
-            BITWARDEN="INSTALLED"
-        fi
-    else
-        echo "::: Bitwarden Skipped"
-        BITWARDEN="SKIPPED"
-    fi
-
-}
-
 install_dependent_packages() {
     # Install packages passed in via argument array
     # No spinner - conflicts with set -e
@@ -1187,7 +1166,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 finalExports() {
     # Update variables in setupVars.conf file
     if [ -e "${setupVars}" ]; then
-        $SUDO sed -i.update.bak '/INSTALL_USER/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;/BITWARDEN/d;' "${setupVars}"
+        $SUDO sed -i.update.bak '/INSTALL_USER/d;/UNATTUPG/d;/pivpnInterface/d;/IPv4dns/d;/IPv4addr/d;/IPv4gw/d;/pivpnProto/d;/PORT/d;/ENCRYPT/d;/DOWNLOAD_DH_PARAM/d;/PUBLICDNS/d;/OVPNDNS1/d;/OVPNDNS2/d;' "${setupVars}"
     fi
     {
         echo "INSTALL_USER=${INSTALL_USER}"
@@ -1204,7 +1183,6 @@ finalExports() {
         echo "PUBLICDNS=${PUBLICDNS}"
         echo "OVPNDNS1=${OVPNDNS1}"
         echo "OVPNDNS2=${OVPNDNS2}"
-        echo "BITWARDEN=${BITWARDEN}"
     } | $SUDO tee "${setupVars}" > /dev/null
 }
 
@@ -1458,9 +1436,6 @@ main() {
 
         updatePiVPN
     fi
-
-    # Install packages for Bitwarden
-    install_bitwarden
 
     echo "::: Restarting services..."
     # Start services

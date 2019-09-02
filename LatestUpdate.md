@@ -27,9 +27,7 @@ Latest changes merged from test branch
 ### Merge Patch, Sept 2nd 2019
 
 * Bitwarden integration:
-    - Made it optional, asks for user in the end of installation.
-    - added error handling during bitwarden install
-    - integrated bitwarden install step with pivpndebug
+    - Bitwarden Installation removed from script, users that whish to use it should install it manually. 
     - bugfixes with pivpn add
     - pivpn add -b will fail if bitwarden is not found
 
