@@ -24,7 +24,7 @@ Latest changes merged from test branch
     -  $pivPNUser renamed to $INSTALL_USER
     -  /tmp/pivpnUSR renamed to INSTALL_USER
 
-###Merge Patch, Sept 2nd 2019
+### Merge Patch, Sept 2nd 2019
 
 * Bitwarden integration:
     - Made it optional, asks for user in the end of installation.
