@@ -431,7 +431,7 @@ addSoftwareRepo() {
           wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
           echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
           echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
-          $SUDO apt-get -qq update & spinner $!
+          $SUDO $PKG_MANAGER -qq update & spinner $!
           echo " done!"
           ;;
       esac
@@ -930,7 +930,7 @@ confUnattendedUpgrades() {
     cd /etc/apt/apt.conf.d
 
     if [[ $UNATTUPG == "unattended-upgrades" ]]; then
-        $SUDO apt-get --yes --quiet --no-install-recommends install "$UNATTUPG" > /dev/null & spinner $!
+        $SUDO $PKG_MANAGER --yes --quiet --no-install-recommends install "$UNATTUPG" > /dev/null & spinner $!
         if [[ $PLAT == "Ubuntu" ]]; then
             # Ubuntu 50unattended-upgrades should already just have security enabled
             # so we just need to configure the 10periodic file

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PiVPN: Uninstall Script
 
+PKG_MANAGER="apt-get"
 INSTALL_USER=$(cat /etc/pivpn/INSTALL_USER)
 INSTALL_HOME=$(grep -m1 "^${INSTALL_USER}:" /etc/passwd | cut -d: -f6)
 INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
@@ -49,7 +50,7 @@ echo ":::"
             while true; do
                 read -rp "::: Do you wish to remove $i from your system? [y/n]: " yn
                 case $yn in
-                    [Yy]* ) printf ":::\tRemoving %s..." "$i"; apt-get -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\n";
+                    [Yy]* ) printf ":::\tRemoving %s..." "$i"; $PKG_MANAGER -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\n";
                             if [ "$i" == "openvpn" ]; then UINST_OVPN=1 ; fi
                             if [ "$i" == "unattended-upgrades" ]; then UINST_UNATTUPG=1 ; fi
                             break;;
@@ -64,9 +65,9 @@ echo ":::"
 
     # Take care of any additional package cleaning
     printf "::: Auto removing remaining dependencies..."
-    apt-get -y autoremove &> /dev/null & spinner $!; printf "done!\n";
+    $PKG_MANAGER -y autoremove &> /dev/null & spinner $!; printf "done!\n";
     printf "::: Auto cleaning remaining dependencies..."
-    apt-get -y autoclean &> /dev/null & spinner $!; printf "done!\n";
+    $PKG_MANAGER -y autoclean &> /dev/null & spinner $!; printf "done!\n";
 
     echo ":::"
     # Removing pivpn files
@@ -83,7 +84,7 @@ echo ":::"
         if [[ $PLAT == "Ubuntu" || $PLAT == "Debian" ]]; then
             printf "::: Removing openvpn apt source..."
             rm -rf /etc/apt/sources.list.d/swupdate.openvpn.net.list &> /dev/null
-            apt-get -qq update & spinner $!; printf "done!\n";
+            $PKG_MANAGER -qq update & spinner $!; printf "done!\n";
         fi
     fi
     if [[ $UINST_UNATTUPG = 1 ]]; then
