@@ -5,9 +5,20 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged. 
 
-## Sept 1st 2019
+## Oct 12th 2019
 
-Latest changes merged from test branch
+* Changed pivpn command exit codes from 1 to 0
+  - exit code 1 means general error hence should not be used for exiting successfully
+* added backup script to backup openvpn and pivpn generated certificates
+* added update script to update /opt/pivpn scripts, -t | --test | test update from test branch
+* Fixed hostname length issue #831
+    - the script now checks for hostname length right at the beginning and prompts for a new one. 
+    - HOST_NAME to host_name, as best practice variables with capitals, should be used by system variables only. 
+* fixed ubuntu 18.04 being detected as not supported OS, now fully supported and tested.
+* changed how scripts are copied to /opt/pivpn, it hat a lot of long repetitive lines, now it copies all *.sh files making it easier to manage when adding new scripts/features
+* Changed how supported OS are presented when maybeOS_Support() is called. 
+
+## Sept 1st 2019
 
 * Added support for Buster
 * .ovpn12 files making use of iOS keychain

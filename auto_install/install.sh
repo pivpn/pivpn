@@ -70,7 +70,10 @@ If you think you received this message in error, you can post an issue on the Gi
 
 function maybeOS_Support() {
     if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
-Currently this installer supports Raspbian and Debian (Jessie and Stretch), Devuan (Jessie) and Ubuntu from 14.04 (trusty) to 17.04 (zesty).
+Currently suppoerted:
+    Raspbian, Debian, Devuan (Jessie, strech, buster)
+    Ubuntu from 14.04 (trusty) to 18.04 (zesty).
+
 Would you like to continue anyway?" ${r} ${c}) then
         echo "::: Did not detect perfectly supported OS but,"
         echo "::: Continuing installation at user's own risk..."
@@ -86,7 +89,7 @@ distro_check() {
     if hash lsb_release 2>/dev/null; then
 
         PLAT=$(lsb_release -si)
-        OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
+        OSCN=$(lsb_release -sc) # We want this to be trusty xenial, jessie, stretch, buster
 
     else # else get info from os-release
 
@@ -105,7 +108,7 @@ distro_check() {
     case ${PLAT} in
         Ubuntu|Raspbian|Debian|Devuan)
         case ${OSCN} in
-            trusty|xenial|jessie|stretch|buster)
+            trusty|xenial|jessie|stretch|buster|bionic)
             ;;
             *)
             maybeOS_Support
@@ -386,6 +389,7 @@ function valid_domain()
   local domain=$1
   local stat=1
 
+
   if [[ $domain =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}\.[a-zA-Z]{2,}$ ]]; then
     stat=$?
   fi
@@ -401,13 +405,8 @@ installScripts() {
         $SUDO chown "$INSTALL_USER":root /opt/pivpn
         $SUDO chmod 0755 /opt/pivpn
     fi
-    $SUDO cp /etc/.pivpn/scripts/makeOVPN.sh /opt/pivpn/makeOVPN.sh
-    $SUDO cp /etc/.pivpn/scripts/clientStat.sh /opt/pivpn/clientStat.sh
-    $SUDO cp /etc/.pivpn/scripts/listOVPN.sh /opt/pivpn/listOVPN.sh
-    $SUDO cp /etc/.pivpn/scripts/removeOVPN.sh /opt/pivpn/removeOVPN.sh
-    $SUDO cp /etc/.pivpn/scripts/uninstall.sh /opt/pivpn/uninstall.sh
-    $SUDO cp /etc/.pivpn/scripts/pivpnDebug.sh /opt/pivpn/pivpnDebug.sh
-    $SUDO chmod 0755 /opt/pivpn/{makeOVPN,clientStat,listOVPN,removeOVPN,uninstall,pivpnDebug}.sh
+    $SUDO cp /etc/.pivpn/scripts/*.sh /opt/pivpn/
+    $SUDO chmod 0755 /opt/pivpn/*.sh
     $SUDO cp /etc/.pivpn/pivpn /usr/local/bin/pivpn
     $SUDO chmod 0755 /usr/local/bin/pivpn
     $SUDO cp /etc/.pivpn/scripts/bash-completion /etc/bash_completion.d/pivpn
@@ -755,11 +754,11 @@ setCustomDomain() {
 
 confOpenVPN() {
     # Grab the existing Hostname
-	HOST_NAME=$(hostname -s)
-	# Generate a random UUID for this server so that we can use verify-x509-name later that is unique for this server installation.
-    	NEW_UUID=$(</proc/sys/kernel/random/uuid)
-   	# Create a unique server name using the host name and UUID
-	SERVER_NAME="${HOST_NAME}_${NEW_UUID}"
+        host_name=$(hostname -s)
+        # Generate a random UUID for this server so that we can use verify-x509-name later that is unique for this server installation.
+        NEW_UUID=$(</proc/sys/kernel/random/uuid)
+        # Create a unique server name using the host name and UUID
+        SERVER_NAME="${host_name}_${NEW_UUID}"
 
     declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
 
@@ -1258,7 +1257,7 @@ Run 'pivpn help' to see what else you can do!\n\nIf you run into any issue, plea
 All incomplete posts or bug reports will be ignored or deleted.\n\nThank you for using PiVPN." ${r} ${c}
     if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" ${r} ${c}); then
         whiptail --title "Rebooting" --msgbox "The system will now reboot." ${r} ${c}
-        printf "\nRebooting system...\n"
+        jkkprintf "\nRebooting system...\n"
         $SUDO sleep 3
         $SUDO shutdown -r now
     fi
@@ -1307,6 +1306,25 @@ clone_or_update_repos() {
     fi
 }
 
+checkhostname(){
+###Checks for hostnamesize
+    host_name=$(hostname -s)
+    if [[ ! ${#host_name} -le 28 ]]; then
+       until [[ ${#host_name} -le 28 && $host_name  =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$ ]]; do
+         host_name=$(whiptail --inputbox "Your hostname is too long.\nEnter new hostname with less then 28 characters\nNo special characters allowed." \
+           --title "Hostname too long" ${r} ${c} 3>&1 1>&2 2>&3)
+         $SUDO hostnamectl set-hostname "${host_name}"
+         if [[ ${#host_name} -le 28 && $host_name  =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$  ]]; then
+            echo "::: Hostname valid and length OK, proceeding..."
+         fi
+          
+       done
+    else
+        echo "::: Hostname length OK"
+    fi
+
+}
+
 
 ######## SCRIPT ############
 
@@ -1330,8 +1348,12 @@ main() {
         fi
     fi
 
+
     # Check for supported distribution
     distro_check
+
+    # Checks for hostname Length
+    checkhostname 
 
     # Check arguments for the undocumented flags
     for var in "$@"; do
