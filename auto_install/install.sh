@@ -300,6 +300,12 @@ chooseInterface(){
 	fi
 }
 
+avoidStaticIPv4Ubuntu() {
+    # If we are in Ubuntu then they need to have previously set their network, so just use what you have.
+    whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are not using Raspbian, we will not configure a static IP for you.
+If you are in Amazon then you can not configure a static IP anyway. Just ensure before this installer started you had set an elastic IP on your instance." ${r} ${c}
+}
+
 getStaticIPv4Settings() {
 	local ipSettingsCorrect
 	# Grab their current DNS Server
@@ -467,7 +473,11 @@ makeRepo(){
 	# Remove the non-repos interface and clone the interface
 	echo -n ":::    Cloning $2 into $1..."
 	$SUDO rm -rf "${1}"
+	# Go back to /etc otherwhise git will complain when the current working
+	# directory has just been deleted (/etc/.pivpn).
+	cd /etc
 	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
+	cd "${1}" || exit 1
 	if [ -z "${TESTING}" ]; then
 		:
 	elif [ "${TESTING}" = "test" ]; then
@@ -618,7 +628,7 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 Pin: release a=unstable
 Pin-Priority: 90" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
-		PIVPN_DEPS=(qrencode wireguard)
+		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard)
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
@@ -1183,7 +1193,7 @@ confUnattendedUpgrades(){
 	# On architectures different from armv6l, where we install wireguard from source, enable
 	# automatic updates via the unstable repository
 	if [ "$VPN" = "WireGuard" ] && [ "$(uname -m)" != "armv6l" ]; then
-		sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
+		$SUDO sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
 	fi
 
 	# Add the remaining settings for all other distributions
@@ -1195,7 +1205,7 @@ confUnattendedUpgrades(){
 	APT::Periodic::Verbose \"0\";" | $SUDO tee 02periodic > /dev/null
 }
 
-installScripts() {
+installScripts(){
 	# Install the scripts from /etc/.pivpn to their various locations
 	echo ":::"
 	echo -n "::: Installing scripts to /opt/pivpn..."
@@ -1208,7 +1218,7 @@ installScripts() {
 	FOLDER=$(tr '[:upper:]' '[:lower:]' <<< "$VPN")
 	$SUDO cp /etc/.pivpn/scripts/$FOLDER/*.sh /opt/pivpn/
 	$SUDO chmod 0755 /opt/pivpn/*.sh
-	$SUDO cp /etc/.pivpn/$FOLDER/scripts/pivpn /usr/local/bin/pivpn
+	$SUDO cp /etc/.pivpn/scripts/$FOLDER/pivpn /usr/local/bin/pivpn
 	$SUDO chmod 0755 /usr/local/bin/pivpn
 	$SUDO cp /etc/.pivpn/scripts/$FOLDER/bash-completion /etc/bash_completion.d/pivpn
 	. /etc/bash_completion.d/pivpn
@@ -1291,8 +1301,12 @@ main(){
 	# Find interfaces and let the user choose one
 	chooseInterface
 
-	getStaticIPv4Settings
-	setStaticIPv4
+	if [ "$PLAT" != "Raspbian" ]; then
+		avoidStaticIPv4Ubuntu
+	else
+		getStaticIPv4Settings
+		setStaticIPv4
+	fi
 
 	# Choose the user for the ovpns
 	chooseUser

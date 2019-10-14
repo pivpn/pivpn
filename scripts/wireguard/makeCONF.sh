@@ -50,6 +50,7 @@ source "${setupVars}"
 if [ ! -d "${install_home}/configs" ]; then
     mkdir "${install_home}/configs"
     chown "${install_user}":"${install_user}" "${install_home}/configs"
+    chmod 0750 "${install_home}/configs"
 fi
 
 cd /etc/wireguard
@@ -120,6 +121,7 @@ fi
 
 cp "configs/${CLIENT_NAME}.conf" "${install_home}/configs/${CLIENT_NAME}.conf"
 chown "${install_user}":"${install_user}" "${install_home}/configs/${CLIENT_NAME}.conf"
+chmod 640 "${install_home}/configs/${CLIENT_NAME}.conf"
 
 echo "======================================================================"
 echo -e "::: Done! \e[1m${CLIENT_NAME}.conf successfully created!\e[0m"
