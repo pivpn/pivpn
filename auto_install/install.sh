@@ -389,8 +389,7 @@ function valid_domain()
   local domain=$1
   local stat=1
 
-
-  if [[ $domain =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}\.[a-zA-Z]{2,}$ ]]; then
+  if [[ $domain =~ ^(([a-zA-Z0-9]{1,63}|([a-zA-Z0-9]{1,60}[-a-zA-Z0-9()]{0,2}[a-zA-Z0-9]{1,60}))\.){1,6}([a-zA-Z]{2,})$ ]]; then
     stat=$?
   fi
   return $stat
