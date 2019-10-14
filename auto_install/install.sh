@@ -91,7 +91,7 @@ distroCheck(){
 	fi
 
 	case ${PLAT} in
-		Raspbian)
+		Debian|Raspbian)
 		case ${OSCN} in
 			buster)
 			;;
@@ -120,7 +120,7 @@ checkHostname(){
 			if [[ ${#host_name} -le 28 && $host_name  =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$  ]]; then
 				echo "::: Hostname valid and length OK, proceeding..."
 			fi
-	   done
+		done
 	else
 		echo "::: Hostname length OK"
 	fi
@@ -525,6 +525,7 @@ installWireGuard(){
 	# Otherwhise compile and build the kernel module via DKMS (so it will
 	# be recompiled on kernel upgrades)
 	if [ "$(uname -m)" = "armv7l" ]; then
+
 		echo "::: Installing WireGuard from Debian package... "
 		# dirmngr is used to download repository keys, whereas qrencode is used to generate qrcodes
 		# from config file, for use with mobile clients
@@ -532,20 +533,22 @@ installWireGuard(){
 		installDependentPackages PIVPN_DEPS[@]
 		# Do not upgrade packages from the unstable repository except for wireguard
 		echo "::: Adding Debian repository... "
-		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee -a /etc/apt/sources.list.d/unstable.list > /dev/null
+		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 		echo "Package: *
 Pin: release a=unstable
 Pin-Priority: 1
 
 Package: wireguard wireguard-dkms wireguard-tools
 Pin: release a=unstable
-Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/null
+Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 		$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(wireguard)
 		installDependentPackages PIVPN_DEPS[@]
+
 	elif [ "$(uname -m)" = "armv6l" ]; then
+
 		echo "::: Installing WireGuard from source... "
 		PIVPN_DEPS=(libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode)
 		installDependentPackages PIVPN_DEPS[@]
@@ -553,8 +556,8 @@ Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/n
 		# Delete any leftover code
 		$SUDO rm -rf /usr/src/wireguard-*
 
-		echo -n "::: Downloading source code... "
-		wget -O- "${WG_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
+		echo "::: Downloading source code... "
+		wget -qO- "${WG_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
 		echo "done!"
 
 		cd /usr/src
@@ -565,7 +568,7 @@ Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/n
 
 		# We install the userspace tools manually since DKMS only compiles and
 		# installs the kernel module
-		echo -n "::: Compiling WireGuard tools... "
+		echo "::: Compiling WireGuard tools... "
 		if $SUDO make tools; then
 			echo "done!"
 		else
@@ -573,7 +576,7 @@ Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/n
 			exit 1
 		fi
 
-		echo -n "::: Installing WireGuard tools... "
+		echo "::: Installing WireGuard tools... "
 		if $SUDO make install tools; then
 			echo "done!"
 		else
@@ -581,7 +584,7 @@ Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/n
 			exit 1
 		fi
 
-		echo -n "::: Adding WireGuard modules via DKMS... "
+		echo "::: Adding WireGuard modules via DKMS... "
 		if $SUDO dkms add wireguard/"${WG_SNAPSHOT}"; then
 			echo "done!"
 		else
@@ -590,7 +593,7 @@ Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/n
 			exit 1
 		fi
 
-		echo -n "::: Compiling WireGuard modules via DKMS... "
+		echo "::: Compiling WireGuard modules via DKMS... "
 		if $SUDO dkms build wireguard/"${WG_SNAPSHOT}"; then
 			echo "done!"
 		else
@@ -599,7 +602,7 @@ Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/n
 			exit 1
 		fi
 
-		echo -n "::: Installing WireGuard modules via DKMS... "
+		echo "::: Installing WireGuard modules via DKMS... "
 		if $SUDO dkms install wireguard/"${WG_SNAPSHOT}"; then
 			echo "done!"
 		else
@@ -607,6 +610,17 @@ Pin-Priority: 500" | $SUDO tee -a /etc/apt/preferences.d/limit-unstable > /dev/n
 			$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
 			exit 1
 		fi
+
+	elif [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "i686" ]; then
+
+		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
+		echo "Package: *
+Pin: release a=unstable
+Pin-Priority: 90" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+		PIVPN_DEPS=(qrencode wireguard)
+		installDependentPackages PIVPN_DEPS[@]
+
 	fi
 }
 
@@ -862,9 +876,9 @@ askEncryption(){
 	fi
 
 	if ([ "$pivpnENCRYPT" -ge "3072" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $pivpnENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
-		DOWNLOAD_DH_PARAM=true
+		DOWNLOAD_DH_PARAM=1
 	else
-		DOWNLOAD_DH_PARAM=false
+		DOWNLOAD_DH_PARAM=0
 	fi
 
 	echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
@@ -885,7 +899,7 @@ confOpenVPN(){
 	fi
 
 	# Get easy-rsa
-	wget -q -O - "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
+	wget -qO- "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
 	# fix ownership
 	$SUDO chown -R root:root /etc/openvpn/easy-rsa
 	$SUDO mkdir /etc/openvpn/easy-rsa/pki
@@ -916,9 +930,9 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	# Build the server
 	EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
 
-	if [[ ${DOWNLOAD_DH_PARAM} == true ]]; then
+	if [ ${DOWNLOAD_DH_PARAM} -eq 1 ]; then
 		# Downloading parameters
-		${SUDOE} curl "https://2ton.com.au/getprimes/random/dhparam/${pivpnENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem"
+		${SUDOE} curl -s "https://2ton.com.au/getprimes/random/dhparam/${pivpnENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem"
 	else
 		# Generate Diffie-Hellman key exchange
 		${SUDOE} ./easyrsa gen-dh
@@ -989,6 +1003,13 @@ confOVPN(){
 }
 
 confWireGuard(){
+	if [ -d /etc/wireguard ]; then
+		$SUDO rm -r /etc/wireguard
+		$SUDO mkdir /etc/wireguard
+		$SUDO chown root:root /etc/wireguard
+		$SUDO chmod 700 /etc/wireguard
+	fi
+
 	whiptail --title "Server Information" --msgbox "The Server Keys and Pre-Shared key will now be generated." "${r}" "${c}"
 	$SUDO mkdir /etc/wireguard/configs
 	$SUDO touch /etc/wireguard/configs/clients.txt
@@ -1072,7 +1093,7 @@ confNetwork(){
 		fi
 
 		case ${PLAT} in
-			Raspbian)
+			Debian|Raspbian)
 				$SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
 			;;
 		esac
@@ -1104,7 +1125,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 
   # Restart the logging service
 	case ${PLAT} in
-		Raspbian)
+		Debian|Raspbian)
 			$SUDO systemctl restart rsyslog.service || true
 		;;
 	esac
@@ -1153,11 +1174,15 @@ askUnattendedUpgrades(){
 confUnattendedUpgrades(){
 	cd /etc/apt/apt.conf.d
 
-	wget -q -O- "$UNATTUPG_CONFIG" | $SUDO tar xz
-	$SUDO cp "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" 50unattended-upgrades
-	$SUDO rm -rf "unattended-upgrades-$UNATTUPG_RELEASE"
+	if [ "$PLAT" = "Raspbian" ]; then
+		wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz
+		$SUDO cp "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" 50unattended-upgrades
+		$SUDO rm -rf "unattended-upgrades-$UNATTUPG_RELEASE"
+	fi
 
-	if [ "$VPN" = "WireGuard" ] && [ "$(uname -m)" = "armv7l" ]; then
+	# On architectures different from armv6l, where we install wireguard from source, enable
+	# automatic updates via the unstable repository
+	if [ "$VPN" = "WireGuard" ] && [ "$(uname -m)" != "armv6l" ]; then
 		sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
 	fi
 
@@ -1183,7 +1208,7 @@ installScripts() {
 	FOLDER=$(tr '[:upper:]' '[:lower:]' <<< "$VPN")
 	$SUDO cp /etc/.pivpn/scripts/$FOLDER/*.sh /opt/pivpn/
 	$SUDO chmod 0755 /opt/pivpn/*.sh
-	$SUDO cp /etc/.pivpn/$FOLDER/pivpn /usr/local/bin/pivpn
+	$SUDO cp /etc/.pivpn/$FOLDER/scripts/pivpn /usr/local/bin/pivpn
 	$SUDO chmod 0755 /usr/local/bin/pivpn
 	$SUDO cp /etc/.pivpn/scripts/$FOLDER/bash-completion /etc/bash_completion.d/pivpn
 	. /etc/bash_completion.d/pivpn
@@ -1285,7 +1310,7 @@ main(){
 	echo "::: Restarting services..."
 	# Start services
 	case ${PLAT} in
-		Raspbian)
+		Debian|Raspbian)
 			if [ "$VPN" = "OpenVPN" ]; then
 				$SUDO systemctl enable openvpn.service
 				$SUDO systemctl start openvpn.service

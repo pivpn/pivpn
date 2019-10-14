@@ -24,6 +24,7 @@ printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
 cd /etc/wireguard/keys
 cp ../wg0.conf ../wg0.tmp
+# Replace every key in the server configuration with just it's file name
 for k in *; do
     sed "s#$(cat "$k")#$k#" -i ../wg0.tmp
 done
@@ -148,7 +149,7 @@ else
     fi
 fi
 
-# grep -w (whole word) is used so port 111940 with now match when looking for 1194
+# grep -w (whole word) is used so port 11940 won't match when looking for 1194
 if netstat -uanp | grep -w "${pivpnPORT}" | grep -q 'udp'; then
     echo ":: [OK] WireGuard is listening on port ${pivpnPORT}/udp"
 else
