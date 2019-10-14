@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# Must be root to use this tool
+if [ $EUID -ne 0 ];then
+  	if dpkg-query -s sudo &> /dev/null; then
+        export SUDO="sudo"
+  	else
+    	echo "::: Please install sudo or run this as root."
+    	exit 1
+  fi
+fi
+
+makeConf(){
+    shift
+    $SUDO /opt/pivpn/makeCONF.sh "$@"
+    exit 1
+}
+
+listConnected(){
+    $SUDO wg show
+    exit 1
+}
+
+debug(){
+    $SUDO /opt/pivpn/pivpnDEBUG.sh
+    exit 1
+}
+
+listClients(){
+    $SUDO /opt/pivpn/listCONF.sh
+    exit 1
+}
+
+showQrcode(){
+    shift
+    $SUDO /opt/pivpn/qrcodeCONF.sh "$@"
+    exit 1
+}
+
+removeClient(){
+    shift
+    $SUDO /opt/pivpn/removeCONF.sh "$@"
+    exit 1
+}
+
+uninstallServer(){
+    $SUDO /opt/pivpn/uninstall.sh
+    exit 1
+}
+
+showHelp(){
+    echo "::: Control all PiVPN specific functions!"
+    echo ":::"
+    echo "::: Usage: pivpn <command> [option]"
+    echo ":::"
+    echo "::: Commands:"
+    echo ":::  -a,  add              Create a client conf profile"
+    echo ":::  -c,  clients          List any connected clients to the server"
+    echo ":::  -d,  debug            Start a debugging session if having trouble"
+    echo ":::  -l,  list             List all clients"
+    echo ":::  -qr, qrcode           Show the qrcode of a client for use with the mobile app"
+    echo ":::  -r,  remove           Remove a client"
+    echo ":::  -h,  help             Show this help dialog"
+    echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
+    exit 1
+}
+
+if [ $# = 0 ]; then
+    showHelp
+fi
+
+# Handle redirecting to specific functions based on arguments
+case "$1" in
+"-a"  | "add"                ) makeConf "$@";;
+"-c"  | "clients"            ) listConnected;;
+"-d"  | "debug"              ) debug;;
+"-l"  | "list"               ) listClients;;
+"-qr" | "qrcode"             ) showQrcode "$@";;
+"-r"  | "remove"             ) removeClient "$@";;
+"-h"  | "help"               ) showHelp;;
+"-u"  | "uninstall"          ) uninstallServer;;
+*                            ) showHelp;;
+esac
