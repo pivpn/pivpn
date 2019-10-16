@@ -63,14 +63,14 @@ fi
 
 if [ "$USING_UFW" -eq 0 ]; then
 
-    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${PHYS_INT}" -j MASQUERADE &> /dev/null; then
+    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]]; then
             iptables -t nat -F
-            iptables -t nat -I POSTROUTING -s 10.6.0.0/24 -o "${PHYS_INT}" -j MASQUERADE
+            iptables -t nat -I POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE
             iptables-save > /etc/iptables/rules.v4
             iptables-restore < /etc/iptables/rules.v4
             echo "Done"
@@ -89,13 +89,13 @@ else
         fi
     fi
 
-    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${PHYS_INT}" -j MASQUERADE &> /dev/null; then
+    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-            sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.6.0.0/24 -o $PHYS_INT -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+            sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.6.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
             ufw reload
             echo "Done"
         fi
@@ -113,13 +113,13 @@ else
         fi
     fi
 
-    if iptables -C ufw-user-forward -i wg0 -o "${PHYS_INT}" -s 10.6.0.0/24 -j ACCEPT &> /dev/null; then
+    if iptables -C ufw-user-forward -i wg0 -o "${IPv4dev}" -s 10.6.0.0/24 -j ACCEPT &> /dev/null; then
         echo ":: [OK] Ufw forwarding rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-            ufw route insert 1 allow in on wg0 from 10.6.0.0/24 out on "$PHYS_INT" to any
+            ufw route insert 1 allow in on wg0 from 10.6.0.0/24 out on "$IPv4dev" to any
             ufw reload
             echo "Done"
         fi

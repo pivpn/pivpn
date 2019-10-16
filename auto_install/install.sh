@@ -270,8 +270,8 @@ chooseInterface(){
 	local firstloop=1
 
 	if [[ $(echo "${availableInterfaces}" | wc -l) -eq 1 ]]; then
-		PHYS_INT="${availableInterfaces}"
-		echo "PHYS_INT=${PHYS_INT}" >> /tmp/setupVars.conf
+		IPv4dev="${availableInterfaces}"
+		echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
 		return
 	fi
 
@@ -290,9 +290,9 @@ chooseInterface(){
 	chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty)
 	if [[ $? = 0 ]]; then
 		for desiredInterface in ${chooseInterfaceOptions}; do
-			PHYS_INT=${desiredInterface}
-			echo "::: Using interface: $PHYS_INT"
-			echo "PHYS_INT=${PHYS_INT}" >> /tmp/setupVars.conf
+			IPv4dev=${desiredInterface}
+			echo "::: Using interface: $IPv4dev"
+			echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
 		done
 	else
 		echo "::: Cancel selected, exiting...."
@@ -314,6 +314,9 @@ getStaticIPv4Settings() {
 	if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Do you want to use your current network settings as a static address?
 					IP address:    ${IPv4addr}
 					Gateway:       ${IPv4gw}" ${r} ${c}); then
+
+		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
 		# If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
 		whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
 If you are worried, either manually set the address, or modify the DHCP reservation pool so it does not include the IP you want.
@@ -337,7 +340,8 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 					IP address:    ${IPv4addr}
 					Gateway:       ${IPv4gw}" ${r} ${c}); then
 					# If the settings are correct, then we need to set the pivpnIP
-					echo "pivpnIP=${IPv4addr%/*}" >> /tmp/setupVars.conf
+					echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+					echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
 					# After that's done, the loop ends and we move on
 					ipSettingsCorrect=True
 				else
@@ -363,7 +367,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 
 setDHCPCD(){
 	# Append these lines to dhcpcd.conf to enable a static IP
-	echo "interface ${PHYS_INT}
+	echo "interface ${IPv4dev}
 	static ip_address=${IPv4addr}
 	static routers=${IPv4gw}
 	static domain_name_servers=${IPv4dns}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
@@ -376,7 +380,7 @@ setStaticIPv4(){
 			echo "::: Static IP already configured."
 		else
 			setDHCPCD
-			$SUDO ip addr replace dev "${PHYS_INT}" "${IPv4addr}"
+			$SUDO ip addr replace dev "${IPv4dev}" "${IPv4addr}"
 			echo ":::"
 			echo "::: Setting IP to ${IPv4addr}.  You may need to restart after the install is complete."
 			echo ":::"
@@ -511,14 +515,15 @@ askWhichVPN(){
 	if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\n\nIt's the recommended choise expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\n\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\n\nChoose 'Yes' to use WireGuard of 'No' to use OpenVPN." ${r} ${c});
 	then
 		VPN="WireGuard"
-		pivpnINT="wg0"
+		pivpnDEV="wg0"
+		pivpnNET="10.6.0.0/24"
 	else
 		VPN="OpenVPN"
-		pivpnINT="tun0"
+		pivpnDEV="tun0"
+		pivpnNET="10.8.0.0/24"
 	fi
 
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
-	echo "pivpnINT=${pivpnINT}" >> /tmp/setupVars.conf
 }
 
 installOpenVPN(){
@@ -1053,10 +1058,10 @@ confNetwork(){
 			USING_UFW=1
 			echo "::: Detected UFW is enabled."
 			echo "::: Adding UFW rules..."
-			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $PHYS_INT -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s $pivpnNET -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
 			# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
 			$SUDO ufw insert 1 allow "$PORT"/"$PROTO" >/dev/null
-			$SUDO ufw route insert 1 allow in on "$pivpnINT" from 10.8.0.0/24 out on "$PHYS_INT" to any >/dev/null
+			$SUDO ufw route insert 1 allow in on "$pivpnDEV" from "$pivpnNET" out on "$IPv4dev" to any >/dev/null
 
 			$SUDO ufw reload >/dev/null
 			echo "::: UFW configuration completed."
@@ -1069,7 +1074,7 @@ confNetwork(){
 		# Now some checks to detect which rules we need to add. On a newly installed system all policies
 		# should be ACCEPT, so the only required rule would be the MASQUERADE one.
 
-		$SUDO iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "$PHYS_INT" -j MASQUERADE
+		$SUDO iptables -t nat -I POSTROUTING -s "$pivpnNET" -o "$IPv4dev" -j MASQUERADE
 
 		# Count how many rules are in the INPUT and FORWARD chain. When parsing input from
 		# iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
@@ -1088,15 +1093,15 @@ confNetwork(){
 		# chain (using -I).
 
 		if [ "$INPUT_RULES_COUNT" -ne 0 ] || [ "$INPUT_POLICY" != "ACCEPT" ]; then
-			$SUDO iptables -I INPUT 1 -i "$PHYS_INT" -p "$PROTO" --dport "$PORT" -j ACCEPT
+			$SUDO iptables -I INPUT 1 -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
 			INPUT_CHAIN_EDITED=1
 		else
 			INPUT_CHAIN_EDITED=0
 		fi
 
 		if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
-			$SUDO iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$PHYS_INT" -o "$pivpnINT" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			$SUDO iptables -I FORWARD 2 -s 10.8.0.0/24 -i "$pivpnINT" -o "$PHYS_INT" -j ACCEPT
+			$SUDO iptables -I FORWARD 1 -d "$pivpnNET" -i "$IPv4dev" -o "$pivpnDEV" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+			$SUDO iptables -I FORWARD 2 -s "$pivpnNET" -i "$pivpnDEV" -o "$IPv4dev" -j ACCEPT
 			FORWARD_CHAIN_EDITED=1
 		else
 			FORWARD_CHAIN_EDITED=0

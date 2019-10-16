@@ -52,14 +52,14 @@ fi
 
 if [ "$USING_UFW" -eq 0 ]; then
 
-    if iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "${PHYS_INT}" -j MASQUERADE &> /dev/null; then
+    if iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]]; then
             iptables -t nat -F
-            iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "${PHYS_INT}" -j MASQUERADE
+            iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE
             iptables-save > /etc/iptables/rules.v4
             echo "Done"
         fi
@@ -68,13 +68,13 @@ if [ "$USING_UFW" -eq 0 ]; then
 
     if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
 
-        if iptables -C INPUT -i "$PHYS_INT" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT &> /dev/null; then
+        if iptables -C INPUT -i "$IPv4dev" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT &> /dev/null; then
             echo ":: [OK] Iptables INPUT rule set"
         else
             ERR=1
             read -r -p ":: [ERR] Iptables INPUT rule is not set, attempt fix now? [Y/n] " REPLY
             if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-                iptables -I INPUT 1 -i "$PHYS_INT" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT
+                iptables -I INPUT 1 -i "$IPv4dev" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT
                 iptables-save > /etc/iptables/rules.v4
                 echo "Done"
             fi
@@ -83,14 +83,14 @@ if [ "$USING_UFW" -eq 0 ]; then
 
     if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
 
-        if iptables -C FORWARD -s 10.8.0.0/24 -i tun0 -o "$PHYS_INT" -j ACCEPT &> /dev/null; then
+        if iptables -C FORWARD -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT &> /dev/null; then
             echo ":: [OK] Iptables FORWARD rule set"
         else
             ERR=1
             read -r -p ":: [ERR] Iptables FORWARD rule is not set, attempt fix now? [Y/n] " REPLY
             if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-                iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$PHYS_INT" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-                iptables -I FORWARD 2 -s 10.8.0.0/24 -i tun0 -o "$PHYS_INT" -j ACCEPT
+                iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$IPv4dev" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+                iptables -I FORWARD 2 -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT
                 iptables-save > /etc/iptables/rules.v4
                 echo "Done"
             fi
@@ -109,13 +109,13 @@ else
         fi
     fi
 
-    if iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "${PHYS_INT}" -j MASQUERADE &> /dev/null; then
+    if iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-            sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $PHYS_INT -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+            sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
             ufw reload
             echo "Done"
         fi
@@ -147,13 +147,13 @@ else
             fi
         fi
     else
-        if iptables -C ufw-user-forward -i tun0 -o "${PHYS_INT}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
+        if iptables -C ufw-user-forward -i tun0 -o "${IPv4dev}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
             echo ":: [OK] Ufw forwarding rule set"
         else
             ERR=1
             read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
             if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-                ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$PHYS_INT" to any
+                ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
                 ufw reload
                 echo "Done"
             fi
