@@ -559,7 +559,7 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 		$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
-		PIVPN_DEPS=(wireguard)
+		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard)
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$(uname -m)" = "armv6l" ]; then
@@ -1344,7 +1344,7 @@ main(){
 	askUnattendedUpgrades
 	confUnattendedUpgrades
 
-	$SUDO cp /tmp/setupVars.conf /etc/pivpn/setupVars.conf
+	$SUDO cp /tmp/setupVars.conf "$setupVars"
 	installScripts
 
 	# Ensure that cached writes reach persistent storage
