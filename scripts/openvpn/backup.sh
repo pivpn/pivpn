@@ -1,11 +1,16 @@
 #!/bin/bash
-install_user=$(</etc/pivpn/INSTALL_USER)
-install_home=$(grep -m1 "^${install_user}:" /etc/passwd | cut -d: -f6)
-install_home=${install_home%/} # remove possible trailing slash
+setupVars="/etc/pivpn/setupVars.conf"
 backupdir=pivpnbackup
 openvpndir=/etc/openvpn
 ovpnsdir=${install_home}/ovpns
 date=$(date +%Y-%m-%d-%H%M%S)
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+source "${setupVars}"
 
 backup_openvpn(){
   if [[ ! -d $install_home/$backupdir ]]; then

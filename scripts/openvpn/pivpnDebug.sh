@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # This scripts runs as root
 
-PORT=$(cat /etc/pivpn/INSTALL_PORT)
-PROTO=$(cat /etc/pivpn/INSTALL_PROTO)
-IPv4dev="$(cat /etc/pivpn/pivpnINTERFACE)"
-REMOTE="$(grep 'remote ' /etc/openvpn/easy-rsa/pki/Default.txt | awk '{print $2}')"
-NO_UFW=$(cat /etc/pivpn/NO_UFW)
-OLD_UFW=$(cat /etc/pivpn/NO_UFW)
-INPUT_CHAIN_EDITED="$(cat /etc/pivpn/INPUT_CHAIN_EDITED)"
-FORWARD_CHAIN_EDITED="$(cat /etc/pivpn/FORWARD_CHAIN_EDITED)"
+setupVars="/etc/pivpn/setupVars.conf"
 ERR=0
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+source "${setupVars}"
 
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
 printf "=============================================\n"
@@ -25,13 +25,13 @@ for filename in /etc/pivpn/*; do
 done
 printf "=============================================\n"
 echo -e "::::\t\e[4msetupVars file shown below\e[0m\t ::::"
-sed "s/$REMOTE/REMOTE/" < /etc/pivpn/setupVars.conf
+sed "s/$pivpnHOST/REDACTED/" < /etc/pivpn/setupVars.conf
 printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
 cat /etc/openvpn/server.conf
 printf "=============================================\n"
 echo -e "::::  \e[4mClient template file shown below\e[0m   ::::"
-sed "s/$REMOTE/REMOTE/" < /etc/openvpn/easy-rsa/pki/Default.txt
+sed "s/$pivpnHOST/REDACTED/" < /etc/openvpn/easy-rsa/pki/Default.txt
 printf "=============================================\n"
 echo -e ":::: \t\e[4mRecursive list of files in\e[0m\t ::::\n::: \e[4m/etc/openvpn/easy-rsa/pki shows below\e[0m :::"
 ls -LR /etc/openvpn/easy-rsa/pki/ -Ireqs -Icerts_by_serial
@@ -50,7 +50,7 @@ else
     fi
 fi
 
-if [ "$NO_UFW" -eq 1 ]; then
+if [ "$USING_UFW" -eq 0 ]; then
 
     if iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
@@ -68,13 +68,13 @@ if [ "$NO_UFW" -eq 1 ]; then
 
     if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
 
-        if iptables -C INPUT -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT &> /dev/null; then
+        if iptables -C INPUT -i "$IPv4dev" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT &> /dev/null; then
             echo ":: [OK] Iptables INPUT rule set"
         else
             ERR=1
             read -r -p ":: [ERR] Iptables INPUT rule is not set, attempt fix now? [Y/n] " REPLY
             if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-                iptables -I INPUT 1 -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
+                iptables -I INPUT 1 -i "$IPv4dev" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT
                 iptables-save > /etc/iptables/rules.v4
                 echo "Done"
             fi
@@ -121,13 +121,13 @@ else
         fi
     fi
 
-    if iptables -C ufw-user-input -p "${PROTO}" --dport "${PORT}" -j ACCEPT &> /dev/null; then
+    if iptables -C ufw-user-input -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT &> /dev/null; then
         echo ":: [OK] Ufw input rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Ufw input rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]]; then
-            ufw insert 1 allow "$PORT"/"$PROTO"
+            ufw insert 1 allow "$pivpnPORT"/"$pivpnPROTO"
             ufw reload
             echo "Done"
         fi
@@ -185,8 +185,8 @@ else
 fi
 
 # grep -w (whole word) is used so port 111940 with now match when looking for 1194
-if netstat -uanpt | grep openvpn | grep -w "${PORT}" | grep -q "${PROTO}"; then
-    echo ":: [OK] OpenVPN is listening on port ${PORT}/${PROTO}"
+if netstat -uanpt | grep openvpn | grep -w "${pivpnPORT}" | grep -q "${pivpnPROTO}"; then
+    echo ":: [OK] OpenVPN is listening on port ${pivpnPORT}/${pivpnPROTO}"
 else
     ERR=1
     read -r -p ":: [ERR] OpenVPN is not listening, try to restart now? [Y/n] " REPLY

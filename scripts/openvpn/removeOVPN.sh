@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # PiVPN: revoke client script
 
-INSTALL_USER=$(</etc/pivpn/INSTALL_USER)
-PLAT=$(</etc/pivpn/DET_PLATFORM)
+setupVars="/etc/pivpn/setupVars.conf"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+source "${setupVars}"
 
 helpFunc() {
     echo "::: Revoke a client ovpn profile"
@@ -56,7 +62,7 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
     done <${INDEX}
     printf "\n"
     
-    echo "::: Please enter the Name of the client to be revoked from the list above:"
+    echo -n "::: Please enter the Name of the client to be revoked from the list above: "
     read -r NAME
     
     if [[ -z "${NAME}" ]]; then
@@ -104,8 +110,6 @@ fi
 
 cd /etc/openvpn/easy-rsa || exit
 
-INSTALL_HOME=$(grep -m1 "^${INSTALL_USER}:" /etc/passwd | cut -d: -f6)
-INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
 for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
     ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
@@ -116,7 +120,7 @@ for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     rm -rf "pki/private/${CERTS_TO_REVOKE[ii]}.key"
     rm -rf "pki/issued/${CERTS_TO_REVOKE[ii]}.crt"
 
-    rm -rf "${INSTALL_HOME}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
+    rm -rf "${install_home}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
     rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
     cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
 done
