@@ -785,7 +785,10 @@ confOpenVPN() {
 
         if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
 
-            ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA certificate size" --radiolist \
+	    ## creates a file to determine if the OpenVPN setup is compatible with the OVPN12 format for iOS keychain integration.
+            echo "true" > /etc/pivpn/OVPN12_Compatible
+	    
+	    ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA certificate size" --radiolist \
             "Choose the desired size of your certificate (press space to select):\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 2048 bits.  If you are testing, you can use 1024 bits to speed things up, but do not use this for normal use!  If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
             "1024" "Use a 1024-bit certificate (testing only)" OFF \
             "2048" "Use a 2048-bit certificate (recommended level)" ON \
