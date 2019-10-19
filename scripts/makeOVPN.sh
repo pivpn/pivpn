@@ -70,7 +70,13 @@ do
             DAYS="$_val"
             ;;
         -i|--iOS)
-            iOS=1
+			OVPN12_Compatible=$(cat /etc/pivpn/OVPN12_Compatible)
+			if [[ ${OVPN12_Compatible} == "true" ]]; then
+				iOS=1
+			else
+				echo "This function is not compatable with OVPN 2.4"
+				exit 1
+			fi
             ;;
         -h|--help)
             helpFunc
