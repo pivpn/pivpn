@@ -29,7 +29,7 @@ done
 
 cd /etc/wireguard/configs
 if [ ! -s clients.txt ]; then
-    echo "::: There are no clients to remove"
+    echo "::: There are no clients to show"
     exit 1
 fi
 

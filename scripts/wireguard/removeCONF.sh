@@ -79,18 +79,18 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
             # Then remove the client matching the variables above
             sed "/${CLIENT_NAME} ${CREATION_DATE} ${COUNT}/d" -i configs/clients.txt
-            
+
             # Remove the peer section from the server config
             sed "/# begin ${CLIENT_NAME}/,/# end ${CLIENT_NAME}/d" -i wg0.conf
             echo "::: Updated server config"
-            
+
             rm "configs/${CLIENT_NAME}.conf"
             echo "::: Client config for ${CLIENT_NAME} removed"
 
             rm "keys/${CLIENT_NAME}_priv"
             rm "keys/${CLIENT_NAME}_pub"
             echo "::: Client Keys for ${CLIENT_NAME} removed"
-            
+
             # Find all .conf files in the home folder of the user matching the checksum of the
             # config and delete them. '-maxdepth 3' is used to avoid traversing too many folders.
             find "${install_home}" -maxdepth 3 -type f -name '*.conf' -print0 | while IFS= read -r -d '' CONFIG; do
@@ -108,7 +108,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 done
 
 # Restart WireGuard only if some clients were actually deleted
-if [ "${DELETED_COUNT}" -gt 0 ]; then 
+if [ "${DELETED_COUNT}" -gt 0 ]; then
     if systemctl restart wg-quick@wg0; then
         echo "::: WireGuard restarted"
     else

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PiVPN: Trivial OpenVPN or WireGUard setup and configuration
+# PiVPN: Trivial OpenVPN or WireGuard setup and configuration
 # Easiest setup and mangement of OpenVPN or WireGuard on Raspberry Pi
 # http://pivpn.io
 # Heavily adapted from the pi-hole.net project and...
@@ -20,7 +20,12 @@ PKG_CACHE="/var/lib/apt/lists/"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
+# Dependencies that are required by the script, regardless of the VPN protocol chosen
 BASE_DEPS=(git tar wget grep iptables-persistent dnsutils whiptail net-tools dhcpcd5)
+# Dependencies that where actually installed by the script. For example if the script requires
+# grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
+# PiVPN we won't prompt to remove packages that may have been installed by the user for other reasons
+TO_INSTALL=()
 
 pivpnGitUrl="https://github.com/orazioedoardo/pivpn.git"
 easyrsaVer="3.0.6"
@@ -30,7 +35,7 @@ easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}
 UNATTUPG_RELEASE="1.14"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
-WG_SNAPSHOT="0.0.20190913"
+WG_SNAPSHOT="0.0.20191012"
 WG_SOURCE="https://git.zx2c4.com/WireGuard/snapshot/WireGuard-${WG_SNAPSHOT}.tar.xz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
@@ -212,10 +217,6 @@ notifyPackageUpdatesAvailable(){
 	fi
 }
 
-packageCheckInstall(){
-	dpkg-query -W -f='${Status}' "${1}" 2>/dev/null | grep -c "ok installed" || ${PKG_INSTALL} "${1}"
-}
-
 preconfigurePackages(){
 	# Add support for https repositories if there are any that use it otherwise the installation will silently fail
 	if grep -q https /etc/apt/sources.list; then
@@ -236,14 +237,20 @@ installDependentPackages(){
 	# No spinner - conflicts with set -e
 	declare -a argArray1=("${!1}")
 
+	for i in "${argArray1[@]}"; do
+		echo -n ":::    Checking for $i..."
+			if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
+				echo " installed!"
+			else
+				TO_INSTALL+=("${i}")
+				echo " not installed!"
+			fi
+	done
+
 	if command -v debconf-apt-progress &> /dev/null; then
 		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
 	else
-		for i in "${argArray1[@]}"; do
-			echo -n ":::    Checking for $i..."
-			$SUDO packageCheckInstall "${i}" &> /dev/null
-			echo " installed!"
-		done
+		${PKG_INSTALL} "${argArray1[@]}"
 	fi
 }
 
@@ -301,8 +308,8 @@ chooseInterface(){
 }
 
 avoidStaticIPv4Ubuntu() {
-    # If we are in Ubuntu then they need to have previously set their network, so just use what you have.
-    whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are not using Raspbian, we will not configure a static IP for you.
+	# If we are in Ubuntu then they need to have previously set their network, so just use what you have.
+	whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are not using Raspbian, we will not configure a static IP for you.
 If you are in Amazon then you can not configure a static IP anyway. Just ensure before this installer started you had set an elastic IP on your instance." ${r} ${c}
 }
 
@@ -559,13 +566,13 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 		$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
-		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard)
+		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$(uname -m)" = "armv6l" ]; then
 
 		echo "::: Installing WireGuard from source... "
-		PIVPN_DEPS=(libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode)
+		PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
 		# Delete any leftover code
@@ -591,8 +598,12 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 			exit 1
 		fi
 
+		# Use checkinstall to install userspace tools so if the user wants to uninstall
+		# PiVPN we can just do apt remove wireguard-tools, instead of manually removing
+		# files from the file system
 		echo "::: Installing WireGuard tools... "
-		if $SUDO make install tools; then
+		if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_SNAPSHOT}" -y make tools-install; then
+			TO_INSTALL+=("wireguard-tools")
 			echo "done!"
 		else
 			echo "failed!"
@@ -619,6 +630,7 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 		echo "::: Installing WireGuard modules via DKMS... "
 		if $SUDO dkms install wireguard/"${WG_SNAPSHOT}"; then
+			TO_INSTALL+=("wireguard-dkms")
 			echo "done!"
 		else
 			echo "failed!"
@@ -628,12 +640,14 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 	elif [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "i686" ]; then
 
+		echo "::: Installing WireGuard from Debian package... "
+		echo "::: Adding Debian repository... "
 		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 		echo "Package: *
 Pin: release a=unstable
 Pin-Priority: 90" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
-		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard)
+		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
@@ -726,7 +740,25 @@ askCustomPort(){
 	echo "pivpnPORT=${pivpnPORT}" >> /tmp/setupVars.conf
 }
 
-askClientDNS() {
+askClientDNS(){
+
+	# Detect and offer to use Pi-hole
+	if command -v pihole &>/dev/null; then
+		if (whiptail --backtitle "Setup PiVPN" --title "Pi-hole" --yesno "We have detected a Pi-hole installation, do you want to use it as the DNS server for the VPN, so you get ad blocking on the go?" ${r} ${c}); then
+			if [ "$VPN" = "WireGuard" ]; then
+				pivpnDEV="wg0"
+			elif [ "$VPN" = "OpenVPN" ]; then
+				pivpnDEV="tun0"
+			fi
+
+			pivpnDNS1="$IPv4addr"
+			echo "interface=$pivpnDNS" | $SUDO tee /etc/dnsmasq.d/02-pivpn.conf > /dev/null
+			$SUDO pihole restartdns
+			echo "pivpnDNS1=${pivpnDNS1}" >> /tmp/setupVars.conf
+			return
+		fi
+	fi
+
 	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients (press space to select). To use your own, select Custom." ${r} ${c} 6)
 	DNSChooseOptions=(Google "" on
 			OpenDNS "" off
@@ -799,6 +831,7 @@ askClientDNS() {
 		exit 1
 	fi
 
+	echo "USING_PIHOLE=${USING_PIHOLE}" >> /tmp/setupVars.conf
 	echo "pivpnDNS1=${pivpnDNS1}" >> /tmp/setupVars.conf
 	echo "pivpnDNS2=${pivpnDNS2}" >> /tmp/setupVars.conf
 }
@@ -1221,6 +1254,7 @@ installScripts(){
 	fi
 
 	FOLDER=$(tr '[:upper:]' '[:lower:]' <<< "$VPN")
+	$SUDO cp /etc/.pivpn/scripts/uninstall.sh /opt/pivpn/
 	$SUDO cp /etc/.pivpn/scripts/$FOLDER/*.sh /opt/pivpn/
 	$SUDO chmod 0755 /opt/pivpn/*.sh
 	$SUDO cp /etc/.pivpn/scripts/$FOLDER/pivpn /usr/local/bin/pivpn
@@ -1343,6 +1377,8 @@ main(){
 	# Ask if unattended-upgrades will be enabled
 	askUnattendedUpgrades
 	confUnattendedUpgrades
+
+	echo "TO_INSTALL=(${TO_INSTALL[*]})" >> /tmp/setupVars.conf
 
 	$SUDO cp /tmp/setupVars.conf "$setupVars"
 	installScripts

@@ -19,7 +19,7 @@ backup_openvpn(){
   cp -r $openvpndir $ovpnsdir $backupdir 2&>1
   backupzip=$date-pivpnbackup.tgz
   tar -czf $backupzip -C ${install_home} $backupdir 2&>1
-  echo -e "Backup crated to $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/FAQ#how-can-i-migrate-my-configs-to-another-pivpn-instance" 
+  echo -e "Backup crated to $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/FAQ#how-can-i-migrate-my-configs-to-another-pivpn-instance"
 }
 
 
