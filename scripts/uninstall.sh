@@ -56,6 +56,7 @@ removeAll(){
 	if [ "$VPN" = "WireGuard" ]; then
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0/24"
+		pivpnPROTO="udp"
 	elif [ "$VPN" = "OpenVPN" ]; then
 		pivpnDEV="tun0"
 		pivpnNET="10.8.0.0/24"
@@ -63,15 +64,15 @@ removeAll(){
 
 	if [ "$USING_UFW" -eq 1 ]; then
 
-		ufw delete allow "${pivpnPORT}"/udp > /dev/null
+		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
 		ufw route delete allow in on "$pivpnDEV" from "$pivpnNET" out on "${IPv4dev}" to any > /dev/null
-		sed -z "s/*nat\n:POSTROUTING ACCEPT \[0:0\]\n-I POSTROUTING -s 10.6.0.0\/24 -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n\n//" -i /etc/ufw/before.rules
+		sed -z "s/*nat\n:POSTROUTING ACCEPT \[0:0\]\n-I POSTROUTING -s ${pivpnNET}\/24 -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n\n//" -i /etc/ufw/before.rules
 		ufw reload &> /dev/null
 
 	elif [ "$USING_UFW" -eq 0 ]; then
 
 		if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
-			iptables -D INPUT -i "${IPv4dev}" -p udp --dport "${pivpnPORT}" -j ACCEPT
+			iptables -D INPUT -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT
 		fi
 
 		if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then

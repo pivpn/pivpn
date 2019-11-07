@@ -522,6 +522,7 @@ askWhichVPN(){
 	if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\n\nIt's the recommended choise expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\n\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\n\nChoose 'Yes' to use WireGuard of 'No' to use OpenVPN." ${r} ${c});
 	then
 		VPN="WireGuard"
+		pivpnPROTO="udp"
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0/24"
 	else
@@ -831,7 +832,6 @@ askClientDNS(){
 		exit 1
 	fi
 
-	echo "USING_PIHOLE=${USING_PIHOLE}" >> /tmp/setupVars.conf
 	echo "pivpnDNS1=${pivpnDNS1}" >> /tmp/setupVars.conf
 	echo "pivpnDNS2=${pivpnDNS2}" >> /tmp/setupVars.conf
 }
@@ -1093,7 +1093,7 @@ confNetwork(){
 			echo "::: Adding UFW rules..."
 			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s $pivpnNET -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
 			# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
-			$SUDO ufw insert 1 allow "$PORT"/"$PROTO" >/dev/null
+			$SUDO ufw insert 1 allow "$pivpnPORT"/"$pivpnPROTO" >/dev/null
 			$SUDO ufw route insert 1 allow in on "$pivpnDEV" from "$pivpnNET" out on "$IPv4dev" to any >/dev/null
 
 			$SUDO ufw reload >/dev/null
@@ -1126,7 +1126,7 @@ confNetwork(){
 		# chain (using -I).
 
 		if [ "$INPUT_RULES_COUNT" -ne 0 ] || [ "$INPUT_POLICY" != "ACCEPT" ]; then
-			$SUDO iptables -I INPUT 1 -i "$IPv4dev" -p "$PROTO" --dport "$PORT" -j ACCEPT
+			$SUDO iptables -I INPUT 1 -i "$IPv4dev" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT
 			INPUT_CHAIN_EDITED=1
 		else
 			INPUT_CHAIN_EDITED=0
