@@ -62,7 +62,7 @@ function update {
 
 function backup {
 
-    $SUDO /opt/pivpn/backup.sh 
+    $SUDO /opt/pivpn/backup.sh
     exit 0
 
 }

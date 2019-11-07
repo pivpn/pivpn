@@ -46,7 +46,7 @@ fi
 if [[ -z "${CERTS_TO_REVOKE}" ]]; then
     printf "\n"
     printf " ::\e[4m  Certificate List  \e[0m:: \n"
-    
+
     i=0
     while read -r line || [ -n "$line" ]; do
         STATUS=$(echo "$line" | awk '{print $1}')
@@ -61,26 +61,26 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
         fi
     done <${INDEX}
     printf "\n"
-    
+
     echo -n "::: Please enter the Name of the client to be revoked from the list above: "
     read -r NAME
-    
+
     if [[ -z "${NAME}" ]]; then
         echo "You can not leave this blank!"
         exit 1
     fi
-    
+
     for((x=1;x<=i;++x)); do
         if [ "${CERTS[$x]}" = "${NAME}" ]; then
             VALID=1
         fi
     done
-    
+
     if [ -z "${VALID}" ]; then
         printf "You didn't enter a valid cert name!\n"
         exit 1
     fi
-    
+
     CERTS_TO_REVOKE=( "${NAME}" )
 else
     i=0
@@ -92,7 +92,7 @@ else
             let i=i+1
         fi
     done <${INDEX}
-    
+
     for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
         VALID=0
         for((x=1;x<=i;++x)); do
@@ -100,7 +100,7 @@ else
                 VALID=1
             fi
         done
-        
+
         if [ "${VALID}" != 1 ]; then
             printf "You passed an invalid cert name: '"%s"'!\n" "${CERTS_TO_REVOKE[ii]}"
             exit 1

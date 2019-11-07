@@ -36,7 +36,7 @@ helpFunc() {
 if [ -z "$HELP_SHOWN" ]; then
     helpFunc
     echo
-    echo "HELP_SHOWN=1" >> "$setupVars" 
+    echo "HELP_SHOWN=1" >> "$setupVars"
 fi
 
 # Parse input arguments
@@ -351,9 +351,9 @@ if [ "$iOS" = "1" ]; then
     fi
 
 	} > "${NAME}${FILEEXT}"
-	
+
 	# Copy the .ovpn profile to the home directory for convenient remote access
-		
+
 	printf "========================================================\n"
 	printf "Generating an .ovpn12 file for use with iOS devices\n"
 	printf "Please remember the export password\n"

@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 ###Updates pivpn scripts (Not PiVPN)
 ###Main Vars
@@ -11,7 +11,7 @@ bashcompletiondir="/etc/bash_completion.d/pivpn"
 ###Functions
 ##Updates scripts
 updatepivpnscripts(){
-    ##We don't know what sort of changes users have made. 
+    ##We don't know what sort of changes users have made.
     ##Lets remove first /etc/.pivpn dir then clone it back again
     echo "going do update PiVPN Scripts"
     if [[ -d $pivpnlocalpath ]]; then
@@ -25,9 +25,9 @@ updatepivpnscripts(){
     echo "PiVPN Scripts have been updated"
 }
 
-##Updates scripts using test branch 
+##Updates scripts using test branch
 updatefromtest(){
-    ##We don't know what sort of changes users have made. 
+    ##We don't know what sort of changes users have made.
     ##Lets remove first /etc/.pivpn dir then clone it back again
     echo "PiVPN Scripts updating from test branch"
     if [[ -d /etc/.pivpn ]]; then
@@ -89,8 +89,8 @@ else
           scriptusage
           exit 0
           ;;
-      * ) 
-        updatepivpnscripts 
+      * )
+        updatepivpnscripts
         exit 0
         ;;
     esac
