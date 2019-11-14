@@ -1175,7 +1175,10 @@ askEncryption(){
 			fi
 		fi
 
-		if [ -n "$DOWNLOAD_DH_PARAM" ]; then
+		if [ -z "$DOWNLOAD_DH_PARAM" ] || [ "$DOWNLOAD_DH_PARAM" -ne 1 ]; then
+			DOWNLOAD_DH_PARAM=0
+			echo "::: DH parameters will be generated locally"
+		else
 			echo "::: DH parameters will be downloaded from \"2 Ton Digital\""
 		fi
 
@@ -1246,7 +1249,11 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	${SUDOE} ./easyrsa --batch build-ca nopass
 	printf "\n::: CA Complete.\n"
 
-	whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman parameters, and HMAC key will now be generated." ${r} ${c}
+	if [ "${runUnattended}" = 'true' ]; then
+		echo "::: The server key, Diffie-Hellman parameters, and HMAC key will now be generated."
+	else
+		whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman parameters, and HMAC key will now be generated." ${r} ${c}
+	fi
 
 	# Build the server
 	EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
@@ -1335,9 +1342,10 @@ confWireGuard(){
 		$SUDO chmod 700 /etc/wireguard
 	fi
 
-	if [ "${runUnattended}" = 'false' ]; then
+	if [ "${runUnattended}" = 'true' ]; then
+		echo "::: The Server Keys and Pre-Shared key will now be generated."
+	else
 		whiptail --title "Server Information" --msgbox "The Server Keys and Pre-Shared key will now be generated." "${r}" "${c}"
-		return
 	fi
 	$SUDO mkdir /etc/wireguard/configs
 	$SUDO touch /etc/wireguard/configs/clients.txt
@@ -1564,9 +1572,13 @@ installScripts(){
 displayFinalMessage(){
 	if [ "${runUnattended}" = 'true' ]; then
 		echo "::: Installation Complete!"
-		echo "::: Now run 'pivpn add' to create the ovpn profiles.
-Run 'pivpn help' to see what else you can do!\n\nIf you run into any issue, please read all our documentation carefully.
-All incomplete posts or bug reports will be ignored or deleted.\n\nThank you for using PiVPN."
+		echo "::: Now run 'pivpn add' to create the ovpn profiles."
+		echo "::: Run 'pivpn help' to see what else you can do!"
+		echo
+		echo "::: If you run into any issue, please read all our documentation carefully."
+		echo "::: All incomplete posts or bug reports will be ignored or deleted."
+		echo
+		echo "::: Thank you for using PiVPN."
 		echo "::: It is strongly recommended you reboot after installation."
 		return
 	fi
@@ -1621,10 +1633,15 @@ main(){
 
 	if [[ "${runUnattended}" == true ]]; then
 		echo "::: --unattended passed to install script, no whiptail dialogs will be displayed"
-		if [ -r "$1" ]; then
-			source "$1"
+		if [ -z "$2" ]; then
+			echo "::: No configuration file passed, using default settings..."
 		else
-			echo "::: Warning: can't open $1, using default settings..."
+			if [ -r "$2" ]; then
+				source "$2"
+			else
+				echo "::: Can't open $2"
+				exit 1
+			fi
 		fi
 	fi
 
