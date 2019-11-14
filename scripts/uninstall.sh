@@ -42,10 +42,10 @@ removeAll(){
 	# Stopping and disabling services
 	echo "::: Stopping and disabling services..."
 
-	if [ "$VPN" = "WireGuard" ]; then
+	if [ "$VPN" = "wireguard" ]; then
 		systemctl stop wg-quick@wg0
 		systemctl disable wg-quick@wg0 &> /dev/null
-	elif [ "$VPN" = "OpenVPN" ]; then
+	elif [ "$VPN" = "openvpn" ]; then
 		systemctl stop openvpn
 		systemctl disable openvpn &> /dev/null
 	fi
@@ -53,19 +53,19 @@ removeAll(){
 	# Removing firewall rules.
 	echo "::: Removing firewall rules..."
 
-	if [ "$VPN" = "WireGuard" ]; then
-		pivpnDEV="wg0"
-		pivpnNET="10.6.0.0/24"
+	if [ "$VPN" = "wireguard" ]; then
 		pivpnPROTO="udp"
-	elif [ "$VPN" = "OpenVPN" ]; then
+		pivpnDEV="wg0"
+		pivpnNET="10.6.0.0"
+	elif [ "$VPN" = "openvpn" ]; then
 		pivpnDEV="tun0"
-		pivpnNET="10.8.0.0/24"
+		pivpnNET="10.8.0.0"
 	fi
 
 	if [ "$USING_UFW" -eq 1 ]; then
 
 		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
-		ufw route delete allow in on "$pivpnDEV" from "$pivpnNET" out on "${IPv4dev}" to any > /dev/null
+		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/24" out on "${IPv4dev}" to any > /dev/null
 		sed -z "s/*nat\n:POSTROUTING ACCEPT \[0:0\]\n-I POSTROUTING -s ${pivpnNET}\/24 -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n\n//" -i /etc/ufw/before.rules
 		ufw reload &> /dev/null
 
@@ -76,11 +76,11 @@ removeAll(){
 		fi
 
 		if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
-			iptables -D FORWARD -d "$pivpnNET" -i "${IPv4dev}" -o "$pivpnDEV" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			iptables -D FORWARD -s "$pivpnNET" -i "$pivpnDEV" -o "${IPv4dev}" -j ACCEPT
+			iptables -D FORWARD -d "${pivpnNET}/24" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+			iptables -D FORWARD -s "${pivpnNET}/24" -i "${pivpnDEV}/24" -o "${IPv4dev}" -j ACCEPT
 		fi
 
-		iptables -t nat -D POSTROUTING -s "$pivpnNET" -o "${IPv4dev}" -j MASQUERADE
+		iptables -t nat -D POSTROUTING -s "${pivpnNET}/24" -o "${IPv4dev}" -j MASQUERADE
 		iptables-save > /etc/iptables/rules.v4
 
 	fi
