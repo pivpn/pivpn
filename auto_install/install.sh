@@ -1061,17 +1061,17 @@ validDomain(){
 #This procedure allows a user to specify a custom search domain if they have one.
 askCustomDomain(){
 	if [ "${runUnattended}" = 'true' ]; then
-		if [ -n "$pivpnDOMAIN" ]; then
-			if validDomain "$pivpnDOMAIN"; then
-				echo "::: Using custom domain $pivpnDOMAIN"
+		if [ -n "$pivpnSEARCHDOMAIN" ]; then
+			if validDomain "$pivpnSEARCHDOMAIN"; then
+				echo "::: Using custom domain $pivpnSEARCHDOMAIN"
 			else
-				echo "::: Custom domain $pivpnDOMAIN is not valid"
+				echo "::: Custom domain $pivpnSEARCHDOMAIN is not valid"
 				exit 1
 			fi
 		else
 			echo "::: Skipping custom domain"
 		fi
-		echo "pivpnDOMAIN=${pivpnDOMAIN}" >> /tmp/setupVars.conf
+		echo "pivpnSEARCHDOMAIN=${pivpnSEARCHDOMAIN}" >> /tmp/setupVars.conf
 		return
 	fi
 
@@ -1081,16 +1081,16 @@ askCustomDomain(){
 
 		until [[ $DomainSettingsCorrect = True ]]
 		do
-			if pivpnDOMAIN=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" ${r} ${c} --title "Custom Domain" 3>&1 1>&2 2>&3); then
-				if validDomain "$pivpnDOMAIN"; then
-					if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $pivpnDOMAIN" ${r} ${c}); then
+			if pivpnSEARCHDOMAIN=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" ${r} ${c} --title "Custom Domain" 3>&1 1>&2 2>&3); then
+				if validDomain "$pivpnSEARCHDOMAIN"; then
+					if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $pivpnSEARCHDOMAIN" ${r} ${c}); then
 						DomainSettingsCorrect=True
 					else
 						# If the settings are wrong, the loop continues
 						DomainSettingsCorrect=False
 					fi
 				else
-					whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $pivpnDOMAIN\n" ${r} ${c}
+					whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $pivpnSEARCHDOMAIN\n" ${r} ${c}
 					DomainSettingsCorrect=False
 				fi
 			else
@@ -1100,7 +1100,7 @@ askCustomDomain(){
 		done
 	fi
 
-	echo "pivpnDOMAIN=${pivpnDOMAIN}" >> /tmp/setupVars.conf
+	echo "pivpnSEARCHDOMAIN=${pivpnSEARCHDOMAIN}" >> /tmp/setupVars.conf
 }
 
 askPublicIPOrDNS(){
@@ -1313,8 +1313,8 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 		$SUDO sed -i "s/proto udp/proto tcp/g" /etc/openvpn/server.conf
 	fi
 
-	if [ -n "$pivpnDOMAIN" ]; then
-		$SUDO sed -i "0,/\(.*dhcp-option.*\)/s//\push \"dhcp-option DOMAIN ${pivpnDOMAIN}\" \n&/" /etc/openvpn/server.conf
+	if [ -n "$pivpnSEARCHDOMAIN" ]; then
+		$SUDO sed -i "0,/\(.*dhcp-option.*\)/s//\push \"dhcp-option DOMAIN ${pivpnSEARCHDOMAIN}\" \n&/" /etc/openvpn/server.conf
 	fi
 
 	# write out server certs to conf file
