@@ -2,7 +2,6 @@
 # PiVPN: Uninstall Script
 
 PKG_MANAGER="apt-get"
-WG_SNAPSHOT="0.0.20191012"
 setupVars="/etc/pivpn/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then

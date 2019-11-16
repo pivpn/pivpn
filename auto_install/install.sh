@@ -37,9 +37,6 @@ easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}
 UNATTUPG_RELEASE="1.14"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
-WG_SNAPSHOT="0.0.20191012"
-WG_SOURCE="https://git.zx2c4.com/WireGuard/snapshot/WireGuard-${WG_SNAPSHOT}.tar.xz"
-
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo $screen_size | awk '{print $1}')
@@ -738,8 +735,11 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 	elif [ "$(uname -m)" = "armv6l" ]; then
 
 		echo "::: Installing WireGuard from source... "
-		PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode)
+		PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
 		installDependentPackages PIVPN_DEPS[@]
+
+		WG_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-kmodtools"."version"')"
+		WG_SOURCE="https://git.zx2c4.com/WireGuard/snapshot/WireGuard-${WG_SNAPSHOT}.tar.xz"
 
 		# Delete any leftover code
 		$SUDO rm -rf /usr/src/wireguard-*
@@ -803,6 +803,8 @@ Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 			$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
 			exit 1
 		fi
+
+		echo "WG_SNAPSHOT=${WG_SNAPSHOT}" >> /tmp/setupVars.conf
 
 	elif [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "i686" ]; then
 
