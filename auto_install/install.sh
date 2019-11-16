@@ -679,7 +679,7 @@ askWhichVPN(){
 			fi
 		fi
 	else
-		if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\n\nIt's the recommended choise expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\n\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\n\nChoose 'Yes' to use WireGuard of 'No' to use OpenVPN." ${r} ${c});
+		if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\n\nIt's the recommended choise expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\n\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\n\nChoose 'Yes' to use WireGuard or 'No' to use OpenVPN." ${r} ${c});
 		then
 			VPN="wireguard"
 		else
@@ -1075,7 +1075,7 @@ askCustomDomain(){
 
 	DomainSettingsCorrect=False
 
-	if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" ${r} ${c}); then
+	if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno --defaultno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" ${r} ${c}); then
 
 		until [[ $DomainSettingsCorrect = True ]]
 		do
@@ -1217,16 +1217,27 @@ confOpenVPN(){
 	# Create a unique server name using the host name and UUID
 	SERVER_NAME="${host_name}_${NEW_UUID}"
 
+	# Backup the openvpn folder
+	OPENVPN_BACKUP="openvpn_$(date +%Y-%m-%d-%H%M%S).tar.gz"
+	echo "::: Backing up the openvpn folder to /etc/${OPENVPN_BACKUP}"
+	$SUDO tar czf "/etc/${OPENVPN_BACKUP}" /etc/openvpn
+
+	if [ -f /etc/openvpn/server.conf ]; then
+		$SUDO rm /etc/openvpn/server.conf
+	fi
+
 	# If easy-rsa exists, remove it
 	if [[ -d /etc/openvpn/easy-rsa/ ]]; then
 		$SUDO rm -rf /etc/openvpn/easy-rsa/
 	fi
 
 	# Get easy-rsa
-	wget -qO- "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn && $SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
+	wget -qO- "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn
+	$SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
 	# fix ownership
 	$SUDO chown -R root:root /etc/openvpn/easy-rsa
 	$SUDO mkdir /etc/openvpn/easy-rsa/pki
+	$SUDO chmod 700 /etc/openvpn/easy-rsa/pki
 
 	cd /etc/openvpn/easy-rsa || exit
 
@@ -1300,7 +1311,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 		$SUDO sed -i "s/proto udp/proto tcp/g" /etc/openvpn/server.conf
 	fi
 
-	if [ -z "$pivpnDOMAIN" ]; then
+	if [ -n "$pivpnDOMAIN" ]; then
 		$SUDO sed -i "0,/\(.*dhcp-option.*\)/s//\push \"dhcp-option DOMAIN ${pivpnDOMAIN}\" \n&/" /etc/openvpn/server.conf
 	fi
 
@@ -1326,30 +1337,35 @@ confOVPN(){
 
 	# verify server name to strengthen security
 	$SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
-
-	if [ ! -d "$install_home/ovpns" ]; then
-		$SUDO mkdir "$install_home/ovpns"
-	fi
-	$SUDO chmod 0750 "$install_home/ovpns"
-	$SUDO chown $install_user:$install_user "$install_home/ovpns"
 }
 
 confWireGuard(){
 	if [ -d /etc/wireguard ]; then
-		$SUDO rm -r /etc/wireguard
+		# Backup the wireguard folder
+		WIREGUARD_BACKUP="wireguard_$(date +%Y-%m-%d-%H%M%S).tar.gz"
+		echo "::: Backing up the wireguard folder to /etc/${WIREGUARD_BACKUP}"
+		$SUDO tar czf "/etc/${WIREGUARD_BACKUP}" /etc/wireguard
+
+		if [ -f /etc/wireguard/wg0.conf ]; then
+			$SUDO rm /etc/wireguard/wg0.conf
+		fi
+	else
+		# If compiled from source, the wireguard folder is not being created
 		$SUDO mkdir /etc/wireguard
-		$SUDO chown root:root /etc/wireguard
-		$SUDO chmod 700 /etc/wireguard
 	fi
+
+	# Ensure that only root is able to enter the wireguard folder
+	$SUDO chown root:root /etc/wireguard
+	$SUDO chmod 700 /etc/wireguard
 
 	if [ "${runUnattended}" = 'true' ]; then
 		echo "::: The Server Keys and Pre-Shared key will now be generated."
 	else
 		whiptail --title "Server Information" --msgbox "The Server Keys and Pre-Shared key will now be generated." "${r}" "${c}"
 	fi
-	$SUDO mkdir /etc/wireguard/configs
+	$SUDO mkdir -p /etc/wireguard/configs
 	$SUDO touch /etc/wireguard/configs/clients.txt
-	$SUDO mkdir /etc/wireguard/keys
+	$SUDO mkdir -p /etc/wireguard/keys
 
 	# Generate private key and derive public key from it
 	wg genkey | $SUDO tee /etc/wireguard/keys/server_priv &> /dev/null
@@ -1442,7 +1458,7 @@ confNetwork(){
 }
 
 confLogging() {
-  echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
+	echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
 if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
   echo "/var/log/openvpn.log
@@ -1459,7 +1475,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 	endscript
 }" | $SUDO tee /etc/logrotate.d/openvpn > /dev/null
 
-  # Restart the logging service
+	# Restart the logging service
 	case ${PLAT} in
 		Debian|Raspbian)
 			$SUDO systemctl restart rsyslog.service || true
@@ -1521,32 +1537,29 @@ askUnattendedUpgrades(){
 }
 
 confUnattendedUpgrades(){
-	if [ "$UNATTUPG" -eq 1 ]; then
-		PIVPN_DEPS=(unattended-upgrades)
-		installDependentPackages PIVPN_DEPS[@]
+	PIVPN_DEPS=(unattended-upgrades)
+	installDependentPackages PIVPN_DEPS[@]
 
-		cd /etc/apt/apt.conf.d
+	cd /etc/apt/apt.conf.d
 
-		if [ "$PLAT" = "Raspbian" ]; then
-			wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz
-			$SUDO cp "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" 50unattended-upgrades
-			$SUDO rm -rf "unattended-upgrades-$UNATTUPG_RELEASE"
-		fi
-
-		# On architectures different from armv6l, where we install wireguard from source, enable
-		# automatic updates via the unstable repository
-		if [ "$VPN" = "wireguard" ] && [ "$(uname -m)" != "armv6l" ]; then
-			$SUDO sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
-		fi
-
-		# Add the remaining settings for all other distributions
-		echo "APT::Periodic::Enable \"1\";
-		APT::Periodic::Update-Package-Lists \"1\";
-		APT::Periodic::Download-Upgradeable-Packages \"1\";
-		APT::Periodic::Unattended-Upgrade \"1\";
-		APT::Periodic::AutocleanInterval \"7\";
-		APT::Periodic::Verbose \"0\";" | $SUDO tee 02periodic > /dev/null
+	if [ "$PLAT" = "Raspbian" ]; then
+		wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz
+		$SUDO cp "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" 50unattended-upgrades
+		$SUDO rm -rf "unattended-upgrades-$UNATTUPG_RELEASE"
 	fi
+
+	# Enable automatic updates via the unstable repository when installing from debian package
+	if [ "$VPN" = "wireguard" ] && [ "$(uname -m)" != "armv6l" ]; then
+		$SUDO sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
+	fi
+
+	# Add the remaining settings for all other distributions
+	echo "APT::Periodic::Enable \"1\";
+	APT::Periodic::Update-Package-Lists \"1\";
+	APT::Periodic::Download-Upgradeable-Packages \"1\";
+	APT::Periodic::Unattended-Upgrade \"1\";
+	APT::Periodic::AutocleanInterval \"7\";
+	APT::Periodic::Verbose \"0\";" | $SUDO tee 02periodic > /dev/null
 }
 
 installScripts(){
@@ -1704,11 +1717,15 @@ main(){
 
 	# Ask if unattended-upgrades will be enabled
 	askUnattendedUpgrades
-	confUnattendedUpgrades
 
+	if [ "$UNATTUPG" -eq 1 ]; then
+		confUnattendedUpgrades
+	fi
+
+	# Save installation setting to the final location
 	echo "TO_INSTALL=(${TO_INSTALL[*]})" >> /tmp/setupVars.conf
-
 	$SUDO cp /tmp/setupVars.conf "$setupVars"
+
 	installScripts
 
 	# Ensure that cached writes reach persistent storage

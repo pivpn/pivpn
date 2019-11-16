@@ -213,6 +213,7 @@ EOF
 #make sure ovpns dir exists
 if [ ! -d "$install_home/ovpns" ]; then
     mkdir "$install_home/ovpns"
+    chown "$install_user":"$install_user" "$install_home/ovpns"
     chmod 0750 "$install_home/ovpns"
 fi
 
@@ -339,16 +340,10 @@ if [ "$iOS" = "1" ]; then
     sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
     echo "</cert>"
 
-    #Finally, append the TA Private Key
-    if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
-      echo "<tls-crypt>"
-      cat "${TA}"
-      echo "</tls-crypt>"
-    else
-      echo "<tls-auth>"
-      cat "${TA}"
-      echo "</tls-auth>"
-    fi
+    #Finally, append the tls Private Key
+    echo "<tls-auth>"
+    cat "${TA}"
+    echo "</tls-auth>"
 
 	} > "${NAME}${FILEEXT}"
 
@@ -401,7 +396,7 @@ fi
 
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$install_home/ovpns/$NAME$FILEEXT"
-chown "$install_user" "$install_home/ovpns/$NAME$FILEEXT"
+chown "$install_user":"$install_user" "$install_home/ovpns/$NAME$FILEEXT"
 chmod 640 "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
 chmod 640 "$install_home/ovpns/$NAME$FILEEXT"
 printf "\n\n"

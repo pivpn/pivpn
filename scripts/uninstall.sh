@@ -67,6 +67,7 @@ removeAll(){
 		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
 		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/24" out on "${IPv4dev}" to any > /dev/null
 		sed -z "s/*nat\n:POSTROUTING ACCEPT \[0:0\]\n-I POSTROUTING -s ${pivpnNET}\/24 -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n\n//" -i /etc/ufw/before.rules
+		iptables -t nat -D POSTROUTING -s "${pivpnNET}/24" -o "${IPv4dev}" -j MASQUERADE
 		ufw reload &> /dev/null
 
 	elif [ "$USING_UFW" -eq 0 ]; then
@@ -77,7 +78,7 @@ removeAll(){
 
 		if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
 			iptables -D FORWARD -d "${pivpnNET}/24" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			iptables -D FORWARD -s "${pivpnNET}/24" -i "${pivpnDEV}/24" -o "${IPv4dev}" -j ACCEPT
+			iptables -D FORWARD -s "${pivpnNET}/24" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
 		fi
 
 		iptables -t nat -D POSTROUTING -s "${pivpnNET}/24" -o "${IPv4dev}" -j MASQUERADE
@@ -103,8 +104,6 @@ removeAll(){
 								rm /etc/apt/preferences.d/limit-unstable
 								$PKG_MANAGER update &> /dev/null
 							fi
-							rm -rf /etc/wireguard
-							rm -rf $install_home/configs
 
 						elif [ "${i}" = "wireguard-dkms" ]; then
 
@@ -122,12 +121,6 @@ removeAll(){
 							# If dirmngr was installed, then we had previously installed wireguard on armv7l
 							# so we remove the repository keys
 							apt-key remove E1CF20DDFFE4B89E802658F1E0B11894F66AEC98 80D15823B7FD1561F9F7BCDDDC30D7C23CBBABEE &> /dev/null
-
-						elif [ "${i}" = "openvpn" ]; then
-
-							rm -rf /var/log/*openvpn*
-							rm -rf /etc/openvpn
-							rm -rf $install_home/ovpns
 
 						elif [ "${i}" = "unattended-upgrades" ]; then
 
@@ -158,7 +151,7 @@ removeAll(){
 	echo "::: Removing pivpn system files..."
 
 	if [ -f /etc/dnsmasq.d/02-pivpn.conf ]; then
-		rm /etc/dnsmasq.d/02-pivpn.conf
+		rm -f /etc/dnsmasq.d/02-pivpn.conf
 		pihole restartdns
 	fi
 
@@ -166,8 +159,24 @@ removeAll(){
 	rm -rf /etc/.pivpn
 	rm -rf /etc/pivpn
 	rm -rf /var/log/*pivpn*
-	rm /usr/local/bin/pivpn
-	rm /etc/bash_completion.d/pivpn
+	rm -f /usr/local/bin/pivpn
+	rm -f /etc/bash_completion.d/pivpn
+
+	echo ":::"
+	echo "::: Removing VPN configuration files..."
+
+	if [ "$VPN" = "wireguard" ]; then
+		rm -f /etc/wireguard/wg0.conf
+		rm -rf /etc/wireguard/configs
+		rm -rf /etc/wireguard/keys
+		rm -rf $install_home/configs
+	elif [ "$VPN" = "openvpn" ]; then
+		rm -rf /var/log/*openvpn*
+		rm -f /etc/openvpn/server.conf
+		rm -f /etc/openvpn/crl.pem
+		rm -rf /etc/openvpn/easy-rsa
+		rm -rf $install_home/ovpns
+	fi
 
 	echo ":::"
 	printf "::: Finished removing PiVPN from your system.\n"
