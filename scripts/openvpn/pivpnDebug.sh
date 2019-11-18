@@ -184,7 +184,7 @@ else
     fi
 fi
 
-# grep -w (whole word) is used so port 111940 with now match when looking for 1194
+# grep -w (whole word) is used so port 11940 won't match when looking for 1194
 if netstat -uanpt | grep openvpn | grep -w "${pivpnPORT}" | grep -q "${pivpnPROTO}"; then
     echo ":: [OK] OpenVPN is listening on port ${pivpnPORT}/${pivpnPROTO}"
 else

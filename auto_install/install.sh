@@ -1222,7 +1222,7 @@ confOpenVPN(){
 	# Backup the openvpn folder
 	OPENVPN_BACKUP="openvpn_$(date +%Y-%m-%d-%H%M%S).tar.gz"
 	echo "::: Backing up the openvpn folder to /etc/${OPENVPN_BACKUP}"
-	$SUDO tar czf "/etc/${OPENVPN_BACKUP}" /etc/openvpn
+	$SUDO tar czf "/etc/${OPENVPN_BACKUP}" /etc/openvpn &> /dev/null
 
 	if [ -f /etc/openvpn/server.conf ]; then
 		$SUDO rm /etc/openvpn/server.conf
@@ -1346,7 +1346,7 @@ confWireGuard(){
 		# Backup the wireguard folder
 		WIREGUARD_BACKUP="wireguard_$(date +%Y-%m-%d-%H%M%S).tar.gz"
 		echo "::: Backing up the wireguard folder to /etc/${WIREGUARD_BACKUP}"
-		$SUDO tar czf "/etc/${WIREGUARD_BACKUP}" /etc/wireguard
+		$SUDO tar czf "/etc/${WIREGUARD_BACKUP}" /etc/wireguard &> /dev/null
 
 		if [ -f /etc/wireguard/wg0.conf ]; then
 			$SUDO rm /etc/wireguard/wg0.conf
@@ -1386,7 +1386,7 @@ ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
 confNetwork(){
 	# Enable forwarding of internet traffic
 	$SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
-	$SUDO sysctl -p
+	$SUDO sysctl -p > /dev/null
 
 	# if ufw enabled, configure that (running as root because sometimes the executable is not in the user's $PATH, on Debian for example)
 	if $SUDO bash -c 'hash ufw' 2>/dev/null; then
@@ -1708,10 +1708,10 @@ main(){
 	case ${PLAT} in
 		Debian|Raspbian)
 			if [ "$VPN" = "openvpn" ]; then
-				$SUDO systemctl enable openvpn.service
+				$SUDO systemctl enable openvpn.service &> /dev/null
 				$SUDO systemctl start openvpn.service
 			elif [ "$VPN" = "wireguard" ]; then
-				$SUDO systemctl enable wg-quick@wg0.service
+				$SUDO systemctl enable wg-quick@wg0.service &> /dev/null
 				$SUDO systemctl start wg-quick@wg0.service
 			fi
 		;;
