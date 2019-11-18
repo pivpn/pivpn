@@ -24,7 +24,7 @@ printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
 cd /etc/wireguard/keys
 cp ../wg0.conf ../wg0.tmp
-# Replace every key in the server configuration with just it's file name
+# Replace every key in the server configuration with just its file name
 for k in *; do
     sed "s#$(cat "$k")#$k#" -i ../wg0.tmp
 done

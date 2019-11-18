@@ -4,8 +4,6 @@ proto udp
 remote IPv4pub 1194
 resolv-retry infinite
 nobind
-persist-key
-persist-tun
 key-direction 1
 remote-cert-tls server
 tls-version-min 1.2
