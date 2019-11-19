@@ -13,39 +13,39 @@ fi
 makeConf(){
     shift
     $SUDO /opt/pivpn/makeCONF.sh "$@"
-    exit 1
+    exit 0
 }
 
 listConnected(){
     $SUDO wg show
-    exit 1
+    exit 0
 }
 
 debug(){
     $SUDO /opt/pivpn/pivpnDEBUG.sh
-    exit 1
+    exit 0
 }
 
 listClients(){
     $SUDO /opt/pivpn/listCONF.sh
-    exit 1
+    exit 0
 }
 
 showQrcode(){
     shift
     $SUDO /opt/pivpn/qrcodeCONF.sh "$@"
-    exit 1
+    exit 0
 }
 
 removeClient(){
     shift
     $SUDO /opt/pivpn/removeCONF.sh "$@"
-    exit 1
+    exit 0
 }
 
 uninstallServer(){
     $SUDO /opt/pivpn/uninstall.sh
-    exit 1
+    exit 0
 }
 
 showHelp(){
@@ -62,7 +62,7 @@ showHelp(){
     echo ":::  -r,  remove           Remove a client"
     echo ":::  -h,  help             Show this help dialog"
     echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
-    exit 1
+    exit 0
 }
 
 if [ $# = 0 ]; then
