@@ -22,14 +22,14 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar wget grep iptables-persistent dnsutils whiptail net-tools dhcpcd5)
+BASE_DEPS=(git tar wget grep iptables-persistent dnsutils whiptail net-tools)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
 # PiVPN we won't prompt to remove packages that may have been installed by the user for other reasons
 TO_INSTALL=()
 
-pivpnGitUrl="https://github.com/orazioedoardo/pivpn.git"
+pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
 
@@ -63,12 +63,12 @@ noOSSupport(){
 	if [ "${runUnattended}" = 'true' ]; then
 		echo "::: Invalid OS detected"
 		echo "::: We have not been able to detect a supported OS."
-		echo "::: Currently this installer supports Raspbian (Buster) and Debian (Buster)."
+		echo "::: Currently this installer supports Raspbian (Buster), Debian (Buster) and Ubuntu (Bionic)."
 		exit 1
 	fi
 
 	whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
-Currently this installer supports Raspbian (Buster) and Debian (Buster).
+Currently this installer supports Raspbian (Buster), Debian (Buster) and Ubuntu (Bionic).
 If you think you received this message in error, you can post an issue on the GitHub at https://github.com/pivpn/pivpn/issues." ${r} ${c}
 	exit 1
 }
@@ -97,31 +97,35 @@ distroCheck(){
 	if hash lsb_release 2>/dev/null; then
 
 		PLAT=$(lsb_release -si)
-		OSCN=$(lsb_release -sc) # We want this to be trusty xenial or jessie
+		OSCN=$(lsb_release -sc)
 
 	else # else get info from os-release
 
 		source /etc/os-release
 		PLAT=$(awk '{print $1}' <<< "$NAME")
 		VER="$VERSION_ID"
-		declare -A VER_MAP=(["10"]="buster")
+		declare -A VER_MAP=(["10"]="buster" ["18.04"]="bionic")
 		OSCN=${VER_MAP["${VER}"]}
 	fi
 
 	case ${PLAT} in
-		Debian|Raspbian)
+		Debian|Raspbian|Ubuntu)
 		case ${OSCN} in
-			buster)
+			buster|bionic)
 			;;
 			*)
-			maybeOS_Support
+			maybeOSSupport
 			;;
 		esac
 		;;
 		*)
-		noOS_Support
+		noOSSupport
 		;;
 	esac
+
+	if [ "$PLAT" = "Raspbian" ]; then
+		BASE_DEPS+=(dhcpcd5)
+	fi
 
 	echo "PLAT=${PLAT}" > /tmp/setupVars.conf
 	echo "OSCN=${OSCN}" >> /tmp/setupVars.conf
@@ -705,117 +709,129 @@ installOpenVPN(){
 }
 
 installWireGuard(){
-	# If this Raspberry Pi uses armv7l we can use the package from the repo
-	# https://lists.zx2c4.com/pipermail/wireguard/2017-November/001885.html
-	# Otherwhise compile and build the kernel module via DKMS (so it will
-	# be recompiled on kernel upgrades)
-	if [ "$(uname -m)" = "armv7l" ]; then
+	if [ "$PLAT" = "Raspbian" ]; then
+
+		# If this Raspberry Pi uses armv7l we can use the package from the repo
+		# https://lists.zx2c4.com/pipermail/wireguard/2017-November/001885.html
+		# Otherwhise compile and build the kernel module via DKMS (so it will
+		# be recompiled on kernel upgrades)
+
+		if [ "$(uname -m)" = "armv7l" ]; then
+
+			echo "::: Installing WireGuard from Debian package... "
+			# dirmngr is used to download repository keys, whereas qrencode is used to generate qrcodes
+			# from config file, for use with mobile clients
+			PIVPN_DEPS=(dirmngr qrencode)
+			installDependentPackages PIVPN_DEPS[@]
+			# Do not upgrade packages from the unstable repository except for wireguard
+			echo "::: Adding Debian repository... "
+			echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
+			echo "Package: *
+		Pin: release a=unstable
+		Pin-Priority: 1
+
+		Package: wireguard wireguard-dkms wireguard-tools
+		Pin: release a=unstable
+		Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
+
+			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
+			installDependentPackages PIVPN_DEPS[@]
+
+		elif [ "$(uname -m)" = "armv6l" ]; then
+
+			echo "::: Installing WireGuard from source... "
+			PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
+			installDependentPackages PIVPN_DEPS[@]
+
+			WG_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-kmodtools"."version"')"
+			WG_SOURCE="https://git.zx2c4.com/WireGuard/snapshot/WireGuard-${WG_SNAPSHOT}.tar.xz"
+
+			# Delete any leftover code
+			$SUDO rm -rf /usr/src/wireguard-*
+
+			echo "::: Downloading source code... "
+			wget -qO- "${WG_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
+			echo "done!"
+
+			cd /usr/src
+			$SUDO mv WireGuard-"${WG_SNAPSHOT}" wireguard-"${WG_SNAPSHOT}"
+			cd wireguard-"${WG_SNAPSHOT}"
+			$SUDO mv src/* .
+			$SUDO rmdir src
+
+			# We install the userspace tools manually since DKMS only compiles and
+			# installs the kernel module
+			echo "::: Compiling WireGuard tools... "
+			if $SUDO make tools; then
+				echo "done!"
+			else
+				echo "failed!"
+				exit 1
+			fi
+
+			# Use checkinstall to install userspace tools so if the user wants to uninstall
+			# PiVPN we can just do apt remove wireguard-tools, instead of manually removing
+			# files from the file system
+			echo "::: Installing WireGuard tools... "
+			if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_SNAPSHOT}" -y make tools-install; then
+				TO_INSTALL+=("wireguard-tools")
+				echo "done!"
+			else
+				echo "failed!"
+				exit 1
+			fi
+
+			echo "::: Adding WireGuard modules via DKMS... "
+			if $SUDO dkms add wireguard/"${WG_SNAPSHOT}"; then
+				echo "done!"
+			else
+				echo "failed!"
+				$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
+				exit 1
+			fi
+
+			echo "::: Compiling WireGuard modules via DKMS... "
+			if $SUDO dkms build wireguard/"${WG_SNAPSHOT}"; then
+				echo "done!"
+			else
+				echo "failed!"
+				$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
+				exit 1
+			fi
+
+			echo "::: Installing WireGuard modules via DKMS... "
+			if $SUDO dkms install wireguard/"${WG_SNAPSHOT}"; then
+				TO_INSTALL+=("wireguard-dkms")
+				echo "done!"
+			else
+				echo "failed!"
+				$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
+				exit 1
+			fi
+
+			echo "WG_SNAPSHOT=${WG_SNAPSHOT}" >> /tmp/setupVars.conf
+
+		fi
+
+	elif [ "$PLAT" = "Debian" ]; then
 
 		echo "::: Installing WireGuard from Debian package... "
-		# dirmngr is used to download repository keys, whereas qrencode is used to generate qrcodes
-		# from config file, for use with mobile clients
-		PIVPN_DEPS=(dirmngr qrencode)
-		installDependentPackages PIVPN_DEPS[@]
-		# Do not upgrade packages from the unstable repository except for wireguard
 		echo "::: Adding Debian repository... "
 		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 		echo "Package: *
-Pin: release a=unstable
-Pin-Priority: 1
-
-Package: wireguard wireguard-dkms wireguard-tools
-Pin: release a=unstable
-Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
-
-		$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
-		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
-		installDependentPackages PIVPN_DEPS[@]
-
-	elif [ "$(uname -m)" = "armv6l" ]; then
-
-		echo "::: Installing WireGuard from source... "
-		PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
-		installDependentPackages PIVPN_DEPS[@]
-
-		WG_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-kmodtools"."version"')"
-		WG_SOURCE="https://git.zx2c4.com/WireGuard/snapshot/WireGuard-${WG_SNAPSHOT}.tar.xz"
-
-		# Delete any leftover code
-		$SUDO rm -rf /usr/src/wireguard-*
-
-		echo "::: Downloading source code... "
-		wget -qO- "${WG_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
-		echo "done!"
-
-		cd /usr/src
-		$SUDO mv WireGuard-"${WG_SNAPSHOT}" wireguard-"${WG_SNAPSHOT}"
-		cd wireguard-"${WG_SNAPSHOT}"
-		$SUDO mv src/* .
-		$SUDO rmdir src
-
-		# We install the userspace tools manually since DKMS only compiles and
-		# installs the kernel module
-		echo "::: Compiling WireGuard tools... "
-		if $SUDO make tools; then
-			echo "done!"
-		else
-			echo "failed!"
-			exit 1
-		fi
-
-		# Use checkinstall to install userspace tools so if the user wants to uninstall
-		# PiVPN we can just do apt remove wireguard-tools, instead of manually removing
-		# files from the file system
-		echo "::: Installing WireGuard tools... "
-		if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_SNAPSHOT}" -y make tools-install; then
-			TO_INSTALL+=("wireguard-tools")
-			echo "done!"
-		else
-			echo "failed!"
-			exit 1
-		fi
-
-		echo "::: Adding WireGuard modules via DKMS... "
-		if $SUDO dkms add wireguard/"${WG_SNAPSHOT}"; then
-			echo "done!"
-		else
-			echo "failed!"
-			$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
-			exit 1
-		fi
-
-		echo "::: Compiling WireGuard modules via DKMS... "
-		if $SUDO dkms build wireguard/"${WG_SNAPSHOT}"; then
-			echo "done!"
-		else
-			echo "failed!"
-			$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
-			exit 1
-		fi
-
-		echo "::: Installing WireGuard modules via DKMS... "
-		if $SUDO dkms install wireguard/"${WG_SNAPSHOT}"; then
-			TO_INSTALL+=("wireguard-dkms")
-			echo "done!"
-		else
-			echo "failed!"
-			$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
-			exit 1
-		fi
-
-		echo "WG_SNAPSHOT=${WG_SNAPSHOT}" >> /tmp/setupVars.conf
-
-	elif [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "i686" ]; then
-
-		echo "::: Installing WireGuard from Debian package... "
-		echo "::: Adding Debian repository... "
-		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
-		echo "Package: *
-Pin: release a=unstable
-Pin-Priority: 90" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
+	Pin: release a=unstable
+	Pin-Priority: 90" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
+		installDependentPackages PIVPN_DEPS[@]
+
+	elif [ "$PLAT" = "Ubuntu" ]; then
+
+		echo "::: Installing WireGuard from PPA... "
+		$SUDO add-apt-repository ppa:wireguard/wireguard -y
+		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
@@ -1447,7 +1463,7 @@ confNetwork(){
 		fi
 
 		case ${PLAT} in
-			Debian|Raspbian)
+			Debian|Raspbian|Ubuntu)
 				$SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
 			;;
 		esac
@@ -1479,7 +1495,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 
 	# Restart the logging service
 	case ${PLAT} in
-		Debian|Raspbian)
+		Debian|Raspbian|Ubuntu)
 			$SUDO systemctl restart rsyslog.service || true
 		;;
 	esac
@@ -1544,24 +1560,40 @@ confUnattendedUpgrades(){
 
 	cd /etc/apt/apt.conf.d
 
-	if [ "$PLAT" = "Raspbian" ]; then
-		wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz
-		$SUDO cp "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" 50unattended-upgrades
-		$SUDO rm -rf "unattended-upgrades-$UNATTUPG_RELEASE"
-	fi
+	if [ "$PLAT" = "Ubuntu" ]; then
 
-	# Enable automatic updates via the unstable repository when installing from debian package
-	if [ "$VPN" = "wireguard" ] && [ "$(uname -m)" != "armv6l" ]; then
-		$SUDO sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
-	fi
+		# Ubuntu 50unattended-upgrades should already just have security enabled
+		# so we just need to configure the 10periodic file
+		echo "APT::Periodic::Update-Package-Lists \"1\";
+	APT::Periodic::Download-Upgradeable-Packages \"1\";
+	APT::Periodic::AutocleanInterval \"5\";
+	APT::Periodic::Unattended-Upgrade \"1\";" | $SUDO tee 10periodic > /dev/null
 
-	# Add the remaining settings for all other distributions
-	echo "APT::Periodic::Enable \"1\";
+	else
+
+		# Fix Raspbian config
+		if [ "$PLAT" = "Raspbian" ]; then
+			wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz
+			$SUDO cp "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" 50unattended-upgrades
+			$SUDO rm -rf "unattended-upgrades-$UNATTUPG_RELEASE"
+		fi
+
+		# Add the remaining settings for all other distributions
+		echo "APT::Periodic::Enable \"1\";
 	APT::Periodic::Update-Package-Lists \"1\";
 	APT::Periodic::Download-Upgradeable-Packages \"1\";
 	APT::Periodic::Unattended-Upgrade \"1\";
 	APT::Periodic::AutocleanInterval \"7\";
 	APT::Periodic::Verbose \"0\";" | $SUDO tee 02periodic > /dev/null
+
+	fi
+
+	# Enable automatic updates via the unstable repository when installing from debian package
+	if [ "$VPN" = "wireguard" ] && [ "$PLAT" != "Ubuntu" ] && [ "$(uname -m)" != "armv6l" ]; then
+		if ! grep -q '"o=Debian,a=unstable";' 50unattended-upgrades;
+			$SUDO sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
+		fi
+	fi
 }
 
 installScripts(){
@@ -1706,7 +1738,7 @@ main(){
 	echo "::: Restarting services..."
 	# Start services
 	case ${PLAT} in
-		Debian|Raspbian)
+		Debian|Raspbian|Ubuntu)
 			if [ "$VPN" = "openvpn" ]; then
 				$SUDO systemctl enable openvpn.service &> /dev/null
 				$SUDO systemctl start openvpn.service

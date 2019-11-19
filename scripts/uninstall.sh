@@ -98,18 +98,21 @@ removeAll(){
 			case $yn in
 				[Yy]* ) if [ "${i}" = "wireguard" ]; then
 
-							if [ "$(uname -m)" = "armv7l" ] || [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "i686" ]; then
+							# On Debian and armv7l Raspbian, remove the unstable repo (on armv6l Raspbian
+							# there is no wireguard package). On Ubuntu, remove the PPA.
+							if [ "$PLAT" = "Debian" ] || { [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv7l" ]; }; then
 								rm /etc/apt/sources.list.d/unstable.list
 								rm /etc/apt/preferences.d/limit-unstable
 								$PKG_MANAGER update &> /dev/null
+							elif [ "$PLAT" = "Ubuntu" ]; then
+								add-apt-repository ppa:wireguard/wireguard -r -y
 							fi
 
 						elif [ "${i}" = "wireguard-dkms" ]; then
 
-							# If we installed wireguard-dkms and we are on armv6l, then we manually need
-							# to remove the kernel module and skip the apt uninstallation (since it's not an
-							# actual package)
-							if [ "$(uname -m)" = "armv6l" ]; then
+							# On armv6l Raspbian we manually remove the kernel module and skip the apt
+							# uninstallation (since it's not an actual package).
+							if [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv6l" ]; then
 								dkms remove wireguard/"${WG_SNAPSHOT}" --all
 								rm -rf /usr/src/wireguard-*
 								break
@@ -117,7 +120,7 @@ removeAll(){
 
 						elif [ "${i}" = "dirmngr" ]; then
 
-							# If dirmngr was installed, then we had previously installed wireguard on armv7l
+							# If dirmngr was installed, then we had previously installed wireguard on armv7l Raspbian
 							# so we remove the repository keys
 							apt-key remove E1CF20DDFFE4B89E802658F1E0B11894F66AEC98 80D15823B7FD1561F9F7BCDDDC30D7C23CBBABEE &> /dev/null
 
