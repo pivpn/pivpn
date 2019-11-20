@@ -1590,7 +1590,7 @@ confUnattendedUpgrades(){
 
 	# Enable automatic updates via the unstable repository when installing from debian package
 	if [ "$VPN" = "wireguard" ] && [ "$PLAT" != "Ubuntu" ] && [ "$(uname -m)" != "armv6l" ]; then
-		if ! grep -q '"o=Debian,a=unstable";' 50unattended-upgrades;
+		if ! grep -q '"o=Debian,a=unstable";' 50unattended-upgrades; then
 			$SUDO sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' 50unattended-upgrades
 		fi
 	fi
