@@ -5,7 +5,8 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged. 
 
-## Oct 12th 2019
+## Oct 12th 2019 - On test
+## Nov 25th 2019 - On Master
 
 * Changed pivpn command exit codes from 1 to 0
   - exit code 1 means general error hence should not be used for exiting successfully
