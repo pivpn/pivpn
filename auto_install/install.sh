@@ -615,12 +615,10 @@ updateRepo(){
 	cd /etc
 	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 	cd "${1}" || exit 1
-	if [ -z "${TESTING}" ]; then
+	if [ -z "${TESTING+x}" ]; then
 		:
-	elif [ "${TESTING}" = "test" ]; then
+	else
 		${SUDOE} git checkout test
-	elif [ "${TESTING}" = "test-wireguard" ]; then
-		${SUDOE} git checkout test-wireguard
 	fi
 	echo " done!"
 }
@@ -634,12 +632,10 @@ makeRepo(){
 	cd /etc
 	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 	cd "${1}" || exit 1
-	if [ -z "${TESTING}" ]; then
+	if [ -z "${TESTING+x}" ]; then
 		:
-	elif [ "${TESTING}" = "test" ]; then
+	else
 		${SUDOE} git checkout test
-	elif [ "${TESTING}" = "test-wireguard" ]; then
-		${SUDOE} git checkout test-wireguard
 	fi
 	echo " done!"
 }
