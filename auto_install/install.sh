@@ -1259,7 +1259,7 @@ Run 'pivpn help' to see what else you can do!\n\nIf you run into any issue, plea
 All incomplete posts or bug reports will be ignored or deleted.\n\nThank you for using PiVPN." ${r} ${c}
     if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" ${r} ${c}); then
         whiptail --title "Rebooting" --msgbox "The system will now reboot." ${r} ${c}
-        jkkprintf "\nRebooting system...\n"
+        printf "\nRebooting system...\n"
         $SUDO sleep 3
         $SUDO shutdown -r now
     fi
