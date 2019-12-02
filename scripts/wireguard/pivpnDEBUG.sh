@@ -54,7 +54,7 @@ if [ "$(cat /proc/sys/net/ipv4/ip_forward)" -eq 1 ]; then
 else
     ERR=1
     read -r -p ":: [ERR] IP forwarding is not enabled, attempt fix now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
         sysctl -p
         echo "Done"
@@ -68,7 +68,7 @@ if [ "$USING_UFW" -eq 0 ]; then
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             iptables -t nat -F
             iptables -t nat -I POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE
             iptables-save > /etc/iptables/rules.v4
@@ -84,7 +84,7 @@ else
     else
         ERR=1
         read -r -p ":: [ERR] Ufw is not enabled, try to enable now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             ufw enable
         fi
     fi
@@ -94,7 +94,7 @@ else
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.6.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
             ufw reload
             echo "Done"
@@ -106,7 +106,7 @@ else
     else
         ERR=1
         read -r -p ":: [ERR] Ufw input rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             ufw insert 1 allow "$pivpnPORT"/udp
             ufw reload
             echo "Done"
@@ -118,7 +118,7 @@ else
     else
         ERR=1
         read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             ufw route insert 1 allow in on wg0 from 10.6.0.0/24 out on "$IPv4dev" to any
             ufw reload
             echo "Done"
@@ -132,7 +132,7 @@ if systemctl is-active -q wg-quick@wg0; then
 else
     ERR=1
     read -r -p ":: [ERR] WireGuard is not running, try to start now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         systemctl start wg-quick@wg0
         echo "Done"
     fi
@@ -143,7 +143,7 @@ if systemctl is-enabled -q wg-quick@wg0; then
 else
     ERR=1
     read -r -p ":: [ERR] WireGuard is not enabled, try to enable now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         systemctl enable wg-quick@wg0
         echo "Done"
     fi
@@ -155,7 +155,7 @@ if netstat -uanp | grep -w "${pivpnPORT}" | grep -q 'udp'; then
 else
     ERR=1
     read -r -p ":: [ERR] WireGuard is not listening, try to restart now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         systemctl restart wg-quick@wg0
         echo "Done"
     fi

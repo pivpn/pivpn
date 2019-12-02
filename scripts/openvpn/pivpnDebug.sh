@@ -43,7 +43,7 @@ if [ "$(cat /proc/sys/net/ipv4/ip_forward)" -eq 1 ]; then
 else
     ERR=1
     read -r -p ":: [ERR] IP forwarding is not enabled, attempt fix now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
         sysctl -p
         echo "Done"
@@ -57,7 +57,7 @@ if [ "$USING_UFW" -eq 0 ]; then
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             iptables -t nat -F
             iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o "${IPv4dev}" -j MASQUERADE
             iptables-save > /etc/iptables/rules.v4
@@ -73,7 +73,7 @@ if [ "$USING_UFW" -eq 0 ]; then
         else
             ERR=1
             read -r -p ":: [ERR] Iptables INPUT rule is not set, attempt fix now? [Y/n] " REPLY
-            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
                 iptables -I INPUT 1 -i "$IPv4dev" -p "$pivpnPROTO" --dport "$pivpnPORT" -j ACCEPT
                 iptables-save > /etc/iptables/rules.v4
                 echo "Done"
@@ -88,7 +88,7 @@ if [ "$USING_UFW" -eq 0 ]; then
         else
             ERR=1
             read -r -p ":: [ERR] Iptables FORWARD rule is not set, attempt fix now? [Y/n] " REPLY
-            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
                 iptables -I FORWARD 1 -d 10.8.0.0/24 -i "$IPv4dev" -o tun0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
                 iptables -I FORWARD 2 -s 10.8.0.0/24 -i tun0 -o "$IPv4dev" -j ACCEPT
                 iptables-save > /etc/iptables/rules.v4
@@ -104,7 +104,7 @@ else
     else
         ERR=1
         read -r -p ":: [ERR] Ufw is not enabled, try to enable now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             ufw enable
         fi
     fi
@@ -114,7 +114,7 @@ else
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
             ufw reload
             echo "Done"
@@ -126,7 +126,7 @@ else
     else
         ERR=1
         read -r -p ":: [ERR] Ufw input rule is not set, attempt fix now? [Y/n] " REPLY
-        if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
             ufw insert 1 allow "$pivpnPORT"/"$pivpnPROTO"
             ufw reload
             echo "Done"
@@ -140,7 +140,7 @@ else
         else
             ERR=1
             read -r -p ":: [ERR] Ufw forwarding policy is not 'ACCEPT', attempt fix now? [Y/n] " REPLY
-            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
                 sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
                 ufw reload > /dev/null
                 echo "Done"
@@ -152,7 +152,7 @@ else
         else
             ERR=1
             read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
-            if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
                 ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
                 ufw reload
                 echo "Done"
@@ -167,7 +167,7 @@ if systemctl is-active -q openvpn; then
 else
     ERR=1
     read -r -p ":: [ERR] OpenVPN is not running, try to start now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         systemctl start openvpn
         echo "Done"
     fi
@@ -178,7 +178,7 @@ if systemctl is-enabled -q openvpn; then
 else
     ERR=1
     read -r -p ":: [ERR] OpenVPN is not enabled, try to enable now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         systemctl enable openvpn
         echo "Done"
     fi
@@ -190,7 +190,7 @@ if netstat -uanpt | grep openvpn | grep -w "${pivpnPORT}" | grep -q "${pivpnPROT
 else
     ERR=1
     read -r -p ":: [ERR] OpenVPN is not listening, try to restart now? [Y/n] " REPLY
-    if [[ ${REPLY} =~ ^[Yy]$ ]]; then
+    if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
         systemctl restart openvpn
         echo "Done"
     fi
