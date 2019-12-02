@@ -722,13 +722,7 @@ installWireGuard(){
 			# Do not upgrade packages from the unstable repository except for wireguard
 			echo "::: Adding Debian repository... "
 			echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
-			echo "Package: *
-		Pin: release a=unstable
-		Pin-Priority: 1
-
-		Package: wireguard wireguard-dkms wireguard-tools
-		Pin: release a=unstable
-		Pin-Priority: 500" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
+			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
 			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
@@ -816,9 +810,7 @@ installWireGuard(){
 		echo "::: Installing WireGuard from Debian package... "
 		echo "::: Adding Debian repository... "
 		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
-		echo "Package: *
-	Pin: release a=unstable
-	Pin-Priority: 90" | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
+		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
