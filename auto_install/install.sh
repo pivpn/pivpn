@@ -698,9 +698,9 @@ askWhichVPN(){
 
 installOpenVPN(){
 	echo "::: Installing OpenVPN from Debian package... "
-	# grepcidr is used to redact IPs in the debug log, whereas expect is used
-	# to feed easy-rsa with passwords
-	PIVPN_DEPS=(openvpn grepcidr expect)
+	# grepcidr is used to redact IPs in the debug log, expect is used to feed easy-rsa
+	# with passwords, bsdmainutils provides column to format the terminal output
+	PIVPN_DEPS=(openvpn grepcidr expect bsdmainutils)
 	installDependentPackages PIVPN_DEPS[@]
 }
 
