@@ -69,9 +69,9 @@ If you think you received this message in error, you can post an issue on the Gi
 }
 
 function maybeOS_Support() {
-    if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
-Currently suppoerted:
-    Raspbian, Debian, Devuan (Jessie, strech, buster)
+    if (whiptail --backtitle "OS Not Supported" --title "OS Not Supported" --yesno "You are on an OS that we have not tested but MAY work.
+Currently supported:
+    Raspbian, Debian, Devuan (jessie, stretch, buster, bullseye, sid)
     Ubuntu from 14.04 (trusty) to 18.04 (zesty).
 
 Would you like to continue anyway?" ${r} ${c}) then
@@ -89,15 +89,19 @@ distro_check() {
     if hash lsb_release 2>/dev/null; then
 
         PLAT=$(lsb_release -si)
-        OSCN=$(lsb_release -sc) # We want this to be trusty xenial, jessie, stretch, buster
+        OSCN=$(lsb_release -sc) # We want this to be trusty xenial, jessie, stretch, buster, bullseye, sid
 
     else # else get info from os-release
 
         source /etc/os-release
         PLAT=$(awk '{print $1}' <<< "$NAME")
-        VER="$VERSION_ID"
-        declare -A VER_MAP=(["10"]="buster" ["9"]="stretch" ["8"]="jessie" ["18.04"]="bionic" ["16.04"]="xenial" ["14.04"]="trusty")
-        OSCN=${VER_MAP["${VER}"]}
+        if [[ -n "$VERSION_ID" ]]; then
+          VER="$VERSION_ID"
+          declare -A VER_MAP=(["sid"]="sid"  ["11"]="bullseye" ["10"]="buster" ["9"]="stretch" ["8"]="jessie" ["18.04"]="bionic" ["16.04"]="xenial" ["14.04"]="trusty")
+          OSCN=${VER_MAP["${VER}"]}
+        else
+          OSCN=$(cat /etc/debian_version | sed 's#.*/##g')
+        fi;
     fi
 
     if [[ ${OSCN} != "bionic" ]]; then
@@ -108,7 +112,7 @@ distro_check() {
     case ${PLAT} in
         Ubuntu|Raspbian|Debian|Devuan)
         case ${OSCN} in
-            trusty|xenial|jessie|stretch|buster|bionic)
+            trusty|xenial|jessie|stretch|buster|bullseye|sid|bionic)
             ;;
             *)
             maybeOS_Support
@@ -141,7 +145,7 @@ spinner()
 
 welcomeDialogs() {
     # Display the welcome dialog
-    whiptail --msgbox --backtitle "Welcome" --title "PiVPN Automated Installer" "This installer will transform your Raspberry Pi into an OpenVPN server!" ${r} ${c}
+    whiptail --msgbox --backtitle "Welcome" --title "PiVPN Automated Installer" "This installer will transform your ${PLAT} host into an OpenVPN server!" ${r} ${c}
 
     # Explain the need for a static address
     whiptail --msgbox --backtitle "Initiating network interface" --title "Static IP Needed" "The PiVPN is a SERVER so it needs a STATIC IP ADDRESS to function properly.
@@ -383,6 +387,23 @@ function valid_ip()
     return $stat
 }
 
+function valid_ip_wPort()
+{
+    local  ip=$1
+    local  stat=1
+
+    if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(:[0-9]{1,})?$ ]]; then
+        OIFS=$IFS
+        IFS='.'
+        ip=(${ip%:*})
+        IFS=$OIFS
+        [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
+        && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
+        stat=$?
+    fi
+    return $stat
+}
+
 #Call this function to use a regex to check user input for a valid custom domain
 function valid_domain()
 {
@@ -409,6 +430,7 @@ installScripts() {
     $SUDO cp /etc/.pivpn/pivpn /usr/local/bin/pivpn
     $SUDO chmod 0755 /usr/local/bin/pivpn
     $SUDO cp /etc/.pivpn/scripts/bash-completion /etc/bash_completion.d/pivpn
+    $SUDO chmod 0644 /etc/bash_completion.d/pivpn
     . /etc/bash_completion.d/pivpn
     # Copy interface setting for debug
     $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
@@ -425,7 +447,7 @@ addSoftwareRepo() {
   case ${PLAT} in
     Ubuntu|Debian|Devuan)
       case ${OSCN} in
-        trusty|xenial|wheezy|jessie)
+        trusty|xenial|wheezy|jessie|bullseye|sid)
           wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
           echo "deb http://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/swupdate.openvpn.net.list > /dev/null
           echo -n "::: Adding OpenVPN repo for $PLAT $OSCN ..."
@@ -479,7 +501,7 @@ install_dependent_packages() {
     # No spinner - conflicts with set -e
     declare -a argArray1=("${!1}")
 
-    if [[ ${OSCN} == "buster" ]]; then
+    if [[ ${OSCN} == "buster" ]] || [[ ${OSCN} == "bullseye" ]] || [[ ${OSCN} == "sid" ]]; then
         $SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
         $SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
     fi
@@ -487,12 +509,23 @@ install_dependent_packages() {
     echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 
     # Add support for https repositories if there are any that use it otherwise the installation will silently fail
-    if grep -q https /etc/apt/sources.list; then
-        PIVPN_DEPS+=("apt-transport-https")
+    if [[ -f /etc/apt/sources.list ]]; then
+      if grep -q https /etc/apt/sources.list; then
+          PIVPN_DEPS+=("apt-transport-https")
+      fi
     fi
 
     if command -v debconf-apt-progress &> /dev/null; then
+        set +e
         $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
+        res="$?";
+        set -e
+        ### apt-get install above returns 100 after an otherwise successfull installation of iptables-persistent,
+        ### everything else was aready installed.
+        ### Prevent from exiting the installation script in this case, exit for any other error code.
+        if [[ "$res" -ne 100 ]]; then
+          exit "$res";
+        fi;
     else
         for i in "${argArray1[@]}"; do
             echo -n ":::    Checking for $i..."
@@ -548,7 +581,8 @@ is_repo() {
 make_repo() {
     # Remove the non-repos interface and clone the interface
     echo -n ":::    Cloning $2 into $1..."
-    $SUDO rm -rf "${1}"
+### FIXME: Never call rm -rf with a plain variable. Never again as SU!
+    #$SUDO rm -rf "${1}"
     $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
     if [ -z "${TESTING+x}" ]; then
         :
@@ -675,10 +709,10 @@ setClientDNS() {
               then
                     OVPNDNS1=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
                     OVPNDNS2=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
-                    if ! valid_ip "$OVPNDNS1" || [ ! "$OVPNDNS1" ]; then
+                    if ! valid_ip_wPort "$OVPNDNS1" || [ ! "$OVPNDNS1" ]; then
                         OVPNDNS1=$strInvalid
                     fi
-                    if ! valid_ip "$OVPNDNS2" && [ "$OVPNDNS2" ]; then
+                    if ! valid_ip_wPort "$OVPNDNS2" && [ "$OVPNDNS2" ]; then
                         OVPNDNS2=$strInvalid
                     fi
               else
@@ -766,7 +800,7 @@ confOpenVPN() {
 
         if [[ ${useUpdateVars} == false ]]; then
 
-            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]] && [[ ${OSCN} != "buster" ]] ; then
+            if [[ ${PLAT} == "Raspbian" ]] && [[ ${OSCN} != "stretch" ]] && [[ ${OSCN} != "buster" ]] && [[ ${OSCN} != "bullseye" ]] && [[ ${OSCN} != "sid" ]]; then
 
                 APPLY_TWO_POINT_FOUR=false
             else
