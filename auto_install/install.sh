@@ -36,8 +36,8 @@ UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
-rows=$(echo $screen_size | awk '{print $1}')
-columns=$(echo $screen_size | awk '{print $2}')
+rows=$(echo "$screen_size" | awk '{print $1}')
+columns=$(echo "$screen_size" | awk '{print $2}')
 
 # Divide by two so the dialogs take up half of the screen, which looks nice.
 r=$(( rows / 2 ))
@@ -93,6 +93,7 @@ distro_check() {
 
     else # else get info from os-release
 
+      # shellcheck disable=SC1091
         source /etc/os-release
         PLAT=$(awk '{print $1}' <<< "$NAME")
         if [[ -n "$VERSION_ID" ]]; then
@@ -100,7 +101,7 @@ distro_check() {
           declare -A VER_MAP=(["sid"]="sid"  ["11"]="bullseye" ["10"]="buster" ["9"]="stretch" ["8"]="jessie" ["18.04"]="bionic" ["16.04"]="xenial" ["14.04"]="trusty")
           OSCN=${VER_MAP["${VER}"]}
         else
-          OSCN=$(cat /etc/debian_version | sed 's#.*/##g')
+          OSCN=$(sed 's#.*/##g' /etc/debian_version)
         fi;
     fi
 
@@ -130,17 +131,17 @@ distro_check() {
 ####### FUNCTIONS ##########
 spinner()
 {
-    local pid=$1
+    local pid="$1"
     local delay=0.50
     local spinstr='/-\|'
-    while [ "$(ps a | awk '{print $1}' | grep "${pid}")" ]; do
+    while ps a | awk '{print $1}' | grep "${pid}" ; do
         local temp=${spinstr#?}
         printf " [%c]  " "${spinstr}"
         local spinstr=${temp}${spinstr%"$temp"}
         sleep ${delay}
-        printf "\b\b\b\b\b\b"
+        printf "\\b\\b\\b\\b\\b\\b"
     done
-    printf "    \b\b\b\b"
+    printf "    \\b\\b\\b\\b"
 }
 
 welcomeDialogs() {
@@ -166,8 +167,7 @@ chooseUser() {
             # See http://askubuntu.com/a/667842/459815
             PASSWORD=$(whiptail  --title "password dialog" --passwordbox "Please enter the new user password" ${r} ${c} 3>&1 1>&2 2>&3)
             CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "${PASSWORD}")
-            $SUDO useradd -m -p "${CRYPT}" -s /bin/bash "${userToAdd}"
-            if [[ $? = 0 ]]; then
+            if $SUDO useradd -m -p "${CRYPT}" -s /bin/bash "${userToAdd}" ; then
                 echo "Succeeded"
                 ((numUsers+=1))
             else
@@ -190,9 +190,8 @@ chooseUser() {
         fi
         userArray+=("${line}" "" "${mode}")
     done <<< "${availableUsers}"
-    chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose (press space to select):" ${r} ${c} ${numUsers})
-    chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty)
-    if [[ $? = 0 ]]; then
+    chooseUserCmd=(whiptail --title "Choose A User" --separate-output --radiolist "Choose (press space to select):" "${r}" "${c}" "${numUsers}")
+    if chooseUserOptions=$("${chooseUserCmd[@]}" "${userArray[@]}" 2>&1 >/dev/tty) ; then
         for desiredUser in ${chooseUserOptions}; do
             INSTALL_USER=${desiredUser}
             echo "::: Using User: $INSTALL_USER"
@@ -208,7 +207,8 @@ verifyFreeDiskSpace() {
     # If user installs unattended-upgrades we'd need about 60MB so will check for 75MB free
     echo "::: Verifying free disk space..."
     local required_free_kilobytes=76800
-    local existing_free_kilobytes=$(df -Pk | grep -m1 '\/$' | awk '{print $4}')
+    local existing_free_kilobytes
+    existing_free_kilobytes=$(df -Pk | grep -m1 '\/$' | awk '{print $4}')
 
     # - Unknown free disk space , not a integer
     if ! [[ "${existing_free_kilobytes}" =~ ^([0-9])+$ ]]; then
@@ -268,9 +268,8 @@ chooseInterface() {
 
     # Find out how many interfaces are available to choose from
     interfaceCount=$(echo "${availableInterfaces}" | wc -l)
-    chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An Interface (press space to select):" ${r} ${c} ${interfaceCount})
-    chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty)
-    if [[ $? = 0 ]]; then
+    chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An Interface (press space to select):" "${r}" "${c}" "${interfaceCount}")
+    if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty) ; then
         for desiredInterface in ${chooseInterfaceOptions}; do
             pivpnInterface=${desiredInterface}
             echo "::: Using interface: $pivpnInterface"
@@ -307,12 +306,10 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
         # Start a loop to let the user enter their information with the chance to go back and edit it if necessary
         until [[ ${ipSettingsCorrect} = True ]]; do
             # Ask for the IPv4 address
-            IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${IPv4addr}" 3>&1 1>&2 2>&3)
-            if [[ $? = 0 ]]; then
+            if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${IPv4addr}" 3>&1 1>&2 2>&3) ; then
             echo "::: Your static IPv4 address:    ${IPv4addr}"
             # Ask for the gateway
-            IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${IPv4gw}" 3>&1 1>&2 2>&3)
-            if [[ $? = 0 ]]; then
+            if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${IPv4gw}" 3>&1 1>&2 2>&3) ; then
                 echo "::: Your static IPv4 gateway:    ${IPv4gw}"
                 # Give the user a chance to review their settings before moving on
                 if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
@@ -378,7 +375,7 @@ function valid_ip()
     if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
         OIFS=$IFS
         IFS='.'
-        ip=($ip)
+        read -r -a ip <<< "$ip"
         IFS=$OIFS
         [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
         && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
@@ -395,7 +392,7 @@ function valid_ip_wPort()
     if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(:[0-9]{1,})?$ ]]; then
         OIFS=$IFS
         IFS='.'
-        ip=(${ip%:*})
+        read -r -a ip <<< "$ip"
         IFS=$OIFS
         [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
         && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
@@ -431,6 +428,7 @@ installScripts() {
     $SUDO chmod 0755 /usr/local/bin/pivpn
     $SUDO cp /etc/.pivpn/scripts/bash-completion /etc/bash_completion.d/pivpn
     $SUDO chmod 0644 /etc/bash_completion.d/pivpn
+    # shellcheck disable=SC1091
     . /etc/bash_completion.d/pivpn
     # Copy interface setting for debug
     $SUDO cp /tmp/pivpnINT /etc/pivpn/pivpnINTERFACE
@@ -473,8 +471,8 @@ update_package_cache() {
   if [ ! "${today}" == "${timestampAsDate}" ]; then
     #update package lists
     echo ":::"
-    echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\n"
-    $SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+    echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\nh"
+    $SUDO "${UPDATE_PKG_CACHE}" &> /dev/null
     echo " done!"
   fi
 }
@@ -517,7 +515,7 @@ install_dependent_packages() {
 
     if command -v debconf-apt-progress &> /dev/null; then
         set +e
-        $SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
+        $SUDO debconf-apt-progress -- "${PKG_INSTALL}" "${argArray1[@]}"
         res="$?";
         set -e
         ### apt-get install above returns 100 after an otherwise successfull installation of iptables-persistent,
@@ -536,7 +534,7 @@ install_dependent_packages() {
 }
 
 unattendedUpgrades() {
-    whiptail --msgbox --backtitle "Security Updates" --title "Unattended Upgrades" "Since this server will have at least one port open to the internet, it is recommended you enable unattended-upgrades.\nThis feature will check daily for security package updates only and apply them when necessary.\nIt will NOT automatically reboot the server so to fully apply some updates you should periodically reboot." ${r} ${c}
+    whiptail --msgbox --backtitle "Security Updates" --title "Unattended Upgrades" "Since this server will have at least one port open to the internet, it is recommended you enable unattended-upgrades.\\nThis feature will check daily for security package updates only and apply them when necessary.\\nIt will NOT automatically reboot the server so to fully apply some updates you should periodically reboot." ${r} ${c}
 
     if (whiptail --backtitle "Security Updates" --title "Unattended Upgrades" --yesno "Do you want to enable unattended upgrades of security patches to this server?" ${r} ${c}) then
         UNATTUPG="unattended-upgrades"
@@ -645,7 +643,7 @@ setCustomPort() {
             else
               DEFAULT_PORT=443
             fi
-            if PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \nEnter a new value or hit 'Enter' to retain the default" ${r} ${c} $DEFAULT_PORT 3>&1 1>&2 2>&3)
+            if PORT=$(whiptail --title "Default OpenVPN Port" --inputbox "You can modify the default OpenVPN port. \\nEnter a new value or hit 'Enter' to retain the default" "${r}" "${c}" "$DEFAULT_PORT" 3>&1 1>&2 2>&3)
             then
                 if [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ]; then
                     :
@@ -658,10 +656,10 @@ setCustomPort() {
             fi
 
             if [[ $PORT == "$portInvalid" ]]; then
-                whiptail --msgbox --backtitle "Invalid Port" --title "Invalid Port" "You entered an invalid Port number.\n    Please enter a number from 1 - 65535.\n    If you are not sure, please just keep the default." ${r} ${c}
+                whiptail --msgbox --backtitle "Invalid Port" --title "Invalid Port" "You entered an invalid Port number.\\n    Please enter a number from 1 - 65535.\\n    If you are not sure, please just keep the default." "${r}" "${c}"
                 PORTNumCorrect=False
             else
-                if (whiptail --backtitle "Specify Custom Port" --title "Confirm Custom Port Number" --yesno "Are these settings correct?\n    PORT:   $PORT" ${r} ${c}) then
+                if (whiptail --backtitle "Specify Custom Port" --title "Confirm Custom Port Number" --yesno "Are these settings correct?\\n PORT:   $PORT" "${r}" "${c}") then
                     PORTNumCorrect=True
                 else
                     # If the settings are wrong, the loop continues
@@ -675,7 +673,7 @@ setCustomPort() {
 }
 
 setClientDNS() {
-    DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients (press space to select). To use your own, select Custom." ${r} ${c} 6)
+    DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients (press space to select). To use your own, select Custom." "${r}" "${c}" 6)
     DNSChooseOptions=(Google "" on
             OpenDNS "" off
             Level3 "" off
@@ -696,8 +694,8 @@ setClientDNS() {
         OVPNDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
         OVPNDNS2=$(awk '{print $2}' <<< "${DNS_MAP["${DNSchoices}"]}")
 
-        $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
-        $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${OVPNDNS2}'\"/' /etc/openvpn/server.conf
+        $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'"${OVPNDNS1}"'\"/' /etc/openvpn/server.conf
+        $SUDO sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'"${OVPNDNS2}"'\"/' /etc/openvpn/server.conf
 
       else
 
@@ -705,7 +703,7 @@ setClientDNS() {
           do
               strInvalid="Invalid"
 
-              if OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), separated by a comma.\n\nFor example '8.8.8.8, 8.8.4.4'" ${r} ${c} "" 3>&1 1>&2 2>&3)
+              if OVPNDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)"  --inputbox "Enter your desired upstream DNS provider(s), separated by a comma.\\n\\nFor example '8.8.8.8, 8.8.4.4'" "${r}" "${c}" "" 3>&1 1>&2 2>&3)
               then
                     OVPNDNS1=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
                     OVPNDNS2=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
@@ -720,7 +718,7 @@ setClientDNS() {
                     exit 1
                 fi
               if [[ $OVPNDNS1 == "$strInvalid" ]] || [[ $OVPNDNS2 == "$strInvalid" ]]; then
-                    whiptail --msgbox --backtitle "Invalid IP" --title "Invalid IP" "One or both entered IP addresses were invalid. Please try again.\n\n    DNS Server 1:   $OVPNDNS1\n    DNS Server 2:   $OVPNDNS2" ${r} ${c}
+                    whiptail --msgbox --backtitle "Invalid IP" --title "Invalid IP" "One or both entered IP addresses were invalid. Please try again.\\n\\n    DNS Server 1:   $OVPNDNS1\\n    DNS Server 2:   $OVPNDNS2" "${r}" "${c}"
                     if [[ $OVPNDNS1 == "$strInvalid" ]]; then
                         OVPNDNS1=""
                     fi
@@ -729,7 +727,7 @@ setClientDNS() {
                     fi
                     DNSSettingsCorrect=False
               else
-                    if (whiptail --backtitle "Specify Upstream DNS Provider(s)" --title "Upstream DNS Provider(s)" --yesno "Are these settings correct?\n    DNS Server 1:   $OVPNDNS1\n    DNS Server 2:   $OVPNDNS2" ${r} ${c}) then
+                    if (whiptail --backtitle "Specify Upstream DNS Provider(s)" --title "Upstream DNS Provider(s)" --yesno "Are these settings correct?\\n    DNS Server 1:   $OVPNDNS1\\n DNS Server 2:   $OVPNDNS2" "${r}" "${c}") then
                         DNSSettingsCorrect=True
                         $SUDO sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${OVPNDNS1}'\"/' /etc/openvpn/server.conf
                         if [ -z ${OVPNDNS2} ]; then
@@ -755,23 +753,23 @@ setClientDNS() {
 setCustomDomain() {
   DomainSettingsCorrect=False
 
-  if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \n (This is only for advanced users who have their own domain)\n" ${r} ${c}); then
+  if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Would you like to add a custom search domain? \\n (This is only for advanced users who have their own domain)\\n" ${r} ${c}); then
 
     until [[ $DomainSettingsCorrect = True ]]
     do
-      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\nFormat: mydomain.com" ${r} ${c} --title "Custom Domain" 3>&1 1>&2 2>&3); then
+      if CUSTOMDomain=$(whiptail --inputbox "Enter Custom Domain\\nFormat: mydomain.com" "${r}" "${c}" --title "Custom Domain" 3>&1 1>&2 2>&3); then
           if valid_domain "$CUSTOMDomain"; then
-            if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\n    Custom Search Domain: $CUSTOMDomain" ${r} ${c}); then
+            if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\\n    Custom Search Domain: $CUSTOMDomain" "${r}" "${c}"); then
                 DomainSettingsCorrect=True
 
-                $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '${CUSTOMDomain}'" \n&/' /etc/openvpn/server.conf
+                $SUDO sed -i '0,/\(.*dhcp-option.*\)/s//\push "dhcp-option DOMAIN '"${CUSTOMDomain}"'" \\n&/' /etc/openvpn/server.conf
 
             else
                 # If the settings are wrong, the loop continues
                 DomainSettingsCorrect=False
             fi
           else
-            whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\n\n    DOMAIN:   $CUSTOMDomain\n" ${r} ${c}
+            whiptail --msgbox --backtitle "Invalid Domain" --title "Invalid Domain" "Domain is invalid. Please try again.\\n\\n    DOMAIN: $CUSTOMDomain\\n" ${r} ${c}
             DomainSettingsCorrect=False
           fi
       else
@@ -804,7 +802,7 @@ confOpenVPN() {
 
                 APPLY_TWO_POINT_FOUR=false
             else
-                if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\n\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\n\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
+                if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 brings support for stronger authentication and key exchange using Elliptic Curves, along with encrypted control channel.\\n\\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility.\\n\\nNOTE: Current mobile app, that is OpenVPN connect, is supported." ${r} ${c}); then
                     APPLY_TWO_POINT_FOUR=true
                     $SUDO touch /etc/pivpn/TWO_POINT_FOUR
                 else
@@ -821,9 +819,9 @@ confOpenVPN() {
 
 	    ## creates a file to determine if the OpenVPN setup is compatible with the OVPN12 format for iOS keychain integration.
             echo "true" > /etc/pivpn/OVPN12_Compatible
-	    
+
 	    ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA certificate size" --radiolist \
-            "Choose the desired size of your certificate (press space to select):\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 2048 bits.  If you are testing, you can use 1024 bits to speed things up, but do not use this for normal use!  If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
+            "Choose the desired size of your certificate (press space to select):\\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 2048 bits.  If you are testing, you can use 1024 bits to speed things up, but do not use this for normal use!  If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
             "1024" "Use a 1024-bit certificate (testing only)" OFF \
             "2048" "Use a 2048-bit certificate (recommended level)" ON \
             "4096" "Use a 4096-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
@@ -831,7 +829,7 @@ confOpenVPN() {
         else
 
             ENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
-            "Choose the desired size of your certificate (press space to select):\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
+            "Choose the desired size of your certificate (press space to select):\\n   This is a certificate that will be generated on your system.  The larger the certificate, the more time this will take.  For most applications, it is recommended to use 256 bits.  You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
             "256" "Use a 256-bit certificate (recommended level)" ON \
             "384" "Use a 384-bit certificate" OFF \
             "521" "Use a 521-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
@@ -861,7 +859,7 @@ confOpenVPN() {
 
     # Write out new vars file
     set +e
-    IFS= read -d '' String <<"EOF"
+    IFS= read -r -d '' String <<"EOF"
 if [ -z "$EASYRSA_CALLER" ]; then
     echo "Nope." >&2
     return 1
@@ -886,9 +884,9 @@ EOF
     ${SUDOE} ./easyrsa --batch init-pki
 
     # Build the certificate authority
-    printf "::: Building CA...\n"
+    printf "::: Building CA...\\n"
     ${SUDOE} ./easyrsa --batch build-ca nopass
-    printf "\n::: CA Complete.\n"
+    printf "\\n::: CA Complete.\\n"
 
     if [[ ${useUpdateVars} == false ]]; then
         if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
@@ -897,11 +895,11 @@ EOF
     fi
 
     # Build the server
-    EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full ${SERVER_NAME} nopass
+    EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full "${SERVER_NAME}" nopass
 
     if [[ ${useUpdateVars} == false ]]; then
       if [[ ${APPLY_TWO_POINT_FOUR} == false ]]; then
-        if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\n\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\n\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
+        if ([ "$ENCRYPT" -ge "4096" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\\n\\nGenerating DH parameters for a $ENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\\n\\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
           DOWNLOAD_DH_PARAM=true
         else
           DOWNLOAD_DH_PARAM=false
@@ -918,7 +916,7 @@ EOF
       else
         # Generate Diffie-Hellman key exchange
         ${SUDOE} ./easyrsa gen-dh
-        ${SUDOE} mv pki/dh.pem pki/dh${ENCRYPT}.pem
+        ${SUDOE} mv pki/dh.pem "pki/dh${ENCRYPT}.pem"
       fi
     fi
 
@@ -935,15 +933,15 @@ EOF
 
     if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
       #If they enabled 2.4 use tls-crypt instead of tls-auth to encrypt control channel
-      $SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server.conf
+      $SUDO sed -i "s#tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0#tls-crypt /etc/openvpn/easy-rsa/pki/ta.key#" /etc/openvpn/server.conf
     fi
 
     if [[ ${APPLY_TWO_POINT_FOUR} == true ]]; then
       #If they enabled 2.4 disable dh parameters since the key exchange will use the matching curve from the ECDSA certificate
-      $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none/" /etc/openvpn/server.conf
+      $SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#dh none#" /etc/openvpn/server.conf
     else
       # Otherwise set the user encryption key size
-      $SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/\1${ENCRYPT}.pem/" /etc/openvpn/server.conf
+      $SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${ENCRYPT}.pem#" /etc/openvpn/server.conf
     fi
 
     # if they modified port put value in server.conf
@@ -957,8 +955,8 @@ EOF
     fi
 
     # write out server certs to conf file
-    $SUDO sed -i "s/\(key \/etc\/openvpn\/easy-rsa\/pki\/private\/\).*/\1${SERVER_NAME}.key/" /etc/openvpn/server.conf
-    $SUDO sed -i "s/\(cert \/etc\/openvpn\/easy-rsa\/pki\/issued\/\).*/\1${SERVER_NAME}.crt/" /etc/openvpn/server.conf
+    $SUDO sed -i "s#\\(key /etc/openvpn/easy-rsa/pki/private/\\).*#\\1${SERVER_NAME}.key#" /etc/openvpn/server.conf
+    $SUDO sed -i "s#\\(cert /etc/openvpn/easy-rsa/pki/issued/\\).*#\\1${SERVER_NAME}.crt#" /etc/openvpn/server.conf
 }
 
 confUnattendedUpgrades() {
@@ -1010,7 +1008,7 @@ confNetwork() {
         else
             echo "::: Detected UFW is enabled."
             echo "::: Adding UFW rules..."
-            $SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+            $SUDO sed "/delete these required/i *nat\\n:POSTROUTING ACCEPT [0:0]\\n-I POSTROUTING -s 10.8.0.0/24 -o $IPv4dev -j MASQUERADE\\nCOMMIT\\n" -i /etc/ufw/before.rules
             # Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
             $SUDO ufw insert 1 allow "$PORT"/"$PROTO" >/dev/null
 
@@ -1024,7 +1022,7 @@ confNetwork() {
                 echo 0 > /tmp/OLD_UFW
             else
                 # This ufw version does not support route command, fallback to policy change
-                $SUDO sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
+                $SUDO sed -i "s#\\(DEFAULT_FORWARD_POLICY=\\).*#\\1\"ACCEPT\"#" /etc/default/ufw
                 echo 1 > /tmp/OLD_UFW
             fi
 
@@ -1135,7 +1133,7 @@ confOVPN() {
                 echo "::: Cancel selected. Exiting..."
                 exit 1
                 fi
-                if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\n\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
+                if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\\n\\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
                     publicDNSCorrect=True
                     $SUDO sed -i 's/IPv4pub/'"$PUBLICDNS"'/' /etc/openvpn/easy-rsa/pki/Default.txt
                 else
@@ -1166,7 +1164,7 @@ confOVPN() {
         $SUDO mkdir "$INSTALL_HOME/ovpns"
     fi
     $SUDO chmod 0750 "$INSTALL_HOME/ovpns"
-    $SUDO chown $INSTALL_USER:$INSTALL_USER "$INSTALL_HOME/ovpns"
+    $SUDO chown "$INSTALL_USER:$INSTALL_USER" "$INSTALL_HOME/ovpns"
 }
 
 confLogging() {
@@ -1289,11 +1287,11 @@ updatePiVPN() {
 displayFinalMessage() {
     # Final completion message to user
     whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles.
-Run 'pivpn help' to see what else you can do!\n\nIf you run into any issue, please read all our documentation carefully.
-All incomplete posts or bug reports will be ignored or deleted.\n\nThank you for using PiVPN." ${r} ${c}
+Run 'pivpn help' to see what else you can do!\\n\\nIf you run into any issue, please read all our documentation carefully.
+All incomplete posts or bug reports will be ignored or deleted.\\n\\nThank you for using PiVPN." ${r} ${c}
     if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" ${r} ${c}); then
         whiptail --title "Rebooting" --msgbox "The system will now reboot." ${r} ${c}
-        printf "\nRebooting system...\n"
+        printf "\\nRebooting system...\\n"
         $SUDO sleep 3
         $SUDO shutdown -r now
     fi
@@ -1313,7 +1311,9 @@ update_dialogs() {
     opt2a="Reconfigure"
     opt2b="This will allow you to enter new settings"
 
-    UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\n\nWe have detected an existing install.\n\nPlease choose from the following options: \n($strAdd)" ${r} ${c} 2 \
+    UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\\n\\nWe
+    have detected an existing install.\\n\\nPlease choose from the following
+    options: \\n($strAdd)" ${r} ${c} 2 \
     "${opt1a}"  "${opt1b}" \
     "${opt2a}"  "${opt2b}" 3>&2 2>&1 1>&3) || \
     { echo "::: Cancel selected. Exiting"; exit 1; }
@@ -1347,13 +1347,14 @@ checkhostname(){
     host_name=$(hostname -s)
     if [[ ! ${#host_name} -le 28 ]]; then
        until [[ ${#host_name} -le 28 && $host_name  =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$ ]]; do
-         host_name=$(whiptail --inputbox "Your hostname is too long.\nEnter new hostname with less then 28 characters\nNo special characters allowed." \
+         host_name=$(whiptail --inputbox "Your hostname is too long.\\nEnter new
+         hostname with less then 28 characters\\nNo special characters allowed." \
            --title "Hostname too long" ${r} ${c} 3>&1 1>&2 2>&3)
          $SUDO hostnamectl set-hostname "${host_name}"
          if [[ ${#host_name} -le 28 && $host_name  =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$  ]]; then
             echo "::: Hostname valid and length OK, proceeding..."
          fi
-          
+
        done
     else
         echo "::: Hostname length OK"
@@ -1461,6 +1462,7 @@ main() {
         fi
     else
         # Source ${setupVars} for use in the rest of the functions.
+        # shellcheck disable=SC1090
         source ${setupVars}
 
         echo "::: Using IP address: $IPv4addr"
