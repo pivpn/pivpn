@@ -639,7 +639,7 @@ makeRepo(){
 	### FIXME: Never call rm -rf with a plain variable. Never again as SU!
 	#$SUDO rm -rf "${1}"
 	if test -n "$1"; then
-    $SUDO rm -rf "$(dirname "$1")/.pivpn"
+		$SUDO rm -rf "$(dirname "$1")/.pivpn"
 	fi
 	# Go back to /etc otherwhise git will complain when the current working
 	# directory has just been deleted (/etc/.pivpn).
