@@ -75,12 +75,12 @@ If you think you received this message in error, you can post an issue on the Gi
 
 maybeOSSupport(){
 	if [ "${runUnattended}" = 'true' ]; then
-		echo "::: Not Supported OS"
+		echo "::: OS Not Supported"
 		echo "::: You are on an OS that we have not tested but MAY work, continuing anyway..."
 		return
 	fi
 
-	if (whiptail --backtitle "Not Supported OS" --title "Not Supported OS" --yesno "You are on an OS that we have not tested but MAY work.
+	if (whiptail --backtitle "OS Not Supported" --title "OS Not Supported" --yesno "You are on an OS that we have not tested but MAY work.
 Currently this installer supports Raspbian (Buster).
 Would you like to continue anyway?" ${r} ${c}) then
 		echo "::: Did not detect perfectly supported OS but,"
@@ -247,9 +247,11 @@ notifyPackageUpdatesAvailable(){
 
 preconfigurePackages(){
 	# Add support for https repositories if there are any that use it otherwise the installation will silently fail
-	if grep -q https /etc/apt/sources.list; then
-		BASE_DEPS+=("apt-transport-https")
-	fi
+  if [[ -f /etc/apt/sources.list ]]; then
+    if grep -q https /etc/apt/sources.list; then
+      BASE_DEPS+=("apt-transport-https")
+    fi
+  fi
 
 	if [[ ${OSCN} == "buster" ]]; then
 		$SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
@@ -276,7 +278,16 @@ installDependentPackages(){
 	done
 
 	if command -v debconf-apt-progress &> /dev/null; then
+		set +e
 		$SUDO debconf-apt-progress -- "${PKG_INSTALL}" "${argArray1[@]}"
+		res="$?";
+		set -e
+		### apt-get install above returns 100 after an otherwise successfull installation of iptables-persistent,
+		### everything else was aready installed.
+		### Prevent from exiting the installation script in this case, exit for any other error code.
+		if [[ "$res" -ne 100 ]]; then
+			exit "$res";
+		fi;
 	else
 		${PKG_INSTALL} "${argArray1[@]}"
 	fi
@@ -285,7 +296,7 @@ installDependentPackages(){
 welcomeDialogs(){
 	if [ "${runUnattended}" = 'true' ]; then
 		echo "::: PiVPN Automated Installer"
-		echo "::: This installer will transform your Raspberry Pi into an OpenVPN or WireGuard server!"
+		echo "::: This installer will transform your ${PLAT} host into an OpenVPN or WireGuard server!"
 		echo "::: Initiating network interface"
 		return
 	fi
@@ -625,7 +636,11 @@ updateRepo(){
 makeRepo(){
 	# Remove the non-repos interface and clone the interface
 	echo -n ":::    Cloning $2 into $1..."
-	$SUDO rm -rf "${1}"
+	### FIXME: Never call rm -rf with a plain variable. Never again as SU!
+	#$SUDO rm -rf "${1}"
+	if test -n "$1"; then
+    $SUDO rm -rf "$(dirname "$1")/.pivpn"
+	fi
 	# Go back to /etc otherwhise git will complain when the current working
 	# directory has just been deleted (/etc/.pivpn).
 	cd /etc && \
@@ -1603,6 +1618,7 @@ installScripts(){
 	$SUDO cp /etc/.pivpn/scripts/$VPN/pivpn /usr/local/bin/pivpn
 	$SUDO chmod 0755 /usr/local/bin/pivpn
 	$SUDO cp /etc/.pivpn/scripts/$VPN/bash-completion /etc/bash_completion.d/pivpn
+	$SUDO chmod 0644 /etc/bash_completion.d/pivpn
   # shellcheck disable=SC1091
 	. /etc/bash_completion.d/pivpn
 	echo " done."
