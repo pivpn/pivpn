@@ -387,23 +387,6 @@ function valid_ip()
     return $stat
 }
 
-function valid_ip_wPort()
-{
-    local  ip=$1
-    local  stat=1
-
-    if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(:[0-9]{1,})?$ ]]; then
-        OIFS=$IFS
-        IFS='.'
-        ip=(${ip%:*})
-        IFS=$OIFS
-        [[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
-        && ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
-        stat=$?
-    fi
-    return $stat
-}
-
 #Call this function to use a regex to check user input for a valid custom domain
 function valid_domain()
 {
@@ -709,10 +692,10 @@ setClientDNS() {
               then
                     OVPNDNS1=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
                     OVPNDNS2=$(echo "$OVPNDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
-                    if ! valid_ip_wPort "$OVPNDNS1" || [ ! "$OVPNDNS1" ]; then
+                    if ! valid_ip "$OVPNDNS1" || [ ! "$OVPNDNS1" ]; then
                         OVPNDNS1=$strInvalid
                     fi
-                    if ! valid_ip_wPort "$OVPNDNS2" && [ "$OVPNDNS2" ]; then
+                    if ! valid_ip "$OVPNDNS2" && [ "$OVPNDNS2" ]; then
                         OVPNDNS2=$strInvalid
                     fi
               else
