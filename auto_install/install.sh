@@ -1294,7 +1294,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
   if test "${PLAT}" = "Debian"; then
 		if ! getent passwd openvpn; then
-			${SUDOE} adduser --system --home /etc/openvpn/ --no-create-home --group ${debianOvpnUserGroup%:*}
+			${SUDOE} adduser --system --home /var/lib/openvpn/ --no-create-home --group --disabled-login ${debianOvpnUserGroup%:*}
 		fi
 		${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
   else
