@@ -975,7 +975,11 @@ askClientDNS(){
 		fi
 	fi
 
-	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients (press space to select). To use your own, select Custom." ${r} ${c} 6)
+	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider
+  for your VPN Clients (press space to select). To use your own, select
+    Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
+    \"PiVPN-is-local-DNS\" and make sure your resolver is listening on
+    10.8.0.1, allowing requests from 10.8.0.1/8" ${r} ${c} 6)
 	DNSChooseOptions=(Google "" on
 			OpenDNS "" off
 			Level3 "" off
@@ -983,6 +987,7 @@ askClientDNS(){
 			Norton "" off
 			FamilyShield "" off
 			CloudFlare "" off
+			PiVPN-is-local-DNS "" off
 			Custom "" off)
 
 	if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
@@ -997,7 +1002,8 @@ askClientDNS(){
 								["DNS.WATCH"]="84.200.69.80 84.200.70.40"
 								["Norton"]="199.85.126.10 199.85.127.10"
 								["FamilyShield"]="208.67.222.123 208.67.220.123"
-								["CloudFlare"]="1.1.1.1 1.0.0.1")
+								["CloudFlare"]="1.1.1.1 1.0.0.1"
+								["PiVPN-is-local-DNS"]="10.8.0.1")
 
 			pivpnDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
 			pivpnDNS2=$(awk '{print $2}' <<< "${DNS_MAP["${DNSchoices}"]}")
