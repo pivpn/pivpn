@@ -1292,14 +1292,10 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	# Generate an empty Certificate Revocation List
 	${SUDOE} ./easyrsa gen-crl
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
-  if test "${PLAT}" = "Debian"; then
-		if ! getent passwd openvpn; then
-			${SUDOE} adduser --system --home /var/lib/openvpn/ --no-create-home --group --disabled-login ${debianOvpnUserGroup%:*}
-		fi
-		${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
-  else
-		${SUDOE} chown nobody:nogroup /etc/openvpn/crl.pem
+  if ! getent passwd openvpn; then
+    ${SUDOE} adduser --system --home /var/lib/openvpn/ --no-create-home --group --disabled-login ${debianOvpnUserGroup%:*}
   fi
+  ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
 	$SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
