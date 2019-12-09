@@ -22,7 +22,7 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar wget grep iptables-persistent dnsutils whiptail net-tools)
+BASE_DEPS=(git tar wget grep iptables-persistent dnsutils whiptail net-tools bsdmainutils)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
@@ -698,9 +698,9 @@ askWhichVPN(){
 
 installOpenVPN(){
 	echo "::: Installing OpenVPN from Debian package... "
-	# grepcidr is used to redact IPs in the debug log, expect is used to feed easy-rsa
-	# with passwords, bsdmainutils provides column to format the terminal output
-	PIVPN_DEPS=(openvpn grepcidr expect bsdmainutils)
+	# grepcidr is used to redact IPs in the debug log whereas expect is used
+	# to feed easy-rsa with passwords
+	PIVPN_DEPS=(openvpn grepcidr expect)
 	installDependentPackages PIVPN_DEPS[@]
 }
 
