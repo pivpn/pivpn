@@ -6,9 +6,8 @@ if [ ! -s clients.txt ]; then
     exit 1
 fi
 
-{
 # Present the user with a summary of the clients, fetching info from dates.
-printf ": \e[4mClient\e[0m  \t  \e[4mCreation date\e[0m :\n"
+FORMATTED+=": \e[4mClient\e[0m&\e[4mCreation date\e[0m :\n"
 
 while read -r LINE; do
     CLIENT_NAME="$(awk '{print $1}' <<< "$LINE")"
@@ -18,8 +17,7 @@ while read -r LINE; do
     # Dates are converted from UNIX time to human readable.
     CD_FORMAT="$(date -d @"$CREATION_DATE" +'%d %b %Y, %H:%M, %Z')"
 
-    printf "• $CLIENT_NAME  \t  $CD_FORMAT\n"
+    FORMATTED+="• $CLIENT_NAME&$CD_FORMAT\n"
 done < clients.txt
 
-printf "\n"
-} | column -t -s $'\t'
+echo -e "$FORMATTED" | column -t -s '&'
