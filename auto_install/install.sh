@@ -19,6 +19,7 @@ debianOvpnUserGroup="openvpn:openvpn"
 ### PKG Vars ###
 PKG_MANAGER="apt-get"
 PKG_CACHE="/var/lib/apt/lists/"
+### FIXME: quoting UPDATE_PKG_CACHE and PKG_INSTALL hangs the script, shellcheck SC2086
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
@@ -1308,8 +1309,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	${SUDOE} ./easyrsa gen-crl
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
   if ! getent passwd openvpn; then
-    mkdir -p /var/lib/openvpn
-    ${SUDOE} adduser --system --home /var/lib/openvpn/ --no-create-home --group --disabled-login ${debianOvpnUserGroup%:*}
+    ${SUDOE} adduser --system --home /var/lib/openvpn/ --group --disabled-login ${debianOvpnUserGroup%:*}
   fi
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 

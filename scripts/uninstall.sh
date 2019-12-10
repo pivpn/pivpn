@@ -5,6 +5,7 @@
 ### FIXME: use variables where appropriate, reduce magic numbers by 99.9%, at least.
 
 PKG_MANAGER="apt-get"
+subnetClass="24"
 setupVars="/etc/pivpn/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
@@ -72,9 +73,9 @@ removeAll(){
     ### FIXME: SC2154
 		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
     ### FIXME: SC2154
-		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/24" out on "${IPv4dev}" to any > /dev/null
-		sed -z "s/*nat\\n:POSTROUTING ACCEPT \\[0:0\\]\\n-I POSTROUTING -s ${pivpnNET}\\/24 -o ${IPv4dev} -j MASQUERADE\\nCOMMIT\\n\\n//" -i /etc/ufw/before.rules
-		iptables -t nat -D POSTROUTING -s "${pivpnNET}/24" -o "${IPv4dev}" -j MASQUERADE
+		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any > /dev/null
+		sed -z "s/*nat\\n:POSTROUTING ACCEPT \\[0:0\\]\\n-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE\\nCOMMIT\\n\\n//" -i /etc/ufw/before.rules
+		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE
 		ufw reload &> /dev/null
 
 	elif [ "$USING_UFW" -eq 0 ]; then
@@ -84,11 +85,11 @@ removeAll(){
 		fi
 
 		if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
-			iptables -D FORWARD -d "${pivpnNET}/24" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			iptables -D FORWARD -s "${pivpnNET}/24" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
+			iptables -D FORWARD -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+			iptables -D FORWARD -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
 		fi
 
-		iptables -t nat -D POSTROUTING -s "${pivpnNET}/24" -o "${IPv4dev}" -j MASQUERADE
+		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE
 		iptables-save > /etc/iptables/rules.v4
 
 	fi
