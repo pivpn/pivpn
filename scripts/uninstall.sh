@@ -181,16 +181,16 @@ removeAll(){
 
 	if [ "$VPN" = "wireguard" ]; then
 		rm -f /etc/wireguard/wg0.conf
-		rm -f /etc/wireguard/configs
-		rm -f /etc/wireguard/keys
+		rm -rf /etc/wireguard/configs
+		rm -rf /etc/wireguard/keys
     ### FIXME SC2154
-		rm -f "$install_home/configs"
+		rm -rf "$install_home/configs"
 	elif [ "$VPN" = "openvpn" ]; then
 		rm -f /var/log/*openvpn*
 		rm -f /etc/openvpn/server.conf
 		rm -f /etc/openvpn/crl.pem
-		rm -f /etc/openvpn/easy-rsa
-		rm -f "$install_home/ovpns"
+		rm -rf /etc/openvpn/easy-rsa
+		rm -rf "$install_home/ovpns"
 	fi
 
 	echo ":::"

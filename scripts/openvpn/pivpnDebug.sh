@@ -133,30 +133,15 @@ else
         fi
     fi
 
-    if [ "$OLD_UFW" -eq 1 ]; then
-        FORWARD_POLICY="$(iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
-        if [ "$FORWARD_POLICY" = "ACCEPT" ]; then
-            echo ":: [OK] Ufw forwarding policy is accept"
-        else
-            ERR=1
-            read -r -p ":: [ERR] Ufw forwarding policy is not 'ACCEPT', attempt fix now? [Y/n] " REPLY
-            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
-                sed -i "s/\(DEFAULT_FORWARD_POLICY=\).*/\1\"ACCEPT\"/" /etc/default/ufw
-                ufw reload > /dev/null
-                echo "Done"
-            fi
-        fi
+    if iptables -C ufw-user-forward -i tun0 -o "${IPv4dev}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
+        echo ":: [OK] Ufw forwarding rule set"
     else
-        if iptables -C ufw-user-forward -i tun0 -o "${IPv4dev}" -s 10.8.0.0/24 -j ACCEPT &> /dev/null; then
-            echo ":: [OK] Ufw forwarding rule set"
-        else
-            ERR=1
-            read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
-            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
-                ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
-                ufw reload
-                echo "Done"
-            fi
+        ERR=1
+        read -r -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " REPLY
+        if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
+            ufw route insert 1 allow in on tun0 from 10.8.0.0/24 out on "$IPv4dev" to any
+            ufw reload
+            echo "Done"
         fi
     fi
 

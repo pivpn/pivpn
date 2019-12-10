@@ -227,7 +227,7 @@ updatePackageCache(){
 		#update package lists
 		echo ":::"
 		echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\n"
-		$SUDO "${UPDATE_PKG_CACHE}" &> /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		echo " done!"
 	fi
 }
@@ -282,16 +282,7 @@ installDependentPackages(){
 	done
 
 	if command -v debconf-apt-progress &> /dev/null; then
-		set +e
-		$SUDO debconf-apt-progress -- "${PKG_INSTALL}" "${argArray1[@]}"
-		res="$?";
-		set -e
-		### apt-get install above returns 100 after an otherwise successfull installation of iptables-persistent,
-		### everything else was aready installed.
-		### Prevent from exiting the installation script in this case, exit for any other error code.
-		if [[ "$res" -ne 100 ]]; then
-			exit "$res";
-		fi;
+		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
 	else
 		${PKG_INSTALL} "${argArray1[@]}"
 	fi
@@ -710,7 +701,7 @@ askWhichVPN(){
 		pivpnDEV="tun0"
 		pivpnNET="10.8.0.0"
 	fi
-	vpnGw="${pivpnNET/.0/.1}"
+	vpnGw="${pivpnNET/.0.0/.0.1}"
 
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
 }
@@ -745,7 +736,7 @@ installWireGuard(){
 			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
-			$SUDO "${UPDATE_PKG_CACHE}" &> /dev/null
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
 			installDependentPackages PIVPN_DEPS[@]
 
@@ -831,7 +822,7 @@ installWireGuard(){
 		echo "::: Adding Debian repository... "
 		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
-		$SUDO "${UPDATE_PKG_CACHE}" &> /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1317,6 +1308,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	${SUDOE} ./easyrsa gen-crl
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
   if ! getent passwd openvpn; then
+    mkdir -p /var/lib/openvpn
     ${SUDOE} adduser --system --home /var/lib/openvpn/ --no-create-home --group --disabled-login ${debianOvpnUserGroup%:*}
   fi
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
@@ -1439,7 +1431,7 @@ confNetwork(){
 				exit 1;
 			fi
 			### If there is already a "*nat" section just add our POSTROUTING MASQUERADE
-			if grep -q "*nat" /etc/ufw/before.rules; then
+			if $SUDO grep -q "*nat" /etc/ufw/before.rules; then
 				$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNET}\/24 -o ${IPv4dev} -j MASQUERADE/}" -i /etc/ufw/before.rules
 			else
         $SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
