@@ -33,6 +33,8 @@ pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
 
+subnetClass="24"
+
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_RELEASE="1.14"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
@@ -692,6 +694,7 @@ askWhichVPN(){
 		pivpnDEV="tun0"
 		pivpnNET="10.8.0.0"
 	fi
+	vpnGw="${pivpnNET/.0/.1}"
 
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
 }
@@ -975,7 +978,11 @@ askClientDNS(){
 		fi
 	fi
 
-	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider for your VPN Clients (press space to select). To use your own, select Custom." ${r} ${c} 6)
+	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider
+  for your VPN Clients (press space to select). To use your own, select
+    Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
+    \"PiVPN-is-local-DNS\" and make sure your resolver is listening on
+    \"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." ${r} ${c} 6)
 	DNSChooseOptions=(Google "" on
 			OpenDNS "" off
 			Level3 "" off
@@ -983,6 +990,7 @@ askClientDNS(){
 			Norton "" off
 			FamilyShield "" off
 			CloudFlare "" off
+			PiVPN-is-local-DNS "" off
 			Custom "" off)
 
 	if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
@@ -997,7 +1005,8 @@ askClientDNS(){
 								["DNS.WATCH"]="84.200.69.80 84.200.70.40"
 								["Norton"]="199.85.126.10 199.85.127.10"
 								["FamilyShield"]="208.67.222.123 208.67.220.123"
-								["CloudFlare"]="1.1.1.1 1.0.0.1")
+								["CloudFlare"]="1.1.1.1 1.0.0.1"
+								["PiVPN-is-local-DNS"]="$vpnGw")
 
 			pivpnDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
 			pivpnDNS2=$(awk '{print $2}' <<< "${DNS_MAP["${DNSchoices}"]}")
@@ -1382,7 +1391,7 @@ confWireGuard(){
 
 	echo "[Interface]
 PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
-Address = 10.6.0.1/24
+Address = ${vpnGw}/${subnetClass}
 ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
 	echo "::: Server config generated."
 }
@@ -1401,10 +1410,10 @@ confNetwork(){
 			USING_UFW=1
 			echo "::: Detected UFW is enabled."
 			echo "::: Adding UFW rules..."
-			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/24 -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
 			# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
 			$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" >/dev/null
-			$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/24" out on "${IPv4dev}" to any >/dev/null
+			$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
 
 			$SUDO ufw reload >/dev/null
 			echo "::: UFW configuration completed."
@@ -1417,7 +1426,7 @@ confNetwork(){
 		# Now some checks to detect which rules we need to add. On a newly installed system all policies
 		# should be ACCEPT, so the only required rule would be the MASQUERADE one.
 
-		$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/24" -o "${IPv4dev}" -j MASQUERADE
+		$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE
 
 		# Count how many rules are in the INPUT and FORWARD chain. When parsing input from
 		# iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
@@ -1443,8 +1452,8 @@ confNetwork(){
 		fi
 
 		if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
-			$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/24" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			$SUDO iptables -I FORWARD 2 -s "${pivpnNET}/24" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
+			$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+			$SUDO iptables -I FORWARD 2 -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
 			FORWARD_CHAIN_EDITED=1
 		else
 			FORWARD_CHAIN_EDITED=0
