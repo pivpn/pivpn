@@ -14,9 +14,12 @@
 setupVars=/etc/pivpn/setupVars.conf
 pivpnFilesDir="/etc/.pivpn"
 
+debianOvpnUserGroup="openvpn:openvpn"
+
 ### PKG Vars ###
 PKG_MANAGER="apt-get"
 PKG_CACHE="/var/lib/apt/lists/"
+### FIXME: quoting UPDATE_PKG_CACHE and PKG_INSTALL hangs the script, shellcheck SC2086
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
@@ -32,6 +35,8 @@ TO_INSTALL=()
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
+
+subnetClass="24"
 
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_RELEASE="1.14"
@@ -223,7 +228,7 @@ updatePackageCache(){
 		#update package lists
 		echo ":::"
 		echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\n"
-		$SUDO "${UPDATE_PKG_CACHE}" &> /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		echo " done!"
 	fi
 }
@@ -278,16 +283,7 @@ installDependentPackages(){
 	done
 
 	if command -v debconf-apt-progress &> /dev/null; then
-		set +e
-		$SUDO debconf-apt-progress -- "${PKG_INSTALL}" "${argArray1[@]}"
-		res="$?";
-		set -e
-		### apt-get install above returns 100 after an otherwise successfull installation of iptables-persistent,
-		### everything else was aready installed.
-		### Prevent from exiting the installation script in this case, exit for any other error code.
-		if [[ "$res" -ne 100 ]]; then
-			exit "$res";
-		fi;
+		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
 	else
 		${PKG_INSTALL} "${argArray1[@]}"
 	fi
@@ -706,6 +702,7 @@ askWhichVPN(){
 		pivpnDEV="tun0"
 		pivpnNET="10.8.0.0"
 	fi
+	vpnGw="${pivpnNET/.0.0/.0.1}"
 
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
 }
@@ -740,7 +737,7 @@ installWireGuard(){
 			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
-			$SUDO "${UPDATE_PKG_CACHE}" &> /dev/null
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
 			installDependentPackages PIVPN_DEPS[@]
 
@@ -826,7 +823,7 @@ installWireGuard(){
 		echo "::: Adding Debian repository... "
 		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
-		$SUDO "${UPDATE_PKG_CACHE}" &> /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -991,8 +988,10 @@ askClientDNS(){
 	fi
 
 	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider
-  for your VPN Clients (press space to select). To use your own, select Custom."
-    "${r}" "${c}" 6)
+  for your VPN Clients (press space to select). To use your own, select
+    Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
+    \"PiVPN-is-local-DNS\" and make sure your resolver is listening on
+    \"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." ${r} ${c} 6)
 	DNSChooseOptions=(Google "" on
 			OpenDNS "" off
 			Level3 "" off
@@ -1000,6 +999,7 @@ askClientDNS(){
 			Norton "" off
 			FamilyShield "" off
 			CloudFlare "" off
+			PiVPN-is-local-DNS "" off
 			Custom "" off)
 
 	if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
@@ -1014,7 +1014,8 @@ askClientDNS(){
 								["DNS.WATCH"]="84.200.69.80 84.200.70.40"
 								["Norton"]="199.85.126.10 199.85.127.10"
 								["FamilyShield"]="208.67.222.123 208.67.220.123"
-								["CloudFlare"]="1.1.1.1 1.0.0.1")
+								["CloudFlare"]="1.1.1.1 1.0.0.1"
+								["PiVPN-is-local-DNS"]="$vpnGw")
 
 			pivpnDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
 			pivpnDNS2=$(awk '{print $2}' <<< "${DNS_MAP["${DNSchoices}"]}")
@@ -1307,7 +1308,10 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	# Generate an empty Certificate Revocation List
 	${SUDOE} ./easyrsa gen-crl
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
-	${SUDOE} chown nobody:nogroup /etc/openvpn/crl.pem
+  if ! getent passwd openvpn; then
+    ${SUDOE} adduser --system --home /var/lib/openvpn/ --group --disabled-login ${debianOvpnUserGroup%:*}
+  fi
+  ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
 	$SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
@@ -1399,7 +1403,7 @@ confWireGuard(){
 
 	echo "[Interface]
 PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
-Address = 10.6.0.1/24
+Address = ${vpnGw}/${subnetClass}
 ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
 	echo "::: Server config generated."
 }
@@ -1418,10 +1422,23 @@ confNetwork(){
 			USING_UFW=1
 			echo "::: Detected UFW is enabled."
 			echo "::: Adding UFW rules..."
-			$SUDO sed "/delete these required/i *nat\\n:POSTROUTING ACCEPT [0:0]\\n-I POSTROUTING -s ${pivpnNET}\\/24 -o ${IPv4dev} -j MASQUERADE\\nCOMMIT\\n" -i /etc/ufw/before.rules
+			### Basic safeguard: if file is empty, there's been something weird going on.
+			### Note: no safeguard against imcomplete content as a result of previous failures.
+			if test -s /etc/ufw/before.rules; then
+				$SUDO cp -f /etc/ufw/before.rules /etc/ufw/before.rules.pre-pivpn
+			else
+				echo "$0: ERR: Sorry, won't touch empty file \"/etc/ufw/before.rules\".";
+				exit 1;
+			fi
+			### If there is already a "*nat" section just add our POSTROUTING MASQUERADE
+			if $SUDO grep -q "*nat" /etc/ufw/before.rules; then
+				$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE/}" -i /etc/ufw/before.rules
+			else
+				$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+			fi
 			# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
 			$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" >/dev/null
-			$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/24" out on "${IPv4dev}" to any >/dev/null
+			$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
 
 			$SUDO ufw reload >/dev/null
 			echo "::: UFW configuration completed."
@@ -1434,7 +1451,7 @@ confNetwork(){
 		# Now some checks to detect which rules we need to add. On a newly installed system all policies
 		# should be ACCEPT, so the only required rule would be the MASQUERADE one.
 
-		$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/24" -o "${IPv4dev}" -j MASQUERADE
+		$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE
 
 		# Count how many rules are in the INPUT and FORWARD chain. When parsing input from
 		# iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
@@ -1460,8 +1477,8 @@ confNetwork(){
 		fi
 
 		if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
-			$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/24" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			$SUDO iptables -I FORWARD 2 -s "${pivpnNET}/24" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
+			$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+			$SUDO iptables -I FORWARD 2 -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
 			FORWARD_CHAIN_EDITED=1
 		else
 			FORWARD_CHAIN_EDITED=0
