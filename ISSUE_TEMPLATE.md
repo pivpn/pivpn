@@ -6,7 +6,7 @@ Any Issue opened that doesn't follow this template will be removed.
 
 Hi, you are about to open a new issue, Please provide us with all the info required below, incomplete issues will decrease our effectiveness to troubleshoot your issue and increase the time we need to spend helping you out, or with your issue closed even if it is a legitimate issue. Please remember we do not have any super power that makes us guess exactly what your issue is without any decent details!
 
-For any output requested below, you may alternatively post it on http://pastebin.com and provide the Pastebin URL in its place
+For any output requested below, you may alternatively post it on https://pastebin.com and provide the Pastebin URL in its place
 -->
 
 ## In raising this issue, I confirm the following: 
@@ -21,7 +21,7 @@ For any output requested below, you may alternatively post it on http://pastebin
 
 
 
-<!-- If the install failed: can you please copy-paste the console output after running `curl install.pivpn.io | bash` between the backticks -->
+<!-- If the install failed: can you please copy-paste the console output after running `curl install.pivpn.dev | bash` between the backticks -->
 
 <!-- Please explain your issue. Feel free to format your text -->
 ### Issue
@@ -31,7 +31,7 @@ For any output requested below, you may alternatively post it on http://pastebin
     (yes/no / which issues?)
 
 
-### Console output of      `curl -L install.pivpn.io | bash`
+### Console output of      `curl -L install.pivpn.dev | bash`
 ```
   Output Here
 ```
