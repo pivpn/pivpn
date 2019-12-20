@@ -196,7 +196,7 @@ removeAll(){
 
 	echo ":::"
 	printf "::: Finished removing PiVPN from your system.\\n"
-	printf "::: Reinstall by simpling running\\n:::\\n:::\\tcurl -L https://install.pivpn.io | bash\\n:::\\n::: at any time!\\n:::\\n"
+	printf "::: Reinstall by simpling running\\n:::\\n:::\\tcurl -L https://install.pivpn.dev | bash\\n:::\\n::: at any time!\\n:::\\n"
 }
 
 askreboot(){

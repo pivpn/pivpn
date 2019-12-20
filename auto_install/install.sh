@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # PiVPN: Trivial OpenVPN or WireGuard setup and configuration
 # Easiest setup and mangement of OpenVPN or WireGuard on Raspberry Pi
-# http://pivpn.io
+# https://pivpn.dev
 # Heavily adapted from the pi-hole.net project and...
 # https://github.com/StarshipEngineer/OpenVPN-Setup/
 #
 # Install with this command (from your Pi):
 #
-# curl -L https://install.pivpn.io | bash
+# curl -L https://install.pivpn.dev | bash
 # Make sure you have `curl` installed
 
 ######## VARIABLES #########
@@ -206,7 +206,7 @@ verifyFreeDiskSpace(){
 		echo "::: You only have ${existing_free_kilobytes} KiloBytes free."
 		echo "::: If this is a new install on a Raspberry Pi you may need to expand your disk."
 		echo "::: Try running 'sudo raspi-config', and choose the 'expand file system option'"
-		echo "::: After rebooting, run this installation again. (curl -L https://install.pivpn.io | bash)"
+		echo "::: After rebooting, run this installation again. (curl -L https://install.pivpn.dev | bash)"
 
 		echo "Insufficient free space, exiting..."
 		exit 1
@@ -560,7 +560,7 @@ chooseUser(){
 		# We don't have a user, let's ask to add one.
 		if userToAdd=$(whiptail --title "Choose A User" --inputbox "No non-root user account was found. Please type a new username." ${r} ${c} 3>&1 1>&2 2>&3)
 		then
-			# See http://askubuntu.com/a/667842/459815
+			# See https://askubuntu.com/a/667842/459815
 			PASSWORD=$(whiptail  --title "password dialog" --passwordbox "Please enter the new user password" ${r} ${c} 3>&1 1>&2 2>&3)
 			CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "${PASSWORD}")
 			if $SUDO useradd -m -p "${CRYPT}" -s /bin/bash "${userToAdd}" ; then
@@ -733,7 +733,7 @@ installWireGuard(){
 			installDependentPackages PIVPN_DEPS[@]
 			# Do not upgrade packages from the unstable repository except for wireguard
 			echo "::: Adding Debian repository... "
-			echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
+			echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
@@ -821,7 +821,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 		echo "::: Adding Debian repository... "
-		echo "deb http://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
+		echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
