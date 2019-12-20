@@ -1,7 +1,7 @@
 About
 -----
 
-Visit the [PiVPN](http://pivpn.io) site for more information.
+Visit the [PiVPN](http://pivpn.dev) site for more information.
 This is a set of shell scripts developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
 into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) software.
 
@@ -40,7 +40,7 @@ Installation
 
 
 ```shell
-curl -L https://install.pivpn.io | bash
+curl -L https://install.pivpn.dev | bash
 ```
 
 The script will first update your APT repositories, upgrade packages, and install OpenVPN,
