@@ -1,7 +1,7 @@
 ---
 name: Support Request
 about: Request support from PiVPN comunity
-title: ''
+title: "[Support] <Your Issue here>"
 labels: ''
 assignees: ''
 
