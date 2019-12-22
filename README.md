@@ -2,51 +2,83 @@ About
 -----
 
 Visit the [PiVPN](https://pivpn.dev) site for more information.
-This is a set of shell scripts developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
-into a VPN server using the free, open-source [OpenVPN](https://openvpn.net) software.
+This is a set of shell scripts initially developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
+into a VPN server using two free, open-source protocols:
+  * [Wireguard](https://www.wireguard.com/)
+  * [OpenVPN](https://openvpn.net)
 
-Have you been looking for a good guide or tutorial for installing openvpn on a raspberry pi or ubuntu based server?  Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
+Have you been looking for a good guide or tutorial for installing openvpn on a raspberry pi or ubuntu based server?  
+Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
 
-The master branch of this script installs and configures OpenVPN on Raspbian
-Jessie, Stretch, Devuan and has been tested on Ubuntu 14.04 and 16.04 running from an Amazon AWS image.
-We recommend using the Stretch or Jessie Lite image on a raspberry pi in your home so you can VPN into your home from unsecure remote locations and safely use the internet.  However, the scripts do try to detect different distributions and make adjustments accordingly.  They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
+The master branch of this script installs and configures either Wireguard or OpenVPN on Raspbian, Debian or Ubuntu and it as been tested to run not only on Raspberry pi but also in any Cloud Provider VPS.  
+We recommend using the Latest Raspbian lite image on a raspberry pi in your home so you can VPN into your home from a unsecure remote locations and safely use the internet.  
+However, the scripts do try to detect different distributions and make adjustments accordingly.  
+They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
 
-This scripts primary mission in life is to allow a user to have a home VPN for as cost effective as possible and without being a technical wizard.  Hence the design of pivpn to work on a Raspberry Pi ($35) and then one command installer.  Followed by easy management of the VPN thereafter with the 'pivpn' command.  That being said...
+This scripts primary mission in life is to allow a user to have a home VPN for as cost effective as possible and without being a technical wizard.  
+Hence the design of pivpn to work on a Raspberry Pi ($35) and then one command installer.  
+Followed by easy management of the VPN thereafter with the 'pivpn' command.  
+That being said...
 
-> This will also work on a free-tier Amazon AWS server using Ubuntu 14.04 - 16.04.  I don't want to support every scenario there but getting it to run and install successfully on a free server in the cloud was also important.  Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the amazon infrastructure.
+> This will also work on a free-tier Amazon AWS server using Ubuntu or Debian.  I don't want to support every scenario there but getting it to run and install successfully on a free server in the cloud was also important.  
+Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the amazon infrastructure.
 
 Prerequisites
 -------------
 
-To follow this guide and use the script to setup OpenVPN, you will need to have
-a Raspberry Pi Model B or later with an ethernet port, an SD or microSD card
-(depending on the model) with Raspbian installed, a power adapter appropriate to
- the power needs of your model, and an ethernet cable or wifi adapter to connect your Pi to your
-router or gateway. It is recommended that you use a fresh image of Raspbian
-Stretch Lite from https://raspberrypi.org/downloads, but if you don't,
-be sure to make a backup image of your existing installation before proceeding.
-You should also setup your Pi with a static IP address (see either source
-  1 or 2 at the bottom of this Readme) but it is not required as the script can do this for you.
-  You will need to have your router forward UDP port 1194 (or whatever custom port you may have chose in the installer)
-  (varies by model & manufacturer; consult your router manufacturer's
-  documentation to do this).
-  Enabling SSH on your Pi is also highly recommended, so that
-  you can run a very compact headless server without a monitor or keyboard and
-  be able to access it even more conveniently (This is also covered by source 2).
+To follow this guide and use the script to setup a VPN, you will need to have
+a Raspberry Pi Model B or later with, an SD or microSD card with Raspbian installed,
+a power adapter appropriate to the power needs of your model, and an ethernet cable or wifi
+adapter to connect your Pi to your router or gateway.  
+It is recommended that you use a fresh image of the latest Raspbian Lite from
+https://raspberrypi.org/downloads, but if you don't, be sure to make a backup
+image of your existing installation before proceeding.  
+You should also setup your Pi with a static IP address
+(see either source 1 or 2 at the bottom of this Readme)
+but it is not required as the script can do this for you.  
+You will need to have your router forwarding UDP port 1194 or whatever custom
+port you may have chose in the installer
+(varies by model & manufacturer; consult your router manufacturer's documentation to do this).
+Enabling SSH on your Pi is also highly recommended, so that you can run a very
+compact headless server without a monitor or keyboard and be able to access it
+even more conveniently (This is also covered by source 2).
 
 
 Installation
 -----------------
 
+**Method 1**
 
 ```shell
 curl -L https://install.pivpn.dev | bash
 ```
 
+**Method 2**
+```Shell
+curl -L https://install.pivpn.dev > pivpn.sh
+sudo sh pivpn.sh
+```
+
+**Method 3**
+```Shell
+git clone https://github.com/pivpn/pivpn.git
+sudo sh pivpn/auto_install/install.sh
+```
+
+**OBS:**  
+in alternative to install.pivpn.dev you can use the raw github link:   
+https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh
+
+**To install from Test/Development branch**
+
+Check our [Wiki Page](https://github.com/pivpn/pivpn/wiki#testing)
+
+
 The script will first update your APT repositories, upgrade packages, and install OpenVPN,
 which will take some time.
 It will ask which authentication method you wish the guts of your server to use, 1024-bit, 2048-bit, or 4096-bit.
 If you're unsure or don't have a convincing reason one way or the other I'd use 2048 today.  From the OpenVPN site:
+
 > For asymmetric keys, general wisdom is that 1024-bit keys are no longer sufficient to protect against well-equipped adversaries. Use of 2048-bit is a good minimum. It is wise to ensure all keys across your active PKI (including the CA root keypair) are using at least 2048-bit keys.
 
 > Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN), but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
@@ -65,7 +97,7 @@ exchange. If you chose 1024-bit encryption, this will just take a few minutes, b
 chose 2048-bit, it will take much longer (anywhere from 40 minutes to several hours on a
 Model B+).
 
-NOTE: Diffie-Hellman parameters are NOT generated if you choose not to use OpenVPN 2.4.
+**NOTE: Diffie-Hellman parameters are NOT generated if you choose not to use OpenVPN 2.4.**
 
 The script will also make some changes to your system to allow it to forward
 internet traffic and allow VPN connections through the Pi's firewall. When the script
@@ -140,7 +172,7 @@ Please be respectful and be aware that this is maintained with our free time!
 
 for community support or general questions.
 Feel free to post on our subreddit <https://www.reddit.com/r/pivpn/>
-You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC 
+You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC
 
 For code related issues, code contributions, feature requests, feel free to open an issue here at github.
 We will classify the issues the best we can to keep things sorted.
@@ -175,6 +207,8 @@ sources.
 
 3. Of course there is [OpenVPN](https://openvpn.net)
 
-4. And as always the ever vigilant [EFF](https://www.eff.org/)
+4. Also [Wireguard](https://www.wireguard.com/)
+
+5. And as always the ever vigilant [EFF](https://www.eff.org/)
 
 PiVPN is not taking donations at this time but if you want to show your appreciation, then contribute or leave feedback on suggestions or improvements.
