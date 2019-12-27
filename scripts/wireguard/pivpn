@@ -17,7 +17,7 @@ makeConf(){
 }
 
 listConnected(){
-    $SUDO wg show
+    $SUDO /opt/pivpn/clientSTAT.sh
     exit 0
 }
 

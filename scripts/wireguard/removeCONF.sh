@@ -73,12 +73,14 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
         if [[ $REPLY =~ ^[Yy]$ ]]; then
 
             # Grab the least significant octed of the client IP address
-            COUNT=$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $3}')
-            # And the creation date of the client
-            CREATION_DATE="$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $2}')"
+            COUNT=$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $4}')
+            # The creation date of the client
+            CREATION_DATE="$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $3}')"
+            # And its public key
+            PUBLIC_KEY="$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $2}')"
 
             # Then remove the client matching the variables above
-            sed "/${CLIENT_NAME} ${CREATION_DATE} ${COUNT}/d" -i configs/clients.txt
+            sed "\#${CLIENT_NAME} ${PUBLIC_KEY} ${CREATION_DATE} ${COUNT}#d" -i configs/clients.txt
 
             # Remove the peer section from the server config
             sed "/# begin ${CLIENT_NAME}/,/# end ${CLIENT_NAME}/d" -i wg0.conf

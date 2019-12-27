@@ -978,7 +978,7 @@ askClientDNS(){
 	# Detect and offer to use Pi-hole
 	if command -v pihole &>/dev/null; then
 		if (whiptail --backtitle "Setup PiVPN" --title "Pi-hole" --yesno "We have detected a Pi-hole installation, do you want to use it as the DNS server for the VPN, so you get ad blocking on the go?" ${r} ${c}); then
-			pivpnDNS1="$IPv4addr"
+			pivpnDNS1="$vpnGw"
 			echo "interface=$pivpnDEV" | $SUDO tee /etc/dnsmasq.d/02-pivpn.conf > /dev/null
 			$SUDO pihole restartdns
 			echo "pivpnDNS1=${pivpnDNS1}" >> /tmp/setupVars.conf
