@@ -11,10 +11,9 @@
 # Make sure you have `curl` installed
 
 ######## VARIABLES #########
-setupVars=/etc/pivpn/setupVars.conf
+pivpnGitUrl="https://github.com/pivpn/pivpn.git"
+setupVars="/etc/pivpn/setupVars.conf"
 pivpnFilesDir="/etc/.pivpn"
-
-debianOvpnUserGroup="openvpn:openvpn"
 
 ### PKG Vars ###
 PKG_MANAGER="apt-get"
@@ -25,21 +24,22 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar wget grep iptables-persistent dnsutils whiptail net-tools bsdmainutils)
+BASE_DEPS=(git tar wget grep dnsutils whiptail net-tools bsdmainutils)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
 # PiVPN we won't prompt to remove packages that may have been installed by the user for other reasons
 TO_INSTALL=()
 
-pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
 
 subnetClass="24"
+dhcpcdFile="/etc/dhcpcd.conf"
+debianOvpnUserGroup="openvpn:openvpn"
 
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
-UNATTUPG_RELEASE="1.14"
+UNATTUPG_RELEASE="1.16"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
@@ -47,7 +47,10 @@ screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo "$screen_size" | awk '{print $1}')
 columns=$(echo "$screen_size" | awk '{print $2}')
 
+######## Undocumented Flags. Shhh ########
 runUnattended=false
+skipSpaceCheck=false
+reconfigure=false
 
 # Divide by two so the dialogs take up half of the screen, which looks nice.
 r=$(( rows / 2 ))
@@ -57,11 +60,170 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 # Find IP used to route to outside world
-IPv4addr=$(ip route get 8.8.8.8| awk '{print $7}')
+IPv4addr=$(ip route get 8.8.8.8 | awk '{print $7}')
 IPv4gw=$(ip route get 8.8.8.8 | awk '{print $3}')
-
 availableInterfaces=$(ip -o link | grep "state UP" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
-dhcpcdFile=/etc/dhcpcd.conf
+
+######## SCRIPT ############
+
+main(){
+
+	######## FIRST CHECK ########
+	# Must be root to install
+	echo ":::"
+	if [[ $EUID -eq 0 ]];then
+		echo "::: You are root."
+	else
+		echo "::: sudo will be used for the install."
+		# Check if it is actually installed
+		# If it isn't, exit because the install cannot complete
+		if [[ $(dpkg-query -s sudo) ]];then
+			export SUDO="sudo"
+			export SUDOE="sudo -E"
+		else
+			echo "::: Please install sudo or run this as root."
+			exit 1
+		fi
+	fi
+
+	# Check arguments for the undocumented flags
+	for var in "$@"; do
+		case "$var" in
+			"--i_do_not_follow_recommendations"   ) skipSpaceCheck=false;;
+			"--unattended"     ) runUnattended=true;;
+			"--reconfigure"  ) reconfigure=true;;
+		esac
+	done
+
+	if [[ "${runUnattended}" == true ]]; then
+		echo "::: --unattended passed to install script, no whiptail dialogs will be displayed"
+		if [ -z "$2" ]; then
+			echo "::: No configuration file passed, using default settings..."
+		else
+			if [ -r "$2" ]; then
+		# shellcheck disable=SC1090
+				source "$2"
+			else
+				echo "::: Can't open $2"
+				exit 1
+			fi
+		fi
+	fi
+
+	if [ -r "$setupVars" ]; then
+		if [[ "${reconfigure}" == true ]]; then
+			echo "::: --reconfigure passed to install script, will reinstall PiVPN overwriting existing settings"
+			UpdateCmd="Reconfigure"
+		elif [[ "${runUnattended}" == true ]]; then
+			### What should the script do when passing --unattended to an existing installation?
+			UpdateCmd="Reconfigure"
+		else
+			askAboutExistingInstall
+		fi
+	fi
+
+	if [ -z "$UpdateCmd" ] || [ "$UpdateCmd" = "Reconfigure" ]; then
+		:
+	elif [ "$UpdateCmd" = "Update" ]; then
+		### To do: test the update script and implement update for WireGuard as well
+		$SUDO /opt/pivpn/update.sh
+	elif [ "$UpdateCmd" = "Repair" ]; then
+		source "$setupVars"
+		runUnattended=true
+	fi
+
+	# Check for supported distribution
+	distroCheck
+
+	# Checks for hostname Length
+	checkHostname
+
+	# Start the installer
+	# Verify there is enough disk space for the install
+	if [[ "${skipSpaceCheck}" == true ]]; then
+		echo "::: --i_do_not_follow_recommendations passed to script, skipping free disk space verification!"
+	else
+		verifyFreeDiskSpace
+	fi
+
+	updatePackageCache
+
+	# Notify user of package availability
+	notifyPackageUpdatesAvailable
+
+	# Install packages used by this installation script
+	preconfigurePackages
+	installDependentPackages BASE_DEPS[@]
+
+	# Display welcome dialogs
+	welcomeDialogs
+
+	# Find interfaces and let the user choose one
+	chooseInterface
+
+	if [ "$PLAT" != "Raspbian" ]; then
+		avoidStaticIPv4Ubuntu
+	else
+		getStaticIPv4Settings
+		setStaticIPv4
+	fi
+
+	# Choose the user for the ovpns
+	chooseUser
+
+	# Clone/Update the repos
+	cloneOrUpdateRepos
+
+	# Install
+	if installPiVPN; then
+		echo "::: Install Complete..."
+	else
+		exit 1
+	fi
+
+	# Start services
+	restartServices
+
+	# Ask if unattended-upgrades will be enabled
+	askUnattendedUpgrades
+
+	if [ "$UNATTUPG" -eq 1 ]; then
+		confUnattendedUpgrades
+	fi
+
+	# Save installation setting to the final location
+	echo "TO_INSTALL=(${TO_INSTALL[*]})" >> /tmp/setupVars.conf
+	$SUDO cp /tmp/setupVars.conf "$setupVars"
+
+	installScripts
+
+	# Ensure that cached writes reach persistent storage
+	echo "::: Flushing writes to disk..."
+	sync
+	echo "::: done."
+
+	displayFinalMessage
+	echo ":::"
+}
+
+askAboutExistingInstall(){
+	opt1a="Update"
+	opt1b="Get the latest PiVPN scripts"
+
+	opt2a="Repair"
+	opt2b="Reinstall PiVPN using existing settings"
+
+	opt3a="Reconfigure"
+	opt3b="Reinstall PiVPN with new settings"
+
+	UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\nWe have detected an existing install.\n\nPlease choose from the following options:" ${r} ${c} 3 \
+	"${opt1a}"  "${opt1b}" \
+	"${opt2a}"  "${opt2b}" \
+	"${opt3a}"  "${opt3b}" 3>&2 2>&1 1>&3) || \
+	{ echo "::: Cancel selected. Exiting"; exit 1; }
+
+	echo "::: ${opt1a} option selected."
+}
 
 # Next see if we are on a tested and supported OS
 noOSSupport(){
@@ -253,9 +415,9 @@ notifyPackageUpdatesAvailable(){
 preconfigurePackages(){
 	# Add support for https repositories if there are any that use it otherwise the installation will silently fail
   if [[ -f /etc/apt/sources.list ]]; then
-    if grep -q https /etc/apt/sources.list; then
-      BASE_DEPS+=("apt-transport-https")
-    fi
+	if grep -q https /etc/apt/sources.list; then
+	  BASE_DEPS+=("apt-transport-https")
+	fi
   fi
 
 	if [[ ${OSCN} == "buster" ]]; then
@@ -263,8 +425,24 @@ preconfigurePackages(){
 		$SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 	fi
 
-	echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
-	echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
+	# if ufw is enabled, configure that (running as root because sometimes the executable is not in the user's $PATH, on Debian for example)
+	if $SUDO bash -c 'hash ufw' 2>/dev/null; then
+		if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive; then
+			USING_UFW=0
+		else
+			USING_UFW=1
+		fi
+	else
+		USING_UFW=0
+	fi
+
+	if [ "$USING_UFW" -eq 0 ]; then
+		BASE_DEPS+=(iptables-persistent)
+		echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
+		echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
+	fi
+
+	echo "USING_UFW=${USING_UFW}" >> /tmp/setupVars.conf
 }
 
 installDependentPackages(){
@@ -389,7 +567,7 @@ validIP(){
 	if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
 		OIFS=$IFS
 		IFS='.'
-    read -r -a ip <<< "$ip"
+	read -r -a ip <<< "$ip"
 		IFS=$OIFS
 		[[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
 		&& ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
@@ -613,20 +791,24 @@ isRepo(){
 }
 
 updateRepo(){
-	# Pull the latest commits
-	echo -n ":::     Updating repo in $1..."
-	$SUDO rm -rf "${1}"
-	# Go back to /etc otherwise git will complain when the current working
-	# directory has just been deleted (/etc/.pivpn).
-	cd /etc && \
-    $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
-	cd "${1}" || exit 1
-	if [ -z "${TESTING+x}" ]; then
-		:
+	if [ "${UpdateCmd}" = "Repair" ]; then
+		echo "::: Repairing an existing installation, not downloading/updating local repos"
 	else
-		${SUDOE} git checkout test
+		# Pull the latest commits
+		echo -n ":::     Updating repo in $1..."
+		$SUDO rm -rf "${1}"
+		# Go back to /etc otherwise git will complain when the current working
+		# directory has just been deleted (/etc/.pivpn).
+		cd /etc && \
+		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
+		cd "${1}" || exit 1
+		if [ -z "${TESTING+x}" ]; then
+			:
+		else
+			${SUDOE} git checkout test
+		fi
+		echo " done!"
 	fi
-	echo " done!"
 }
 
 makeRepo(){
@@ -640,7 +822,7 @@ makeRepo(){
 	# Go back to /etc otherwhise git will complain when the current working
 	# directory has just been deleted (/etc/.pivpn).
 	cd /etc && \
-    $SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
+	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 	cd "${1}" || exit 1
 	if [ -z "${TESTING+x}" ]; then
 		:
@@ -744,29 +926,25 @@ installWireGuard(){
 		elif [ "$(uname -m)" = "armv6l" ]; then
 
 			echo "::: Installing WireGuard from source... "
-			PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
+			PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq bc)
 			installDependentPackages PIVPN_DEPS[@]
-
-			WG_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-kmodtools"."version"')"
-			WG_SOURCE="https://git.zx2c4.com/WireGuard/snapshot/WireGuard-${WG_SNAPSHOT}.tar.xz"
 
 			# Delete any leftover code
 			$SUDO rm -rf /usr/src/wireguard-*
 
-			echo "::: Downloading source code... "
-			wget -qO- "${WG_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
+			WG_TOOLS_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-tools"."version"')"
+			WG_TOOLS_SOURCE="https://git.zx2c4.com/wireguard-tools/snapshot/wireguard-tools-${WG_TOOLS_SNAPSHOT}.tar.xz"
+
+			echo "::: Downloading wireguard-tools source code... "
+			wget -qO- "${WG_TOOLS_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
 			echo "done!"
 
-			cd /usr/src && \
-			$SUDO mv WireGuard-"${WG_SNAPSHOT}" wireguard-"${WG_SNAPSHOT}"
-			cd wireguard-"${WG_SNAPSHOT}" && \
-        $SUDO mv src/* . && \
-        $SUDO rmdir src
+			cd /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}/src"
 
 			# We install the userspace tools manually since DKMS only compiles and
 			# installs the kernel module
 			echo "::: Compiling WireGuard tools... "
-			if $SUDO make tools; then
+			if $SUDO make; then
 				echo "done!"
 			else
 				echo "failed!"
@@ -777,7 +955,7 @@ installWireGuard(){
 			# PiVPN we can just do apt remove wireguard-tools, instead of manually removing
 			# files from the file system
 			echo "::: Installing WireGuard tools... "
-			if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_SNAPSHOT}" -y make tools-install; then
+			if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_TOOLS_SNAPSHOT}" -y; then
 				TO_INSTALL+=("wireguard-tools")
 				echo "done!"
 			else
@@ -785,35 +963,52 @@ installWireGuard(){
 				exit 1
 			fi
 
+			echo "WG_TOOLS_SNAPSHOT=${WG_TOOLS_SNAPSHOT}" >> /tmp/setupVars.conf
+
+			WG_MODULE_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-linuxcompat"."version"')"
+			WG_MODULE_SOURCE="https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-${WG_MODULE_SNAPSHOT}.tar.xz"
+
+			echo "::: Downloading wireguard-linux-compat source code... "
+			wget -qO- "${WG_MODULE_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
+			echo "done!"
+
+			# Rename wireguard-linux-compat folder and move the source code to the parent folder
+			# such that dkms picks up the module when referencing wireguard/"${WG_MODULE_SNAPSHOT}"
+			cd /usr/src && \
+			$SUDO mv wireguard-linux-compat-"${WG_MODULE_SNAPSHOT}" wireguard-"${WG_MODULE_SNAPSHOT}"
+			cd wireguard-"${WG_MODULE_SNAPSHOT}" && \
+			$SUDO mv src/* . && \
+			$SUDO rmdir src
+
 			echo "::: Adding WireGuard modules via DKMS... "
-			if $SUDO dkms add wireguard/"${WG_SNAPSHOT}"; then
+			if $SUDO dkms add wireguard/"${WG_MODULE_SNAPSHOT}"; then
 				echo "done!"
 			else
 				echo "failed!"
-				$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
+				$SUDO dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
 				exit 1
 			fi
 
 			echo "::: Compiling WireGuard modules via DKMS... "
-			if $SUDO dkms build wireguard/"${WG_SNAPSHOT}"; then
+			if $SUDO dkms build wireguard/"${WG_MODULE_SNAPSHOT}"; then
 				echo "done!"
 			else
 				echo "failed!"
-				$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
+				$SUDO dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
 				exit 1
 			fi
 
 			echo "::: Installing WireGuard modules via DKMS... "
-			if $SUDO dkms install wireguard/"${WG_SNAPSHOT}"; then
+			if $SUDO dkms install wireguard/"${WG_MODULE_SNAPSHOT}"; then
 				TO_INSTALL+=("wireguard-dkms")
 				echo "done!"
 			else
 				echo "failed!"
-				$SUDO dkms remove wireguard/"${WG_SNAPSHOT}" --all
+				$SUDO dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
 				exit 1
 			fi
 
-			echo "WG_SNAPSHOT=${WG_SNAPSHOT}" >> /tmp/setupVars.conf
+			echo "WG_MODULE_SNAPSHOT=${WG_MODULE_SNAPSHOT}" >> /tmp/setupVars.conf
 
 		fi
 
@@ -989,9 +1184,9 @@ askClientDNS(){
 
 	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider
   for your VPN Clients (press space to select). To use your own, select
-    Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
-    \"PiVPN-is-local-DNS\" and make sure your resolver is listening on
-    \"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." ${r} ${c} 6)
+	Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
+	\"PiVPN-is-local-DNS\" and make sure your resolver is listening on
+	\"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." ${r} ${c} 6)
 	DNSChooseOptions=(Google "" on
 			OpenDNS "" off
 			Level3 "" off
@@ -1075,7 +1270,7 @@ validDomain(){
   local stat=1
 
   if [[ $domain =~ ^(([a-zA-Z0-9]{1,63}|([a-zA-Z0-9]{1,60}[-a-zA-Z0-9()]{0,2}[a-zA-Z0-9]{1,60}))\.){1,6}([a-zA-Z]{2,})$ ]]; then
-    stat=$?
+	stat=$?
   fi
   return $stat
 }
@@ -1309,7 +1504,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	${SUDOE} ./easyrsa gen-crl
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
   if ! getent passwd openvpn; then
-    ${SUDOE} adduser --system --home /var/lib/openvpn/ --group --disabled-login ${debianOvpnUserGroup%:*}
+	${SUDOE} adduser --system --home /var/lib/openvpn/ --group --disabled-login ${debianOvpnUserGroup%:*}
   fi
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
@@ -1390,6 +1585,12 @@ confWireGuard(){
 	else
 		whiptail --title "Server Information" --msgbox "The Server Keys and Pre-Shared key will now be generated." "${r}" "${c}"
 	fi
+
+	# Remove configs and keys folders to make space for a new server when using 'Repair' or 'Reconfigure'
+	# over an existing installation
+	$SUDO rm -rf /etc/wireguard/configs
+	$SUDO rm -rf /etc/wireguard/keys
+
 	$SUDO mkdir -p /etc/wireguard/configs
 	$SUDO touch /etc/wireguard/configs/clients.txt
 	$SUDO mkdir -p /etc/wireguard/keys
@@ -1413,45 +1614,42 @@ confNetwork(){
 	$SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 	$SUDO sysctl -p > /dev/null
 
-	# if ufw enabled, configure that (running as root because sometimes the executable is not in the user's $PATH, on Debian for example)
-	if $SUDO bash -c 'hash ufw' 2>/dev/null; then
-		if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive
-		then
-			USING_UFW=0
-		else
-			USING_UFW=1
-			echo "::: Detected UFW is enabled."
-			echo "::: Adding UFW rules..."
-			### Basic safeguard: if file is empty, there's been something weird going on.
-			### Note: no safeguard against imcomplete content as a result of previous failures.
-			if test -s /etc/ufw/before.rules; then
-				$SUDO cp -f /etc/ufw/before.rules /etc/ufw/before.rules.pre-pivpn
-			else
-				echo "$0: ERR: Sorry, won't touch empty file \"/etc/ufw/before.rules\".";
-				exit 1;
-			fi
-			### If there is already a "*nat" section just add our POSTROUTING MASQUERADE
-			if $SUDO grep -q "*nat" /etc/ufw/before.rules; then
-				$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE/}" -i /etc/ufw/before.rules
-			else
-				$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
-			fi
-			# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
-			$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" >/dev/null
-			$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
+	if [ "$USING_UFW" -eq 1 ]; then
 
-			$SUDO ufw reload >/dev/null
-			echo "::: UFW configuration completed."
+		echo "::: Detected UFW is enabled."
+		echo "::: Adding UFW rules..."
+		### Basic safeguard: if file is empty, there's been something weird going on.
+		### Note: no safeguard against imcomplete content as a result of previous failures.
+		if test -s /etc/ufw/before.rules; then
+			$SUDO cp -f /etc/ufw/before.rules /etc/ufw/before.rules.pre-pivpn
+		else
+			echo "$0: ERR: Sorry, won't touch empty file \"/etc/ufw/before.rules\".";
+			exit 1;
 		fi
-	else
-		USING_UFW=0
-	fi
-	# else configure iptables
-	if [[ $USING_UFW -eq 0 ]]; then
+		### If there is already a "*nat" section just add our POSTROUTING MASQUERADE
+		if $SUDO grep -q "*nat" /etc/ufw/before.rules; then
+			### Onyl add the NAT rule if it isn't already there
+			if ! $SUDO grep -q "${VPN}-nat-rule" /etc/ufw/before.rules; then
+				$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/}" -i /etc/ufw/before.rules
+			fi
+		else
+			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before.rules
+		fi
+		# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
+		$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" >/dev/null
+		$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
+
+		$SUDO ufw reload >/dev/null
+		echo "::: UFW configuration completed."
+
+	elif [ "$USING_UFW" -eq 0 ]; then
+
 		# Now some checks to detect which rules we need to add. On a newly installed system all policies
 		# should be ACCEPT, so the only required rule would be the MASQUERADE one.
 
-		$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE
+		if ! $SUDO iptables -t nat -S | grep -q "${VPN}-nat-rule"; then
+			$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
+		fi
 
 		# Count how many rules are in the INPUT and FORWARD chain. When parsing input from
 		# iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
@@ -1470,15 +1668,23 @@ confNetwork(){
 		# chain (using -I).
 
 		if [ "$INPUT_RULES_COUNT" -ne 0 ] || [ "$INPUT_POLICY" != "ACCEPT" ]; then
-			$SUDO iptables -I INPUT 1 -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT
+			if $SUDO iptables -t nat -S | grep -q "${VPN}-input-rule"; then
+				INPUT_CHAIN_EDITED=0
+			else
+				$SUDO iptables -I INPUT 1 -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule"
+			fi
 			INPUT_CHAIN_EDITED=1
 		else
 			INPUT_CHAIN_EDITED=0
 		fi
 
 		if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
-			$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			$SUDO iptables -I FORWARD 2 -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
+			if $SUDO iptables -t nat -S | grep -q "${VPN}-forward-rule"; then
+				FORWARD_CHAIN_EDITED=0
+			else
+				$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"
+				$SUDO iptables -I FORWARD 2 -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule"
+			fi
 			FORWARD_CHAIN_EDITED=1
 		else
 			FORWARD_CHAIN_EDITED=0
@@ -1492,9 +1698,8 @@ confNetwork(){
 
 		echo "INPUT_CHAIN_EDITED=${INPUT_CHAIN_EDITED}" >> /tmp/setupVars.conf
 		echo "FORWARD_CHAIN_EDITED=${FORWARD_CHAIN_EDITED}" >> /tmp/setupVars.conf
-	fi
 
-	echo "USING_UFW=${USING_UFW}" >> /tmp/setupVars.conf
+	fi
 }
 
 confLogging() {
@@ -1547,6 +1752,21 @@ installPiVPN(){
 		confWireGuard
 		confNetwork
 	fi
+}
+
+restartServices(){
+	echo "::: Restarting services..."
+	case ${PLAT} in
+		Debian|Raspbian|Ubuntu)
+			if [ "$VPN" = "openvpn" ]; then
+				$SUDO systemctl enable openvpn.service &> /dev/null
+				$SUDO systemctl restart openvpn.service
+			elif [ "$VPN" = "wireguard" ]; then
+				$SUDO systemctl enable wg-quick@wg0.service &> /dev/null
+				$SUDO systemctl restart wg-quick@wg0.service
+			fi
+		;;
+	esac
 }
 
 askUnattendedUpgrades(){
@@ -1665,136 +1885,6 @@ All incomplete posts or bug reports will be ignored or deleted.\\n\\nThank you f
 		$SUDO sleep 3
 		$SUDO shutdown -r now
 	fi
-}
-
-######## SCRIPT ############
-
-main(){
-
-	######## FIRST CHECK ########
-	# Must be root to install
-	echo ":::"
-	if [[ $EUID -eq 0 ]];then
-		echo "::: You are root."
-	else
-		echo "::: sudo will be used for the install."
-		# Check if it is actually installed
-		# If it isn't, exit because the install cannot complete
-		if [[ $(dpkg-query -s sudo) ]];then
-			export SUDO="sudo"
-			export SUDOE="sudo -E"
-		else
-			echo "::: Please install sudo or run this as root."
-			exit 1
-		fi
-	fi
-
-	# Check arguments for the undocumented flags
-	for var in "$@"; do
-		case "$var" in
-			"--i_do_not_follow_recommendations"   ) skipSpaceCheck=false;;
-			"--unattended"     ) runUnattended=true;;
-		esac
-	done
-
-	# Check for supported distribution
-	distroCheck
-
-	# Checks for hostname Length
-	checkHostname
-
-	if [[ "${runUnattended}" == true ]]; then
-		echo "::: --unattended passed to install script, no whiptail dialogs will be displayed"
-		if [ -z "$2" ]; then
-			echo "::: No configuration file passed, using default settings..."
-		else
-			if [ -r "$2" ]; then
-        # shellcheck disable=SC1090
-				source "$2"
-			else
-				echo "::: Can't open $2"
-				exit 1
-			fi
-		fi
-	fi
-
-	# Start the installer
-	# Verify there is enough disk space for the install
-	if [[ "${skipSpaceCheck}" == true ]]; then
-		echo "::: --i_do_not_follow_recommendations passed to script, skipping free disk space verification!"
-	else
-		verifyFreeDiskSpace
-	fi
-
-	updatePackageCache
-
-	# Notify user of package availability
-	notifyPackageUpdatesAvailable
-
-	# Install packages used by this installation script
-	preconfigurePackages
-	installDependentPackages BASE_DEPS[@]
-
-	# Display welcome dialogs
-	welcomeDialogs
-
-	# Find interfaces and let the user choose one
-	chooseInterface
-
-	if [ "$PLAT" != "Raspbian" ]; then
-		avoidStaticIPv4Ubuntu
-	else
-		getStaticIPv4Settings
-		setStaticIPv4
-	fi
-
-	# Choose the user for the ovpns
-	chooseUser
-
-	# Clone/Update the repos
-	cloneOrUpdateRepos
-
-	# Install
-	if installPiVPN; then
-		echo "::: Install Complete..."
-	else
-		exit 1
-	fi
-
-	echo "::: Restarting services..."
-	# Start services
-	case ${PLAT} in
-		Debian|Raspbian|Ubuntu)
-			if [ "$VPN" = "openvpn" ]; then
-				$SUDO systemctl enable openvpn.service &> /dev/null
-				$SUDO systemctl start openvpn.service
-			elif [ "$VPN" = "wireguard" ]; then
-				$SUDO systemctl enable wg-quick@wg0.service &> /dev/null
-				$SUDO systemctl start wg-quick@wg0.service
-			fi
-		;;
-	esac
-
-	# Ask if unattended-upgrades will be enabled
-	askUnattendedUpgrades
-
-	if [ "$UNATTUPG" -eq 1 ]; then
-		confUnattendedUpgrades
-	fi
-
-	# Save installation setting to the final location
-	echo "TO_INSTALL=(${TO_INSTALL[*]})" >> /tmp/setupVars.conf
-	$SUDO cp /tmp/setupVars.conf "$setupVars"
-
-	installScripts
-
-	# Ensure that cached writes reach persistent storage
-	echo "::: Flushing writes to disk..."
-	sync
-	echo "::: done."
-
-	displayFinalMessage
-	echo ":::"
 }
 
 main "$@"

@@ -63,17 +63,46 @@ fi
 
 if [ "$USING_UFW" -eq 0 ]; then
 
-    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
+    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule" &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
-            iptables -t nat -F
-            iptables -t nat -I POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE
+            iptables -t nat -I POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
             iptables-save > /etc/iptables/rules.v4
-            iptables-restore < /etc/iptables/rules.v4
             echo "Done"
+        fi
+    fi
+
+    if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
+
+        if iptables -C INPUT -i "$IPv4dev" -p udp --dport "$pivpnPORT" -j ACCEPT -m comment --comment "${VPN}-input-rule" &> /dev/null; then
+            echo ":: [OK] Iptables INPUT rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Iptables INPUT rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
+                iptables -I INPUT 1 -i "$IPv4dev" -p udp --dport "$pivpnPORT" -j ACCEPT -m comment --comment "${VPN}-input-rule"
+                iptables-save > /etc/iptables/rules.v4
+                echo "Done"
+            fi
+        fi
+    fi
+
+    if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
+
+        if iptables -C FORWARD -s 10.6.0.0/24 -i wg0 -o "$IPv4dev" -j ACCEPT -m comment --comment "${VPN}-forward-rule" &> /dev/null; then
+            echo ":: [OK] Iptables FORWARD rule set"
+        else
+            ERR=1
+            read -r -p ":: [ERR] Iptables FORWARD rule is not set, attempt fix now? [Y/n] " REPLY
+            if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
+                iptables -I FORWARD 1 -d 10.6.0.0/24 -i "$IPv4dev" -o wg0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"
+                iptables -I FORWARD 2 -s 10.6.0.0/24 -i wg0 -o "$IPv4dev" -j ACCEPT -m comment --comment "${VPN}-forward-rule"
+                iptables-save > /etc/iptables/rules.v4
+                echo "Done"
+            fi
         fi
     fi
 
@@ -89,13 +118,13 @@ else
         fi
     fi
 
-    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE &> /dev/null; then
+    if iptables -t nat -C POSTROUTING -s 10.6.0.0/24 -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule" &> /dev/null; then
         echo ":: [OK] Iptables MASQUERADE rule set"
     else
         ERR=1
         read -r -p ":: [ERR] Iptables MASQUERADE rule is not set, attempt fix now? [Y/n] " REPLY
         if [[ ${REPLY} =~ ^[Yy]$ ]] || [[ -z ${REPLY} ]]; then
-            sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.6.0.0/24 -o $IPv4dev -j MASQUERADE\nCOMMIT\n" -i /etc/ufw/before.rules
+            sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s 10.6.0.0/24 -o $IPv4dev -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before.rules
             ufw reload
             echo "Done"
         fi
