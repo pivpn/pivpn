@@ -1,3 +1,5 @@
+![WireGuard + OpenVPN logo](logos.jpg)
+
 About
 -----
 
