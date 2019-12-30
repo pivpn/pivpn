@@ -125,8 +125,8 @@ main(){
 	if [ -z "$UpdateCmd" ] || [ "$UpdateCmd" = "Reconfigure" ]; then
 		:
 	elif [ "$UpdateCmd" = "Update" ]; then
-		### To do: test the update script and implement update for WireGuard as well
-		$SUDO /opt/pivpn/update.sh
+		$SUDO /opt/pivpn/update.sh "$@"
+		exit 0
 	elif [ "$UpdateCmd" = "Repair" ]; then
 		source "$setupVars"
 		runUnattended=true

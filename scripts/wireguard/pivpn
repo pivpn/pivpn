@@ -48,6 +48,12 @@ uninstallServer(){
     exit 0
 }
 
+updateScripts(){
+    shift
+    $SUDO /opt/pivpn/update.sh "$@"
+    exit 0
+}
+
 showHelp(){
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
@@ -62,6 +68,7 @@ showHelp(){
     echo ":::  -r,  remove           Remove a client"
     echo ":::  -h,  help             Show this help dialog"
     echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
+    echo ":::  -up, update           Updates PiVPN Scripts"
     exit 0
 }
 
@@ -79,5 +86,6 @@ case "$1" in
 "-r"  | "remove"             ) removeClient "$@";;
 "-h"  | "help"               ) showHelp;;
 "-u"  | "uninstall"          ) uninstallServer;;
+"-up" | "update"             ) updateScripts "$@" ;;
 *                            ) showHelp;;
 esac
