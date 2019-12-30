@@ -4,14 +4,14 @@ About
 Visit the [PiVPN](https://pivpn.dev) site for more information.
 This is a set of shell scripts initially developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
 into a VPN server using two free, open-source protocols:
-  * [Wireguard](https://www.wireguard.com/)
+  * [WireGuard](https://www.wireguard.com/)
   * [OpenVPN](https://openvpn.net)
 
-Have you been looking for a good guide or tutorial for installing openvpn on a raspberry pi or ubuntu based server?  
+Have you been looking for a good guide or tutorial for setting up a VPN server on a Raspberry Pi or Ubuntu based server?  
 Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
 
-The master branch of this script installs and configures either Wireguard or OpenVPN on Raspbian, Debian or Ubuntu and it as been tested to run not only on Raspberry pi but also in any Cloud Provider VPS.  
-We recommend using the Latest Raspbian lite image on a raspberry pi in your home so you can VPN into your home from a unsecure remote locations and safely use the internet.  
+The master branch of this script installs and configures either WireGuard or OpenVPN on Raspbian, Debian or Ubuntu and it as been tested to run not only on Raspberry Pi but also in any Cloud Provider VPS.  
+We recommend using the latest Raspbian Lite image on a Raspberry Pi in your home so you can VPN into your home from a unsecure remote locations and safely use the internet.  
 However, the scripts do try to detect different distributions and make adjustments accordingly.  
 They should work on the majority of Ubuntu and Debian based distributions including those using UFW by default instead of raw iptables.  
 
@@ -21,7 +21,7 @@ Followed by easy management of the VPN thereafter with the 'pivpn' command.
 That being said...
 
 > This will also work on a free-tier Amazon AWS server using Ubuntu or Debian.  I don't want to support every scenario there but getting it to run and install successfully on a free server in the cloud was also important.  
-Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the amazon infrastructure.
+Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the Amazon infrastructure.
 
 Prerequisites
 -------------
@@ -66,51 +66,57 @@ sudo sh pivpn/auto_install/install.sh
 ```
 
 **OBS:**  
-in alternative to install.pivpn.dev you can use the raw github link:   
+In alternative to install.pivpn.dev you can use the raw github link:   
 https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh
 
 **To install from Test/Development branch**
 
 Check our [Wiki Page](https://github.com/pivpn/pivpn/wiki#testing)
 
+**How it works**
 
-The script will first update your APT repositories, upgrade packages, and install OpenVPN,
-which will take some time.
-It will ask which authentication method you wish the guts of your server to use, 1024-bit, 2048-bit, or 4096-bit.
-If you're unsure or don't have a convincing reason one way or the other I'd use 2048 today.  From the OpenVPN site:
+The script will first update your APT repositories, upgrade packages, and install WireGuard (default) or OpenVPN, which will take some time.
+
+It will ask which authentication method you wish the guts of your server to use. If you go for WireGuard, you don't get to choose: you will use a Curve25519 public key, which provides 128-bit security. On the other end, if you prefer OpenVPN, you can choose between a 2048-bit, 3072-bit, or 4096-bit RSA certificate. If you're unsure or don't have a convincing reason one way or the other I'd use 2048 today (provides 112-bit security).
+
+From the OpenVPN site:
 
 > For asymmetric keys, general wisdom is that 1024-bit keys are no longer sufficient to protect against well-equipped adversaries. Use of 2048-bit is a good minimum. It is wise to ensure all keys across your active PKI (including the CA root keypair) are using at least 2048-bit keys.
 
 > Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN), but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
 
-Luckily, OpenVPN 2.4 supports ECDSA certificates, which are based on Elliptic Curves, allowing much smaller keys while providing an equivalent security level (256 bit long, equivalent to 3072 bit RSA). For this reason, PiVPN now uses ECDSA certs if you choose to enable OpenVPN 2.4 features. If not, the usual RSA certificates are generated in case the user has clients running an older version of OpenVPN.
+After this, the script will go back to the command line as it builds the server's own certificate authority (OpenVPN only). The script will ask you if you'd like to change the default port, protocol, client's DNS server, etc. If you know you want to change these things, feel free, and the script will put all the information where it needs to go in the various config files.
 
-After this, the script will go back to the command line as it builds the server's own
-certificate authority. The script will ask you if you'd like to change the certificate fields,
-the default port, client's DNS server, etc.  If you know you want to change these things, feel free,
-and the script will put all the information where it needs to go in the various config files.
-If you aren't sure, it has been designed that you can simply hit 'Enter' through all the questions
-and have a working configuration at the end.
+If you aren't sure, it has been designed that you can simply hit 'Enter' through all the questions and have a working configuration at the end.
 
-Finally, the script will take some time to build the server's Diffie-Hellman key
-exchange. If you chose 1024-bit encryption, this will just take a few minutes, but if you
-chose 2048-bit, it will take much longer (anywhere from 40 minutes to several hours on a
-Model B+).
+Finally, the script will take some time to build the server's Diffie-Hellman key exchange (OpenVPN only). If you chose 2048-bit encryption, it will take about 40 minutes on a Model B+, and several hours if you choose a larger size.
 
-**NOTE: Diffie-Hellman parameters are NOT generated if you choose not to use OpenVPN 2.4.**
+The script will also make some changes to your system to allow it to forward internet traffic and allow VPN connections through the Pi's firewall. When the script informs you that it has finished configuring PiVPN, it will ask if you want to reboot. I have it where you do not need to reboot when done but it also can't hurt.
 
-The script will also make some changes to your system to allow it to forward
-internet traffic and allow VPN connections through the Pi's firewall. When the script
-informs you that it has finished configuring OpenVPN, it will ask if you want to reboot.  
-I have it where you do not need to reboot when done but it also can't hurt.
+After the installation is complete you can use the command `pivpn` to manage the server. The commands below are just to get started, run `pivpn -h` to see the full list of options.
 
-
-Managing the PiVPN
+Managing the PiVPN (WireGuard)
 ----------------------
 
-After the installation is complete you can use the command 'pivpn' to manage the server.
+`pivpn add`
+You will be prompted to enter a name for your client. Pick anything you like and hit 'enter'.
+The script will assemble the client .conf file and place it in the directory 'configs' within your
+home directory.
 
-"pivpn add"
+`pivpn remove`
+Asks you for the name of the client to remove.  Once you remove a client, it will no longer allow you to use
+the given client config (specifically its public key) to connect.  This is useful for many reasons but some ex:
+You have a profile on a mobile phone and it was lost or stolen.  Remove its key and generate a new
+one for your new phone.  Or even if you suspect that a key may have been compromised in any way,
+just revoke it and generate a new one.
+
+`pivpn list`
+If you add more than a few clients, this gives you a nice list of their names and associated keys.
+
+Managing the PiVPN (OpenVPN)
+----------------------
+
+`pivpn add`
 You will be prompted to enter a name for your client. Pick anything you like and hit 'enter'.
 You will be asked to enter a pass phrase for the client key; make sure it's one you'll remember.
 The script will assemble the client .ovpn file and place it in the directory 'ovpns' within your
@@ -119,48 +125,82 @@ home directory.
 If you need to create a client certificate that is not password protected (IE for use on a router),
 then you can use the 'pivpn add nopass' option to generate that.
 
-"pivpn revoke"
+`pivpn revoke`
 Asks you for the name of the client to revoke.  Once you revoke a client, it will no longer allow you to use
 the given client certificate (ovpn config) to connect.  This is useful for many reasons but some ex:
 You have a profile on a mobile phone and it was lost or stolen.  Revoke its cert and generate a new
 one for your new phone.  Or even if you suspect that a cert may have been compromised in any way,
 just revoke it and generate a new one.
 
-"pivpn list"
+`pivpn list`
 If you add more than a few clients, this gives you a nice list of their names and whether their certificate
 is still valid or has been revoked.  Great way to keep track of what you did with 'pivpn add' and 'pivpn revoke'.
 
-You can run just 'pivpn' to see all the options.
-
-Importing .ovpn Profiles on Client Machines
+Importing Profiles on Client Machines
 --------------------------------------------
 
-To move a client .ovpn profile to Windows, use a program like WinSCP or Cyberduck. Note that
-you may need administrator permission to move files to some folders on your Windows machine,
-so if you have trouble transferring the profile to a particular folder with your chosen file
-transfer program, try moving it to your desktop. To move a profile to Android, you can either
-retrieve it on PC and then move it to your device via USB, or you can use an app like Turbo
-FTP & SFTP client to retrieve it directly from your Android device.
+**Windows**: Use a program like WinSCP or Cyberduck. Note that you may need administrator permission to move files to some folders on your Windows machine, so if you have trouble transferring the profile to a particular folder with your chosen file transfer program, try moving it to your desktop.
 
-To import the profile to OpenVPN on Windows, download the OpenVPN GUI from the community downloads
-section of openvpn.net, install it, and place the profile in the 'config' folder of your OpenVPN
-directory, i.e., in 'C:\Program Files\OpenVPN\config'. To import the profile on Android, install
-the OpenVPN Connect app, select 'Import' from the drop-down menu in the upper right corner of the
-main screen, choose the directory on your device where you stored the .ovpn file, and select the
-file.
+**Mac/Linux**: Open the Terminal app and connect to the Raspberry Pi using `sftp your-user@ip-of-your-raspberry`. Download the config using `get /home/your-user/configs/whatever.conf` (if using WireGuard) or `get /home/your-user/ovpns/whatever.ovpn` (if using OpenVPN). The file will be downloaded in the current working directory, which usually is the home folder of your PC.
 
-After importing, connect to the VPN server on Windows by running the OpenVPN GUI with
-administrator permissions, right-clicking on the icon in the system tray, and clicking 'Connect',
-or on Android by selecting the profile under 'OpenVPN Profile' and pressing 'Connect'. You'll be
-asked to enter the pass phrase you chose. Do so, and you're in! Enjoy your ~$50 USD private VPN.
+**Android/iOS** (WireGuard only): Just skip to _Connecting to the PiVPN server (WireGuard)_
+
+**Android**: You can either retrieve it on PC and then move it to your device via USB, or you can use an app like Turbo FTP & SFTP client to retrieve it directly from your Android device.
+
+**iOS**: You can use an app that supports SFTP like Documents by Readdle to retrieve it directly from your iOS device.
+
+Connecting to the PiVPN server (WireGuard)
+--------------------------------------------
+
+**Windows/Mac**: Download the [WireGuard GUI app](https://www.wireguard.com/install/), import the configuration and activate the tunnel.
+
+**Linux**: Install [WireGuard](https://www.wireguard.com/install/) following the instructions for your distribution. Now, create the /etc/wireguard folder and prevent anyone but root to enter it (you only need to do this the first time):
+```
+# mkdir /etc/wireguard
+# chown root:root /etc/wireguard
+# chmod 700 /etc/wireguard
+```
+Move the config and activate the tunnel:
+```
+# mv whatever.conf /etc/wireguard/
+# wg-quick up whatever
+[...]
+#
+```
+Use `wg-quick down whatever` to deactivate the tunnel.
+
+**Android/iOS:** Run `pivpn -qr` to generate a QR code of your config, download the Wireguard app [Android link](https://play.google.com/store/apps/details?id=com.wireguard.android) / [iOS link](https://apps.apple.com/it/app/wireguard/id1441195209), click the '+' sign and scan the QR code with your phone's camera. Flip the switch to activate the tunnel.
+
+Connecting to the PiVPN server (OpenVPN)
+--------------------------------------------
+
+**Windows**: Download the [OpenVPN GUI](https://openvpn.net/community-downloads/), install it, and place the profile in the 'config' folder of your OpenVPN directory, i.e., in 'C:\Program Files\OpenVPN\config'. After importing, connect to the VPN server on Windows by running the OpenVPN GUI with administrator permissions, right-clicking on the icon in the system tray, and clicking 'Connect'.
+
+**Android**: Install the [OpenVPN Connect app](https://play.google.com/store/apps/details?id=net.openvpn.openvpn), select 'Import' from the drop-down menu in the upper right corner of the main screen, choose the directory on your device where you stored the .ovpn file, and select the file. Connect by selecting the profile under 'OpenVPN Profile' and pressing 'Connect'.
+
+**Linux**: Install OpenVPN using your package manager (APT in this example). Now, create the /etc/openvpn/client folder and prevent anyone but root to enter it (you only need to do this the first time):
+```
+# apt install openvpn
+# mkdir -p /etc/openvpn/client
+# chown root:root /etc/openvpn/client
+# chmod 700 /etc/openvpn/client
+```
+Move the config and connect:
+```
+# mv whatever.ovpn /etc/openvpn/client/
+# openvpn /etc/openvpn/client/whatever.ovpn
+[...]
+```
+Press CTRL-C to disconnect.
+
+**iOS**: Install the [OpenVPN Connect app](https://apps.apple.com/it/app/openvpn-connect/id590379981). Then go to the app where you copied the .ovpn file to, select the file, find an icon or button to 'Share' or 'Open with', and choose to open with the OpenVPN app.
+
+**Mac**: You can use an OpenVPN client like [Tunnelblick](https://tunnelblick.net/downloads.html). Here's a [guide](https://tunnelblick.net/czUsing.html) to import the configuration.
 
 Removing PiVPN
 ----------------
 
-If at any point you wish to remove OpenVPN from your Pi and revert it to a
-pre-installation state, such as if you want to undo a failed installation to try again or
-you want to remove OpenVPN without installing a fresh Raspbian image, just run
-'pivpn uninstall'
+If at any point you wish to remove PiVPN from your Pi and revert it to a pre-installation state, such as if you want to undo a failed installation to try again or you want to remove PiVPN without installing a fresh Raspbian image, just run `pivpn uninstall`.
 
 Feedback & Support
 --------
@@ -188,6 +228,9 @@ A secure docker container that sets up PiVPN and SSH.
 
 [OpenVPN](https://openvpn.net)
 The foundation for all open-source VPN projects.
+
+[WireGuard](https://www.wireguard.com/)
+*An extremely simple yet fast and modern VPN that utilizes state-of-the-art cryptography.*
 
 Contributions
 -------------
