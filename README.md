@@ -165,11 +165,11 @@ chmod 700 /etc/wireguard
 Move the config and activate the tunnel:
 ```
 mv whatever.conf /etc/wireguard/
-systemctl start wg-quick@whatever
+wg-quick up whatever
 ```
-Run `systemctl stop wg-quick@whatever` to deactivate the tunnel.
+Run `wg-quick down whatever` to deactivate the tunnel.
 
-**Android/iOS:** Run `pivpn -qr` to generate a QR code of your config, download the Wireguard app [Android link](https://play.google.com/store/apps/details?id=com.wireguard.android) / [iOS link](https://apps.apple.com/it/app/wireguard/id1441195209), click the '+' sign and scan the QR code with your phone's camera. Flip the switch to activate the tunnel.
+**Android/iOS:** Run `pivpn -qr` on the PiVPN server to generate a QR code of your config, download the Wireguard app [Android link](https://play.google.com/store/apps/details?id=com.wireguard.android) / [iOS link](https://apps.apple.com/it/app/wireguard/id1441195209), click the '+' sign and scan the QR code with your phone's camera. Flip the switch to activate the tunnel.
 
 Connecting to the PiVPN server (OpenVPN)
 --------------------------------------------
@@ -183,12 +183,12 @@ mkdir -p /etc/openvpn/client
 chown root:root /etc/openvpn/client
 chmod 700 /etc/openvpn/client
 ```
-Move the config and connect:
+Move the config and connect (input the pass phrase if you set one):
 ```
-mv whatever.ovpn /etc/openvpn/client/whatever.conf
-systemctl start openvpn-client@whatever
+mv whatever.ovpn /etc/openvpn/client/
+openvpn /etc/openvpn/client/whatever.ovpn
 ```
-Run `systemctl stop openvpn-client@whatever` to disconnect.
+Press CTRL-C to disconnect.
 
 **Mac**: You can use an OpenVPN client like [Tunnelblick](https://tunnelblick.net/downloads.html). Here's a [guide](https://tunnelblick.net/czUsing.html) to import the configuration.
 
