@@ -110,7 +110,7 @@ Asks you for the name of the client to remove.  Once you remove a client, it wil
 the given client config (specifically its public key) to connect.  This is useful for many reasons but some ex:
 You have a profile on a mobile phone and it was lost or stolen.  Remove its key and generate a new
 one for your new phone.  Or even if you suspect that a key may have been compromised in any way,
-just revoke it and generate a new one.
+just remove it and generate a new one.
 
 `pivpn list`
 If you add more than a few clients, this gives you a nice list of their names and associated keys.
@@ -143,7 +143,7 @@ Importing Profiles on Client Machines
 
 **Windows**: Use a program like WinSCP or Cyberduck. Note that you may need administrator permission to move files to some folders on your Windows machine, so if you have trouble transferring the profile to a particular folder with your chosen file transfer program, try moving it to your desktop.
 
-**Mac/Linux**: Open the Terminal app and connect to the Raspberry Pi using `sftp your-user@ip-of-your-raspberry`. Download the config using `get /home/your-user/configs/whatever.conf` (if using WireGuard) or `get /home/your-user/ovpns/whatever.ovpn` (if using OpenVPN). The file will be downloaded in the current working directory, which usually is the home folder of your PC.
+**Mac/Linux**: Open the Terminal app and copy the config from the Raspberry Pi using `scp pi-user@ip-of-your-raspberry:configs/whatever.conf .` (if using WireGuard) or `scp pi-user@ip-of-your-raspberry:ovpns/whatever.ovpn .` (if using OpenVPN). The file will be downloaded in the current working directory, which usually is the home folder of your PC.
 
 **Android/iOS** (WireGuard only): Just skip to _Connecting to the PiVPN server (WireGuard)_
 
@@ -156,20 +156,18 @@ Connecting to the PiVPN server (WireGuard)
 
 **Windows/Mac**: Download the [WireGuard GUI app](https://www.wireguard.com/install/), import the configuration and activate the tunnel.
 
-**Linux**: Install [WireGuard](https://www.wireguard.com/install/) following the instructions for your distribution. Now, create the /etc/wireguard folder and prevent anyone but root to enter it (you only need to do this the first time):
+**Linux**: Install [WireGuard](https://www.wireguard.com/install/) following the instructions for your distribution. Now, as root user, create the /etc/wireguard folder and prevent anyone but root to enter it (you only need to do this the first time):
 ```
-# mkdir /etc/wireguard
-# chown root:root /etc/wireguard
-# chmod 700 /etc/wireguard
+mkdir -p /etc/wireguard
+chown root:root /etc/wireguard
+chmod 700 /etc/wireguard
 ```
 Move the config and activate the tunnel:
 ```
-# mv whatever.conf /etc/wireguard/
-# wg-quick up whatever
-[...]
-#
+mv whatever.conf /etc/wireguard/
+systemctl start wg-quick@whatever
 ```
-Use `wg-quick down whatever` to deactivate the tunnel.
+Run `systemctl stop wg-quick@whatever` to deactivate the tunnel.
 
 **Android/iOS:** Run `pivpn -qr` to generate a QR code of your config, download the Wireguard app [Android link](https://play.google.com/store/apps/details?id=com.wireguard.android) / [iOS link](https://apps.apple.com/it/app/wireguard/id1441195209), click the '+' sign and scan the QR code with your phone's camera. Flip the switch to activate the tunnel.
 
@@ -178,26 +176,25 @@ Connecting to the PiVPN server (OpenVPN)
 
 **Windows**: Download the [OpenVPN GUI](https://openvpn.net/community-downloads/), install it, and place the profile in the 'config' folder of your OpenVPN directory, i.e., in 'C:\Program Files\OpenVPN\config'. After importing, connect to the VPN server on Windows by running the OpenVPN GUI with administrator permissions, right-clicking on the icon in the system tray, and clicking 'Connect'.
 
-**Android**: Install the [OpenVPN Connect app](https://play.google.com/store/apps/details?id=net.openvpn.openvpn), select 'Import' from the drop-down menu in the upper right corner of the main screen, choose the directory on your device where you stored the .ovpn file, and select the file. Connect by selecting the profile under 'OpenVPN Profile' and pressing 'Connect'.
-
-**Linux**: Install OpenVPN using your package manager (APT in this example). Now, create the /etc/openvpn/client folder and prevent anyone but root to enter it (you only need to do this the first time):
+**Linux**: Install OpenVPN using your package manager (APT in this example). Now, as root user, create the /etc/openvpn/client folder and prevent anyone but root to enter it (you only need to do this the first time):
 ```
-# apt install openvpn
-# mkdir -p /etc/openvpn/client
-# chown root:root /etc/openvpn/client
-# chmod 700 /etc/openvpn/client
+apt install openvpn
+mkdir -p /etc/openvpn/client
+chown root:root /etc/openvpn/client
+chmod 700 /etc/openvpn/client
 ```
 Move the config and connect:
 ```
-# mv whatever.ovpn /etc/openvpn/client/
-# openvpn /etc/openvpn/client/whatever.ovpn
-[...]
+mv whatever.ovpn /etc/openvpn/client/whatever.conf
+systemctl start openvpn-client@whatever
 ```
-Press CTRL-C to disconnect.
-
-**iOS**: Install the [OpenVPN Connect app](https://apps.apple.com/it/app/openvpn-connect/id590379981). Then go to the app where you copied the .ovpn file to, select the file, find an icon or button to 'Share' or 'Open with', and choose to open with the OpenVPN app.
+Run `systemctl stop openvpn-client@whatever` to disconnect.
 
 **Mac**: You can use an OpenVPN client like [Tunnelblick](https://tunnelblick.net/downloads.html). Here's a [guide](https://tunnelblick.net/czUsing.html) to import the configuration.
+
+**Android**: Install the [OpenVPN Connect app](https://play.google.com/store/apps/details?id=net.openvpn.openvpn), select 'Import' from the drop-down menu in the upper right corner of the main screen, choose the directory on your device where you stored the .ovpn file, and select the file. Connect by selecting the profile under 'OpenVPN Profile' and pressing 'Connect'.
+
+**iOS**: Install the [OpenVPN Connect app](https://apps.apple.com/it/app/openvpn-connect/id590379981). Then go to the app where you copied the .ovpn file to, select the file, find an icon or button to 'Share' or 'Open with', and choose to open with the OpenVPN app.
 
 Removing PiVPN
 ----------------
@@ -252,7 +249,7 @@ sources.
 
 3. Of course there is [OpenVPN](https://openvpn.net)
 
-4. Also [Wireguard](https://www.wireguard.com/)
+4. Also [WireGuard](https://www.wireguard.com/)
 
 5. And as always the ever vigilant [EFF](https://www.eff.org/)
 
