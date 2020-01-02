@@ -872,7 +872,7 @@ askWhichVPN(){
 			fi
 		fi
 	else
-		if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\\n\\nIt's the recommended choise expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\\n\\nChoose 'Yes' to use WireGuard or 'No' to use OpenVPN." ${r} ${c});
+		if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\\n\\nIt's the recommended choice expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\\n\\nChoose 'Yes' to use WireGuard or 'No' to use OpenVPN." ${r} ${c});
 		then
 			VPN="wireguard"
 		else
@@ -1498,7 +1498,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	else
 		# Generate Diffie-Hellman key exchange
 		${SUDOE} ./easyrsa gen-dh
-		${SUDOE} mv "pki/dh.pem pki/dh${pivpnENCRYPT}.pem"
+		${SUDOE} mv "pki/dh.pem" "pki/dh${pivpnENCRYPT}.pem"
 	fi
 
 	# Generate static HMAC key to defend against DDoS
