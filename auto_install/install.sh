@@ -949,7 +949,7 @@ askClientDNS(){
 		elif [ -z "$pivpnDNS1" ] && [ -z "$pivpnDNS2" ]; then
 			pivpnDNS1="9.9.9.9"
 			pivpnDNS2="149.112.112.112"
-			echo "::: No DNS provider specified, using Google DNS ($pivpnDNS1 $pivpnDNS2)"
+			echo "::: No DNS provider specified, using Quad9 DNS ($pivpnDNS1 $pivpnDNS2)"
 		fi
 
 		local INVALID_DNS_SETTINGS=0
