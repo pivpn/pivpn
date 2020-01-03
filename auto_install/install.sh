@@ -1055,10 +1055,18 @@ confNetwork() {
     echo "$INPUT_CHAIN_EDITED" > /tmp/INPUT_CHAIN_EDITED
     echo "$FORWARD_CHAIN_EDITED" > /tmp/FORWARD_CHAIN_EDITED
 
-    $SUDO cp /tmp/noUFW /etc/pivpn/NO_UFW
-    $SUDO cp /tmp/OLD_UFW /etc/pivpn/OLD_UFW
-    $SUDO cp /tmp/INPUT_CHAIN_EDITED /etc/pivpn/INPUT_CHAIN_EDITED
-    $SUDO cp /tmp/FORWARD_CHAIN_EDITED /etc/pivpn/FORWARD_CHAIN_EDITED
+    if [ -f "/tmp/noUFW" ]; then
+        $SUDO cp /tmp/noUFW /etc/pivpn/NO_UFW
+    fi
+    if [ -f "/tmp/OLD_UFW" ]; then
+        $SUDO cp /tmp/OLD_UFW /etc/pivpn/OLD_UFW
+    fi
+    if [ -f "/tmp/INPUT_CHAIN_EDITED" ]; then
+        $SUDO cp /tmp/INPUT_CHAIN_EDITED /etc/pivpn/INPUT_CHAIN_EDITED
+    fi
+    if [ -f "/tmp/FORWARD_CHAIN_EDITED" ]; then
+        $SUDO cp /tmp/FORWARD_CHAIN_EDITED /etc/pivpn/FORWARD_CHAIN_EDITED
+    fi
 }
 
 confOVPN() {
