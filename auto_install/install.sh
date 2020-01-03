@@ -57,8 +57,8 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 # Find IP used to route to outside world
-IPv4addr=$(ip route get 9.9.9.9 | awk '{print $7}')
-IPv4gw=$(ip route get 9.9.9.9 | awk '{print $3}')
+IPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
+IPv4gw=$(ip route get 192.0.2.2 | awk '{print $3}')
 
 availableInterfaces=$(ip -o link | grep "state UP" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 dhcpcdFile=/etc/dhcpcd.conf
