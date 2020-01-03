@@ -60,8 +60,8 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 # Find IP used to route to outside world
-IPv4addr=$(ip route get 8.8.8.8 | awk '{print $7}')
-IPv4gw=$(ip route get 8.8.8.8 | awk '{print $3}')
+IPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
+IPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
 availableInterfaces=$(ip -o link | grep "state UP" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 
 ######## SCRIPT ############
@@ -1146,9 +1146,9 @@ askClientDNS(){
 			pivpnDNS1="$pivpnDNS2"
 			unset pivpnDNS2
 		elif [ -z "$pivpnDNS1" ] && [ -z "$pivpnDNS2" ]; then
-			pivpnDNS1="8.8.8.8"
-			pivpnDNS2="8.8.4.4"
-			echo "::: No DNS provider specified, using Google DNS ($pivpnDNS1 $pivpnDNS2)"
+			pivpnDNS1="9.9.9.9"
+			pivpnDNS2="149.112.112.112"
+			echo "::: No DNS provider specified, using Quad9 DNS ($pivpnDNS1 $pivpnDNS2)"
 		fi
 
 		local INVALID_DNS_SETTINGS=0
@@ -1191,13 +1191,14 @@ askClientDNS(){
 	Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
 	\"PiVPN-is-local-DNS\" and make sure your resolver is listening on
 	\"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." ${r} ${c} 6)
-	DNSChooseOptions=(Google "" on
+	DNSChooseOptions=(Quad9 "" on
 			OpenDNS "" off
 			Level3 "" off
 			DNS.WATCH "" off
 			Norton "" off
 			FamilyShield "" off
 			CloudFlare "" off
+			Google "" off
 			PiVPN-is-local-DNS "" off
 			Custom "" off)
 
@@ -1207,13 +1208,14 @@ askClientDNS(){
 		if [[ ${DNSchoices} != "Custom" ]]; then
 
 			echo "::: Using ${DNSchoices} servers."
-			declare -A DNS_MAP=(["Google"]="8.8.8.8 8.8.4.4"
+			declare -A DNS_MAP=(["Quad9"]="9.9.9.9 149.112.112.112"
 								["OpenDNS"]="208.67.222.222 208.67.220.220"
 								["Level3"]="209.244.0.3 209.244.0.4"
 								["DNS.WATCH"]="84.200.69.80 84.200.70.40"
 								["Norton"]="199.85.126.10 199.85.127.10"
 								["FamilyShield"]="208.67.222.123 208.67.220.123"
 								["CloudFlare"]="1.1.1.1 1.0.0.1"
+								["Google"]="8.8.8.8 8.8.4.4"
 								["PiVPN-is-local-DNS"]="$vpnGw")
 
 			pivpnDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
@@ -1224,7 +1226,7 @@ askClientDNS(){
 			until [[ $DNSSettingsCorrect = True ]]; do
 				strInvalid="Invalid"
 
-				if pivpnDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)" --inputbox "Enter your desired upstream DNS provider(s), separated by a comma.\\n\\nFor example '8.8.8.8, 8.8.4.4'" ${r} ${c} "" 3>&1 1>&2 2>&3)
+				if pivpnDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)" --inputbox "Enter your desired upstream DNS provider(s), separated by a comma.\\n\\nFor example '1.1.1.1, 9.9.9.9'" ${r} ${c} "" 3>&1 1>&2 2>&3)
 				then
 					pivpnDNS1=$(echo "$pivpnDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
 					pivpnDNS2=$(echo "$pivpnDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
