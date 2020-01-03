@@ -74,22 +74,22 @@ removeAll(){
 		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
     ### FIXME: SC2154
 		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any > /dev/null
-		sed -z "s/*nat\\n:POSTROUTING ACCEPT \\[0:0\\]\\n-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE\\nCOMMIT\\n\\n//" -i /etc/ufw/before.rules
-		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE
+		sed -z "s/*nat\\n:POSTROUTING ACCEPT \\[0:0\\]\\n-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\\nCOMMIT\\n\\n//" -i /etc/ufw/before.rules
+		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
 		ufw reload &> /dev/null
 
 	elif [ "$USING_UFW" -eq 0 ]; then
 
 		if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
-			iptables -D INPUT -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT
+			iptables -D INPUT -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule"
 		fi
 
 		if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
-			iptables -D FORWARD -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-			iptables -D FORWARD -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT
+			iptables -D FORWARD -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"
+			iptables -D FORWARD -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule"
 		fi
 
-		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE
+		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
 		iptables-save > /etc/iptables/rules.v4
 
 	fi
@@ -123,9 +123,15 @@ removeAll(){
 							# On armv6l Raspbian we manually remove the kernel module and skip the apt
 							# uninstallation (since it's not an actual package).
 							if [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv6l" ]; then
-								dkms remove wireguard/"${WG_SNAPSHOT}" --all
-								rm -rf /usr/src/wireguard-*
+								dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
+								rm -rf /usr/src/wireguard-"${WG_MODULE_SNAPSHOT}"
 								break
+							fi
+
+						elif [ "${i}" = "wireguard-tools" ]; then
+
+							if [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv6l" ]; then
+								rm -rf /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}"
 							fi
 
 						elif [ "${i}" = "dirmngr" ]; then
@@ -187,7 +193,7 @@ removeAll(){
     ### FIXME SC2154
 		rm -rf "$install_home/configs"
 	elif [ "$VPN" = "openvpn" ]; then
-		rm -f /var/log/*openvpn*
+		rm -rf /var/log/*openvpn*
 		rm -f /etc/openvpn/server.conf
 		rm -f /etc/openvpn/crl.pem
 		rm -rf /etc/openvpn/easy-rsa

@@ -79,9 +79,9 @@ echo "::: Client Keys generated"
 
 # Find an unused number for the last octet of the client IP
 for i in {2..254}; do
-    if ! grep -q " $i" configs/clients.txt; then
+    if ! grep -q " $i$" configs/clients.txt; then
         COUNT="$i"
-        echo "${CLIENT_NAME} $(date +%s) ${COUNT}" >> configs/clients.txt
+        echo "${CLIENT_NAME} $(<keys/${CLIENT_NAME}_pub) $(date +%s) ${COUNT}" >> configs/clients.txt
         break
     fi
 done
