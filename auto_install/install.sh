@@ -62,7 +62,7 @@ c=$(( c < 70 ? 70 : c ))
 # Find IP used to route to outside world
 IPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
 IPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
-availableInterfaces=$(ip -o link | grep "state UP" | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1)
+availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 
 ######## SCRIPT ############
 
@@ -128,6 +128,7 @@ main(){
 		$SUDO /opt/pivpn/update.sh "$@"
 		exit 0
 	elif [ "$UpdateCmd" = "Repair" ]; then
+		# shellcheck disable=SC1090
 		source "$setupVars"
 		runUnattended=true
 	fi
@@ -206,6 +207,8 @@ main(){
 	echo ":::"
 }
 
+####### FUNCTIONS ##########
+
 askAboutExistingInstall(){
 	opt1a="Update"
 	opt1b="Get the latest PiVPN scripts"
@@ -225,40 +228,9 @@ askAboutExistingInstall(){
 	echo "::: ${opt1a} option selected."
 }
 
-# Next see if we are on a tested and supported OS
-noOSSupport(){
-	if [ "${runUnattended}" = 'true' ]; then
-		echo "::: Invalid OS detected"
-		echo "::: We have not been able to detect a supported OS."
-		echo "::: Currently this installer supports Raspbian (Buster), Debian (Buster) and Ubuntu (Bionic)."
-		exit 1
-	fi
 
-	whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
-Currently this installer supports Raspbian (Buster), Debian (Buster) and Ubuntu (Bionic).
-If you think you received this message in error, you can post an issue on the GitHub at https://github.com/pivpn/pivpn/issues." ${r} ${c}
-	exit 1
-}
-
-maybeOSSupport(){
-	if [ "${runUnattended}" = 'true' ]; then
-		echo "::: OS Not Supported"
-		echo "::: You are on an OS that we have not tested but MAY work, continuing anyway..."
-		return
-	fi
-
-	if (whiptail --backtitle "OS Not Supported" --title "OS Not Supported" --yesno "You are on an OS that we have not tested but MAY work.
-Currently this installer supports Raspbian (Buster).
-Would you like to continue anyway?" ${r} ${c}) then
-		echo "::: Did not detect perfectly supported OS but,"
-		echo "::: Continuing installation at user's own risk..."
-	else
-		echo "::: Exiting due to unsupported OS"
-		exit 1
-	fi
-}
-
-# Compatibility
+# Compatibility, functions to check for supported OS
+# distroCheck, maybeOSSupport, noOSSupport
 distroCheck(){
 	# if lsb_release command is on their system
 	if hash lsb_release 2>/dev/null; then
@@ -278,13 +250,15 @@ distroCheck(){
 
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
-		case ${OSCN} in
-			buster|bionic)
-			;;
-			*)
-			maybeOSSupport
-			;;
-		esac
+			case ${OSCN} in
+				buster|bionic)
+				# shellcheck disable=SC2104
+				break
+				;;
+				*)
+				maybeOSSupport
+				;;
+			esac
 		;;
 		*)
 		noOSSupport
@@ -298,6 +272,40 @@ distroCheck(){
 	echo "PLAT=${PLAT}" > /tmp/setupVars.conf
 	echo "OSCN=${OSCN}" >> /tmp/setupVars.conf
 }
+
+noOSSupport(){
+	if [ "${runUnattended}" = 'true' ]; then
+		echo "::: Invalid OS detected"
+		echo "::: We have not been able to detect a supported OS."
+		echo "::: Currently this installer supports Raspbian, Debian and Ubuntu."
+		exit 1
+	fi
+
+	whiptail --msgbox --backtitle "INVALID OS DETECTED" --title "Invalid OS" "We have not been able to detect a supported OS.
+Currently this installer supports Raspbian, Debian and Ubuntu.
+For more details, check our documentation at https://github.com/pivpn/pivpn/wiki " ${r} ${c}
+	exit 1
+}
+
+maybeOSSupport(){
+	if [ "${runUnattended}" = 'true' ]; then
+		echo "::: OS Not Supported"
+		echo "::: You are on an OS that we have not tested but MAY work, continuing anyway..."
+		return
+	fi
+
+	if (whiptail --backtitle "Untested OS" --title "Untested OS" --yesno "You are on an OS that we have not tested but MAY work.
+Currently this installer supports Raspbian, Debian and Ubuntu.
+For more details about supported OS please check our documentation at https://github.com/pivpn/pivpn/wiki
+Would you like to continue anyway?" ${r} ${c}) then
+		echo "::: Did not detect perfectly supported OS but,"
+		echo "::: Continuing installation at user's own risk..."
+	else
+		echo "::: Exiting due to untested OS"
+		exit 1
+	fi
+}
+
 
 checkHostname(){
 ###Checks for hostname size
@@ -322,7 +330,6 @@ checkHostname(){
 	fi
 }
 
-####### FUNCTIONS ##########
 spinner(){
 	local pid=$1
 	local delay=0.50
@@ -415,9 +422,9 @@ notifyPackageUpdatesAvailable(){
 preconfigurePackages(){
 	# Add support for https repositories if there are any that use it otherwise the installation will silently fail
   if [[ -f /etc/apt/sources.list ]]; then
-	if grep -q https /etc/apt/sources.list; then
-	  BASE_DEPS+=("apt-transport-https")
-	fi
+		if grep -q https /etc/apt/sources.list; then
+	  	BASE_DEPS+=("apt-transport-https")
+		fi
   fi
 
 	if [[ ${OSCN} == "buster" ]]; then
@@ -425,7 +432,8 @@ preconfigurePackages(){
 		$SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
 	fi
 
-	# if ufw is enabled, configure that (running as root because sometimes the executable is not in the user's $PATH, on Debian for example)
+	# if ufw is enabled, configure that.
+	# running as root because sometimes the executable is not in the user's $PATH
 	if $SUDO bash -c 'hash ufw' 2>/dev/null; then
 		if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
@@ -485,67 +493,70 @@ In the next section, you can choose to use your current network settings (DHCP) 
 }
 
 chooseInterface(){
-	if [ "${runUnattended}" = 'true' ]; then
-		if [ -z "$IPv4dev" ]; then
-			if [ "$(echo "${availableInterfaces}" | wc -l)" -eq 1 ]; then
-				IPv4dev="${availableInterfaces}"
-				echo "::: No interface specified, but only ${IPv4dev} is available, using it"
-			else
-				echo "::: No interface specified"
-				exit 1
-			fi
-		else
-			if ip -o link | grep -qw "${IPv4dev}"; then
-				echo "::: Using interface: ${IPv4dev}"
-			else
-				echo "::: Interface ${IPv4dev} does not exist"
-				exit 1
-			fi
-		fi
-		echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
-		return
-	fi
+# Turn the available interfaces into an array so it can be used with a whiptail dialog
+local interfacesArray=()
+# Number of available interfaces
+local interfaceCount
+# Whiptail variable storage
+local chooseInterfaceCmd
+# Temporary Whiptail options storage
+local chooseInterfaceOptions
+# Loop sentinel variable
+local firstloop=1
 
-	# Turn the available interfaces into an array so it can be used with a whiptail dialog
-	local interfacesArray=()
-	# Number of available interfaces
-	local interfaceCount
-	# Whiptail variable storage
-	local chooseInterfaceCmd
-	# Temporary Whiptail options storage
-	local chooseInterfaceOptions
-	# Loop sentinel variable
-	local firstloop=1
+if [ -z "$availableInterfaces" ]; then
+    echo "::: Could not find any active network interface, exiting"
+    exit 1
+else
+    while read -r line; do
+        mode="OFF"
+        if [[ ${firstloop} -eq 1 ]]; then
+            firstloop=0
+            mode="ON"
+        fi
+        interfacesArray+=("${line}" "available" "${mode}")
+        ((interfaceCount++))
+    done <<< "${availableInterfaces}"
+fi
 
-	if [[ $(echo "${availableInterfaces}" | wc -l) -eq 1 ]]; then
-		IPv4dev="${availableInterfaces}"
-		echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
-		return
-	fi
+if [ "${runUnattended}" = 'true' ]; then
+    if [ -z "$IPv4dev" ]; then
+        if [ $interfaceCount -eq 1 ]; then
+            IPv4dev="${availableInterfaces}"
+            echo "::: No interface specified, but only ${IPv4dev} is available, using it"
+        else
+            echo "::: No interface specified and failed to determine one"
+            exit 1
+        fi
+    else
+        if ip -o link | grep -qw "${IPv4dev}"; then
+            echo "::: Using interface: ${IPv4dev}"
+        else
+          	echo "::: Interface ${IPv4dev} does not exist"
+            exit 1
+        fi
+    fi
+    echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
+    return
+else
+    if [ "$interfaceCount" -eq 1 ]; then
+        IPv4dev="${availableInterfaces}"
+        echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
+        return
+    fi
+fi
 
-	while read -r line; do
-		mode="OFF"
-		if [[ ${firstloop} -eq 1 ]]; then
-			firstloop=0
-			mode="ON"
-		fi
-		interfacesArray+=("${line}" "available" "${mode}")
-	done <<< "${availableInterfaces}"
-
-	# Find out how many interfaces are available to choose from
-	interfaceCount=$(echo "${availableInterfaces}" | wc -l)
-	chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An
-  Interface (press space to select):" "${r}" "${c}" "${interfaceCount}")
-	if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty) ; then
-		for desiredInterface in ${chooseInterfaceOptions}; do
-			IPv4dev=${desiredInterface}
-			echo "::: Using interface: $IPv4dev"
-			echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
-		done
-	else
-		echo "::: Cancel selected, exiting...."
-		exit 1
-	fi
+chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An interface (press space to select):" "${r}" "${c}" "${interfaceCount}")
+if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty) ; then
+    for desiredInterface in ${chooseInterfaceOptions}; do
+        IPv4dev=${desiredInterface}
+        echo "::: Using interface: $IPv4dev"
+        echo "IPv4dev=${IPv4dev}" >> /tmp/setupVars.conf
+    done
+else
+    echo "::: Cancel selected, exiting...."
+    exit 1
+fi
 }
 
 avoidStaticIPv4Ubuntu() {
@@ -1848,7 +1859,7 @@ confUnattendedUpgrades(){
 installScripts(){
 	# Install the scripts from /etc/.pivpn to their various locations
 	echo ":::"
-	echo -n "::: Installing scripts to /opt/pivpn..."
+	echo -n -e "::: Installing scripts to /opt/pivpn...\n"
 	if [ ! -d /opt/pivpn ]; then
 		$SUDO mkdir /opt/pivpn
 		$SUDO chown root:root /opt/pivpn
