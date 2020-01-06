@@ -227,7 +227,7 @@ askAboutExistingInstall(){
 	"${opt3a}"  "${opt3b}" 3>&2 2>&1 1>&3) || \
 	{ echo "::: Cancel selected. Exiting"; exit 1; }
 
-	echo "::: ${opt1a} option selected."
+	echo "::: ${UpdateCmd} option selected."
 }
 
 
@@ -254,8 +254,7 @@ distroCheck(){
 		Debian|Raspbian|Ubuntu)
 			case ${OSCN} in
 				buster|bionic)
-				# shellcheck disable=SC2104
-				break
+				:
 				;;
 				*)
 				maybeOSSupport
@@ -904,11 +903,16 @@ askWhichVPN(){
 			fi
 		fi
 	else
-		if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\\n\\nIt's the recommended choice expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\\n\\nChoose 'Yes' to use WireGuard or 'No' to use OpenVPN." ${r} ${c});
-		then
-			VPN="wireguard"
+		chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\\n\\nIt's the recommended choice expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (press space to select):" "${r}" "${c}" 2)
+		VPNChooseOptions=(WireGuard "" on
+							OpenVPN "" off)
+
+		if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
+			echo "::: Using VPN: $VPN"
+			VPN="${VPN,,}"
 		else
-			VPN="openvpn"
+			echo "::: Cancel selected, exiting...."
+			exit 1
 		fi
 	fi
 
