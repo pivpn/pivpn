@@ -886,6 +886,32 @@ cloneOrUpdateRepos(){
 }
 }
 
+installPiVPN(){
+	$SUDO mkdir -p /etc/pivpn/
+	askWhichVPN
+
+	if [ "$VPN" = "openvpn" ]; then
+		installOpenVPN
+		askCustomProto
+		askCustomPort
+		askClientDNS
+		askCustomDomain
+		askPublicIPOrDNS
+		askEncryption
+		confOpenVPN
+		confOVPN
+		confNetwork
+		confLogging
+	elif [ "$VPN" = "wireguard" ]; then
+		installWireGuard
+		askCustomPort
+		askClientDNS
+		askPublicIPOrDNS
+		confWireGuard
+		confNetwork
+	fi
+}
+
 askWhichVPN(){
 	if [ "${runUnattended}" = 'true' ]; then
 		if [ -z "$VPN" ]; then
@@ -979,7 +1005,10 @@ installWireGuard(){
 			wget -qO- "${WG_TOOLS_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
 			echo "done!"
 
-			cd /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}/src"
+			##  || exits if cd fails.
+			cd /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}/src" || \
+			echo "::: Installation Failed could not cd into /usr/src/wireguard-tools"; \
+			exit 1
 
 			# We install the userspace tools manually since DKMS only compiles and
 			# installs the kernel module
@@ -1226,7 +1255,7 @@ askClientDNS(){
   for your VPN Clients (press space to select). To use your own, select
 	Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
 	\"PiVPN-is-local-DNS\" and make sure your resolver is listening on
-	\"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." ${r} ${c} 6)
+	\"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." "${r}" "${c}" 6)
 	DNSChooseOptions=(Quad9 "" on
 			OpenDNS "" off
 			Level3 "" off
@@ -1500,7 +1529,8 @@ confOpenVPN(){
 	$SUDO mkdir /etc/openvpn/easy-rsa/pki
 	$SUDO chmod 700 /etc/openvpn/easy-rsa/pki
 
-	cd /etc/openvpn/easy-rsa || exit
+	cd /etc/openvpn/easy-rsa || \
+	echo "::: Error, Could not cd /etc/openvpn/easy-rsa"; exit 1
 
 	# Write out new vars file
 	echo "if [ -z \"\$EASYRSA_CALLER\" ]; then
@@ -1770,31 +1800,6 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 	esac
 }
 
-installPiVPN(){
-	$SUDO mkdir -p /etc/pivpn/
-	askWhichVPN
-
-	if [ "$VPN" = "openvpn" ]; then
-		installOpenVPN
-		askCustomProto
-		askCustomPort
-		askClientDNS
-		askCustomDomain
-		askPublicIPOrDNS
-		askEncryption
-		confOpenVPN
-		confOVPN
-		confNetwork
-		confLogging
-	elif [ "$VPN" = "wireguard" ]; then
-		installWireGuard
-		askCustomPort
-		askClientDNS
-		askPublicIPOrDNS
-		confWireGuard
-		confNetwork
-	fi
-}
 
 restartServices(){
 	echo "::: Restarting services..."
