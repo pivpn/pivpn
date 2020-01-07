@@ -5,7 +5,26 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
-##Jan 6th 2020
+## Jan 7th 2020
+
+Changes for FR #897
+Support For DHCP IP Reservation
+
+Main:
+  - added If statement to skipp SetStaticIPv4 if dhcpRserv=1
+
+getStaticIPv4Settings:
+  - Added Whiptail asking if user wants to use DHCP reservation Settings, this will add dhcpReserv and
+    skip setStaticIPv4 while still logging everything.
+ConfigExample files:
+  - Added staticReserv=0 to config examples. so it can be used with Unattended install
+    * 0 means static ip will be setup.
+    * 1 means DHCP Reservation will be used and no chage will be made to the interfaces
+
+
+Updated LatestChanges
+
+## Jan 6th 2020
 
 * Removed Unecessary pipe on availableInterfaces
 * Changed OS Support messages accross the script
@@ -36,7 +55,7 @@ Everytime Test branch is merged into master, a new entry should be created with 
     - the script now checks for hostname length right at the beginning and prompts for a new one.
     - HOST_NAME to host_name, as best practice variables with capitals, should be used by system variables only.
 * fixed ubuntu 18.04 being detected as not supported OS, now fully supported and tested.
-* changed how scripts are copied to /opt/pivpn, it hat a lot of long repetitive lines, now it copies all *.sh files making it easier to manage when adding new scripts/features
+* changed how scripts are copied to /opt/pivpn, it hat a lot of long repetitive lines, now it copies all `*.sh` files making it easier to manage when adding new scripts/features
 * Changed how supported OS are presented when maybeOS_Support() is called.
 
 ## Sept 1st 2019

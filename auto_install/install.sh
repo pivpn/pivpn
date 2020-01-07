@@ -166,7 +166,9 @@ main(){
 		avoidStaticIPv4Ubuntu
 	else
 		getStaticIPv4Settings
-		setStaticIPv4
+		if [ $dhcpReserv -ne 1 ] || [ -z $dhcpReserv ]; then
+			setStaticIPv4
+		fi
 	fi
 
 	# Choose the user for the ovpns
@@ -636,56 +638,75 @@ getStaticIPv4Settings() {
 	fi
 
 	local ipSettingsCorrect
-	# Ask if the user wants to use DHCP settings as their static IP
-	if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Do you want to use your current network settings as a static address?
+	# Some users reserve IP addresses on another DHCP Server or on their routers,
+	# Lets ask them if they want to make any changes to their interfaces.
+	if (whiptail --backtitle "Calibrating network interface" --title "DHCP Reservation" --yesno \
+	"Are you Using DHCP Reservation on your Router/DHCP Server?
+These are your current Network Settings:
+
+				IP address:    ${IPv4addr}
+				Gateway:       ${IPv4gw}
+
+Yes: Keep using DHCP reservation
+No: Setup static IP address
+Don't know what DHCP Reservation is? Answer No." ${r} ${c}); then
+		dhcpReserv=1
+		echo "dhcpReserv=${dhcpReserv}" >> /tmp/setupVars.conf
+		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+	else
+		# Ask if the user wants to use DHCP settings as their static IP
+		if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Do you want to use your current network settings as a static address?
 					IP address:    ${IPv4addr}
 					Gateway:       ${IPv4gw}" ${r} ${c}); then
 
-		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
-		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
-		# If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
-		whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
+				echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+				echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+				# If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
+				whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
 If you are worried, either manually set the address, or modify the DHCP reservation pool so it does not include the IP you want.
 It is also possible to use a DHCP reservation, but if you are going to do that, you might as well set a static address." ${r} ${c}
 		# Nothing else to do since the variables are already set above
-	else
+		else
 		# Otherwise, we need to ask the user to input their desired settings.
 		# Start by getting the IPv4 address (pre-filling it with info gathered from DHCP)
 		# Start a loop to let the user enter their information with the chance to go back and edit it if necessary
-		until [[ ${ipSettingsCorrect} = True ]]; do
+			until [[ ${ipSettingsCorrect} = True ]]; do
 			# Ask for the IPv4 address
-			if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${IPv4addr}" 3>&1 1>&2 2>&3) ; then
-			echo "::: Your static IPv4 address:    ${IPv4addr}"
-			# Ask for the gateway
-			if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${IPv4gw}" 3>&1 1>&2 2>&3) ; then
-				echo "::: Your static IPv4 gateway:    ${IPv4gw}"
-				# Give the user a chance to review their settings before moving on
-				if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
-					IP address:    ${IPv4addr}
-					Gateway:       ${IPv4gw}" ${r} ${c}); then
-					# If the settings are correct, then we need to set the pivpnIP
-					echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
-					echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
-					# After that's done, the loop ends and we move on
-					ipSettingsCorrect=True
+				if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${IPv4addr}" 3>&1 1>&2 2>&3) ; then
+					echo "::: Your static IPv4 address:    ${IPv4addr}"
+					# Ask for the gateway
+					if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${IPv4gw}" 3>&1 1>&2 2>&3) ; then
+						echo "::: Your static IPv4 gateway:    ${IPv4gw}"
+						# Give the user a chance to review their settings before moving on
+						if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
+						IP address:    ${IPv4addr}
+						Gateway:       ${IPv4gw}" ${r} ${c}); then
+							# If the settings are correct, then we need to set the pivpnIP
+							echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+							echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+							# After that's done, the loop ends and we move on
+							ipSettingsCorrect=True
+						else
+							# If the settings are wrong, the loop continues
+							ipSettingsCorrect=False
+						fi
+					else
+						# Cancelling gateway settings window
+						ipSettingsCorrect=False
+						echo "::: Cancel selected. Exiting..."
+						exit 1
+					fi
 				else
-					# If the settings are wrong, the loop continues
+					# Cancelling IPv4 settings window
 					ipSettingsCorrect=False
+					echo "::: Cancel selected. Exiting..."
+					exit 1
 				fi
-			else
-				# Cancelling gateway settings window
-				ipSettingsCorrect=False
-				echo "::: Cancel selected. Exiting..."
-				exit 1
-			fi
-		else
-			# Cancelling IPv4 settings window
-			ipSettingsCorrect=False
-			echo "::: Cancel selected. Exiting..."
-			exit 1
+			done
+			# End the if statement for DHCP vs. static
 		fi
-		done
-		# End the if statement for DHCP vs. static
+		# End of If Statement for DCHCP Reservation
 	fi
 }
 
