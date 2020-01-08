@@ -1006,9 +1006,7 @@ installWireGuard(){
 			echo "done!"
 
 			##  || exits if cd fails.
-			cd /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}/src" || \
-			echo "::: Installation Failed could not cd into /usr/src/wireguard-tools"; \
-			exit 1
+			cd /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}/src" || exit 1
 
 			# We install the userspace tools manually since DKMS only compiles and
 			# installs the kernel module
@@ -1529,8 +1527,7 @@ confOpenVPN(){
 	$SUDO mkdir /etc/openvpn/easy-rsa/pki
 	$SUDO chmod 700 /etc/openvpn/easy-rsa/pki
 
-	cd /etc/openvpn/easy-rsa || \
-	echo "::: Error, Could not cd /etc/openvpn/easy-rsa"; exit 1
+	cd /etc/openvpn/easy-rsa || exit 1
 
 	# Write out new vars file
 	echo "if [ -z \"\$EASYRSA_CALLER\" ]; then
