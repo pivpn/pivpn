@@ -166,7 +166,7 @@ main(){
 		avoidStaticIPv4Ubuntu
 	else
 		getStaticIPv4Settings
-		if [ $dhcpReserv -ne 1 ] || [ -z $dhcpReserv ]; then
+		if [ "$dhcpReserv" -ne 1 ] || [ -z "$dhcpReserv" ]; then
 			setStaticIPv4
 		fi
 	fi
@@ -398,6 +398,7 @@ updatePackageCache(){
 		#update package lists
 		echo ":::"
 		echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\n"
+        # shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		echo " done!"
 	fi
@@ -470,6 +471,7 @@ installDependentPackages(){
 	done
 
 	if command -v debconf-apt-progress &> /dev/null; then
+        # shellcheck disable=SC2086
 		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
 	else
 		${PKG_INSTALL} "${argArray1[@]}"
@@ -650,6 +652,7 @@ Yes: Keep using DHCP reservation
 No: Setup static IP address
 Don't know what DHCP Reservation is? Answer No." ${r} ${c}); then
 		dhcpReserv=1
+        # shellcheck disable=SC2129
 		echo "dhcpReserv=${dhcpReserv}" >> /tmp/setupVars.conf
 		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
 		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
@@ -985,6 +988,7 @@ installWireGuard(){
 			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
 
 			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
+            # shellcheck disable=SC2086
 			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
 			installDependentPackages PIVPN_DEPS[@]
@@ -1085,6 +1089,7 @@ installWireGuard(){
 		echo "::: Adding Debian repository... "
 		echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/unstable.list > /dev/null
 		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/limit-unstable > /dev/null
+        # shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
@@ -1893,12 +1898,12 @@ installScripts(){
 		$SUDO chmod 0755 /opt/pivpn
 	fi
 
-	$SUDO cp $pivpnFilesDir/scripts/*.sh /opt/pivpn/
-	$SUDO cp $pivpnFilesDir/scripts/$VPN/*.sh /opt/pivpn/
+	$SUDO cp "$pivpnFilesDir"/scripts/*.sh /opt/pivpn/
+	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/*.sh /opt/pivpn/
 	$SUDO chmod 0755 /opt/pivpn/*.sh
-	$SUDO cp $pivpnFilesDir/scripts/$VPN/pivpn /usr/local/bin/pivpn
+	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/pivpn /usr/local/bin/pivpn
 	$SUDO chmod 0755 /usr/local/bin/pivpn
-	$SUDO cp $pivpnFilesDir/scripts/$VPN/bash-completion /etc/bash_completion.d/pivpn
+	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/bash-completion /etc/bash_completion.d/pivpn
 	$SUDO chmod 0644 /etc/bash_completion.d/pivpn
   # shellcheck disable=SC1091
 	. /etc/bash_completion.d/pivpn
