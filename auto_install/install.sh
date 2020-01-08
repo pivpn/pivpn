@@ -1578,7 +1578,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
-	$SUDO cp /etc/.pivpn/server_config.txt /etc/openvpn/server.conf
+	$SUDO cp $pivpnFilesDir/server_config.txt /etc/openvpn/server.conf
 
 	# Apply client DNS settings
 	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${pivpnDNS1}'\"/' /etc/openvpn/server.conf
@@ -1612,7 +1612,7 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 }
 
 confOVPN(){
-	$SUDO cp /etc/.pivpn/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
+	$SUDO cp $pivpnFilesDir/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
 	$SUDO sed -i 's/IPv4pub/'"$pivpnHOST"'/' /etc/openvpn/easy-rsa/pki/Default.txt
 
@@ -1893,12 +1893,12 @@ installScripts(){
 		$SUDO chmod 0755 /opt/pivpn
 	fi
 
-	$SUDO cp /etc/.pivpn/scripts/*.sh /opt/pivpn/
-	$SUDO cp /etc/.pivpn/scripts/$VPN/*.sh /opt/pivpn/
+	$SUDO cp $pivpnFilesDir/scripts/*.sh /opt/pivpn/
+	$SUDO cp $pivpnFilesDir/scripts/$VPN/*.sh /opt/pivpn/
 	$SUDO chmod 0755 /opt/pivpn/*.sh
-	$SUDO cp /etc/.pivpn/scripts/$VPN/pivpn /usr/local/bin/pivpn
+	$SUDO cp $pivpnFilesDir/scripts/$VPN/pivpn /usr/local/bin/pivpn
 	$SUDO chmod 0755 /usr/local/bin/pivpn
-	$SUDO cp /etc/.pivpn/scripts/$VPN/bash-completion /etc/bash_completion.d/pivpn
+	$SUDO cp $pivpnFilesDir/scripts/$VPN/bash-completion /etc/bash_completion.d/pivpn
 	$SUDO chmod 0644 /etc/bash_completion.d/pivpn
   # shellcheck disable=SC1091
 	. /etc/bash_completion.d/pivpn
