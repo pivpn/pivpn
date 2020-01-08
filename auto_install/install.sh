@@ -400,7 +400,7 @@ installScripts() {
     $SUDO echo ":::"
     $SUDO echo -n "::: Installing scripts to /opt/pivpn..."
     if [ ! -d /opt/pivpn ]; then
-        $SUDO mkdir /opt/pivpn
+        $SUDO mkdir -p /opt/pivpn
         $SUDO chown "$INSTALL_USER":root /opt/pivpn
         $SUDO chmod 0755 /opt/pivpn
     fi
