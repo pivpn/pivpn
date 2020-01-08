@@ -52,11 +52,9 @@ updatefromtest(){
 cloneandupdate(){
   ##This is to be removed after merge.
   ##Alert for users trying to update from master.
-  if [ $VPN == "wireguard" ]; then
     echo "ERROR: You have installed pivpn from test branch."
     echo "Wireguard not yet available on master, please use -t flag"
     exit 1
-  fi
   ## Remove Above and uncomment below when test is moved to master
 # git clone "$pivpnrepo" "$pivpnlocalpath"
 # cp "${pivpnlocalpath}"/scripts/*.sh "$pivpnscripts"
