@@ -54,6 +54,10 @@ updateScripts(){
     exit 0
 }
 
+backup(){
+  $SUDO /opt/pivpn/backup.sh
+}
+
 showHelp(){
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
@@ -69,6 +73,7 @@ showHelp(){
     echo ":::  -h,  help             Show this help dialog"
     echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
     echo ":::  -up, update           Updates PiVPN Scripts"
+    echo ":::  -bk, Backup           Backup vpn configs and user profiles"
     exit 0
 }
 
@@ -87,5 +92,6 @@ case "$1" in
 "-h"  | "help"               ) showHelp;;
 "-u"  | "uninstall"          ) uninstallServer;;
 "-up" | "update"             ) updateScripts "$@" ;;
+"-bk" | "backup"             ) backup ;;
 *                            ) showHelp;;
 esac

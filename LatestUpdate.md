@@ -5,6 +5,31 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jan 8th 2020
+
+Updates and improvements
+Issue #871: fix backup script
+
+install.sh
+  installScripts function:
+    update script not being copied over to /opt therefore update funcion was probably broken.
+    changed script to copy all .sh scripts from .pivpn/scripts directory.
+
+Issue #871: fix backup script
+  I was probably very drunk when i first wrote this backup script.
+  fixed it, now works with new code refactoring,
+  loads vars from setupVars
+  Added backup for wireguard
+  Moved script to global pivpnscripts.
+  Added backup script to bash-completion
+  Added backup script to pivpn script
+
+update.sh
+  Commented the update from master branch to avoid users trying to update test from master.
+
+
+Updated LatestChages.md
+
 ## Jan 7th 2020
 
 Changes for FR #897

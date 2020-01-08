@@ -1893,7 +1893,7 @@ installScripts(){
 		$SUDO chmod 0755 /opt/pivpn
 	fi
 
-	$SUDO cp /etc/.pivpn/scripts/uninstall.sh /opt/pivpn/
+	$SUDO cp /etc/.pivpn/scripts/*.sh /opt/pivpn/
 	$SUDO cp /etc/.pivpn/scripts/$VPN/*.sh /opt/pivpn/
 	$SUDO chmod 0755 /opt/pivpn/*.sh
 	$SUDO cp /etc/.pivpn/scripts/$VPN/pivpn /usr/local/bin/pivpn
