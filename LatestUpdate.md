@@ -68,7 +68,100 @@ Updated LatestChanges
   - Fixed Issue #906
   - Added exit code if no interfaces are found
 * Updated LatestUpdate.md
+* Use radiolist to select a VPN
 
+## Jan 3rd 2020
+
+- Revise route query for IP & GW selection from Quad9 to TEST-NET-1
+- Replace mention of 'Google' with 'Quad9'
+
+## Jan 2nd 2020
+
+- Fix mv command when copying the DH parameters to final destination
+
+## Dec 30th 2019
+
+- Fix paths inside the update script
+- Use the wireguard script for WireGuard as well
+- Updated the README in accordance to changes in the test branch
+
+## Dec 29th 2019
+
+* Handle running the install script over an existing installation (as the script already did before branching to test-wireguard), providing:
+    - Update, downloads latest scripts from git repo
+    - Repair, reinstall PiVPN while keeping existing settings
+    - Reconfigure, start over overwriting the existing settings
+* Tag iptables rules as an attempt to make sure that the uninstall script only removes PiVPN rules
+* Change the armv6l installation to reflect the split of WireGuard snapshots into wireguard-linux-compat and wireguard-tools
+
+## Dec 27th 2019
+
+ - When suggesting to use Pi-hole, use the VPN server IP instead of the LAN IP to allow DNS resolution even if the user does not route the local network through the tunnel.
+- Format listCONF in a similar way as listOVPN
+- Specifically look for a free octet in the last word of clients.txt and not just any word.
+  Necessary otherwhise public keys starting with a number will match against an octet.
+  Example: if line is 'name 5abcdefgh 4', then looking for ' 5' will match but '5$' will
+  not (correctly).
+- 'pivpn -c' will show the Connected Clients List for WireGuard too
+
+## Dec 10th 2019
+
+- Use dedicated openvpn user and group for increased security
+- Added basic safeguards to avoid wrecking /etc/ufw/before.rules
+- Applied some Shellcheck suggested changes.
+- Added safeguards to rm -rf when downloading the git repo.
+- Use more variables instead of hardcoding data
+- Add local resolver as DNS option
+
+## Dec 3rd 2019
+
+- Better client stats formatting
+
+## Dec 2nd 2019
+
+* Properly avoid pulling unwanted packages from unstable repo:
+  - Currently apt pulls all packages from the unstable repo because the script intendation created the file 'limit-unstable' with tabs in it. Fixed using printf to create a multiline file.
+- Accept debug fixes using just the enter key
+
+## Nov 19th 2019
+
+- Added Ubuntu Bionic support
+
+## Nov 16th 2019
+
+- Added back unattended installation: as expected, the user can call the install script with --unattended followed by a config file and PiVPN will be installed non-interactively.
+- Removed persist-key and persist-tun from the client config.
+- Reverted keepalive setting on the server to smaller values.
+- See @TinCanTech's posts for the reasons of the above two: #864 (comment)
+- Copied validDomain() function from the test branch.
+- Removed 1024 bit certificate options, since on Buster OpenVPN does not start with such small certificates (It's related to OpenSSL 1.1.1).
+- Backup /etc/openvpn and /etc/wireguard before installing.
+- Always remove VPN configuration when uninstalling, but do not wipe the folder, just remove what PiVPN added.
+- Fetch latest WireGuard snapshot instead of hardcoding it into the script.
+
+## Nov 7th 2019
+
+- Add back the uninstall script
+- Only uninstall packages that were not already installed when running the PiVPN install script.
+- Detect and offer to use Pi-hole
+- Use checkinstall to install wireguard-tools for easy uninstallation
+- Added missing dkms dependency
+
+## Oct 19th 2019
+
+- MakeOVPN has been updated to include the -i iOS function to allow users to create an OVPN12 format file that can be used with the iOS keychain.
+- Check if -i iOS can be used (can't be used with ECDSA certificates).
+- Fixed the issues with special characters in OVPN12 files.
+
+## Oct 17th 2019
+
+- Allow subdomain in custom DNS search list.
+- Unified PiVPN configuration into the single /etc/pivpn/setupVars.conf file.
+- Functions that ask the user for the port, protocol, dns, domain don't apply the setting anymore, they only save the variable on disk. Settings are applied in confOpenVPN, confOVPN, confWireGuard.
+- Support and use WireGuard by default with an initial set of scripts matching current PiVPN scripts (list, create, remove clients).
+- Removed OpenVPN ECDSA option.
+- Renamed some variables (see pull request 849).
+- Refactored several functions.
 
 ## Oct 12th 2019
 
