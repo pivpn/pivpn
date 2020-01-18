@@ -246,7 +246,7 @@ distroCheck(){
 		source /etc/os-release
 		PLAT=$(awk '{print $1}' <<< "$NAME")
 		VER="$VERSION_ID"
-		declare -A VER_MAP=(["9"]="stretch"	["10"]="buster"	["16.04"]="xenial" ["18.04"]="bionic")
+		declare -A VER_MAP=(["9"]="stretch" ["10"]="buster" ["16.04"]="xenial" ["18.04"]="bionic")
 		OSCN=${VER_MAP["${VER}"]}
 	fi
 
@@ -1100,7 +1100,7 @@ installWireGuard(){
 		echo "::: Installing WireGuard from PPA... "
 		$SUDO add-apt-repository ppa:wireguard/wireguard -y
 		$SUDO ${UPDATE_PKG_CACHE}
-		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-$(uname -r))
+		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-generic)
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
