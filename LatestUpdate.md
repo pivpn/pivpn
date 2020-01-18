@@ -5,6 +5,18 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jan 18th 2020
+
+Distro Support, Bug Fixes, Unattended install
+
+Tested and added Support on Debian 9
+tested and added support on Ubuntu 16.04 & 18.08
+  * Fixed wireguard not installing, added pkg cache update after adding ppa
+  * added kernel headers to dependencies as its requred for wireguard-dkms
+unattended install
+  * When user is provided and doest exist, it will create one without password set
+
+
 ## Jan 8th 2020
 
 Updates and improvements
