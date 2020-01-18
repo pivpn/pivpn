@@ -246,14 +246,14 @@ distroCheck(){
 		source /etc/os-release
 		PLAT=$(awk '{print $1}' <<< "$NAME")
 		VER="$VERSION_ID"
-		declare -A VER_MAP=(["10"]="buster" ["18.04"]="bionic")
+		declare -A VER_MAP=(["9"]="stretch"	["10"]="buster"	["16.04"]="xenial" ["18.04"]="bionic")
 		OSCN=${VER_MAP["${VER}"]}
 	fi
 
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
 			case ${OSCN} in
-				buster|bionic)
+				buster|xenial|bionic|stretch)
 				:
 				;;
 				*)
@@ -752,8 +752,9 @@ chooseUser(){
 			if awk -F':' '$3>=1000 && $3<=60000 {print $1}' /etc/passwd | grep -qw "${install_user}"; then
 				echo "::: ${install_user} will hold your ovpn configurations."
 			else
-				echo "::: User ${install_user} does not exist"
-				exit 1
+				echo "::: User ${install_user} does not exist, creating..."
+				$SUDO useradd -m -s /bin/bash "${install_user}"
+				echo "::: User created without a password, please do sudo passwd $install_user to create one"
 			fi
 		fi
 		install_home=$(grep -m1 "^${install_user}:" /etc/passwd | cut -d: -f6)
@@ -1098,7 +1099,8 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from PPA... "
 		$SUDO add-apt-repository ppa:wireguard/wireguard -y
-		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms)
+		$SUDO ${UPDATE_PKG_CACHE}
+		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-$(uname -r))
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
