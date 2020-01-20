@@ -8,8 +8,8 @@ dh /etc/openvpn/easy-rsa/pki/dh2048.pem
 topology subnet
 server 10.8.0.0 255.255.255.0
 # Set your primary domain name server address for clients
-push "dhcp-option DNS 8.8.8.8"
-push "dhcp-option DNS 8.8.4.4"
+push "dhcp-option DNS 9.9.9.9"
+push "dhcp-option DNS 149.112.112.112"
 # Prevent DNS leaks on Windows
 push "block-outside-dns"
 # Override the Client default gateway by using 0.0.0.0/1 and
@@ -17,14 +17,14 @@ push "block-outside-dns"
 # overriding but not wiping out the original default gateway.
 push "redirect-gateway def1"
 client-to-client
-keepalive 1800 3600
+keepalive 15 120
 remote-cert-tls client
 tls-version-min 1.2
 tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0
 cipher AES-256-CBC
 auth SHA256
-user nobody
-group nogroup
+user openvpn
+group openvpn
 persist-key
 persist-tun
 crl-verify /etc/openvpn/crl.pem

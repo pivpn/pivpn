@@ -1,6 +1,7 @@
 #!/bin/bash
 # Create OVPN Client
 # Default Variable Declarations
+setupVars="/etc/pivpn/setupVars.conf"
 DEFAULT="Default.txt"
 FILEEXT=".ovpn"
 CRT=".crt"
@@ -8,9 +9,13 @@ KEY=".key"
 CA="ca.crt"
 TA="ta.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
-INSTALL_USER=$(</etc/pivpn/INSTALL_USER)
-INSTALL_HOME=$(grep -m1 "^${INSTALL_USER}:" /etc/passwd | cut -d: -f6)
-INSTALL_HOME=${INSTALL_HOME%/} # remove possible trailing slash
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+source "${setupVars}"
 
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
@@ -28,10 +33,10 @@ helpFunc() {
     echo ":::  -h,--help            Show this help dialog"
 }
 
-if [ ! -f /etc/pivpn/HELP_SHOWN ]; then
+if [ -z "$HELP_SHOWN" ]; then
     helpFunc
     echo
-    touch /etc/pivpn/HELP_SHOWN
+    echo "HELP_SHOWN=1" >> "$setupVars"
 fi
 
 # Parse input arguments
@@ -70,13 +75,7 @@ do
             DAYS="$_val"
             ;;
         -i|--iOS)
-			OVPN12_Compatible=$(cat /etc/pivpn/OVPN12_Compatible)
-			if [[ ${OVPN12_Compatible} == "true" ]]; then
-				iOS=1
-			else
-				echo "This function is not compatable with OVPN 2.4"
-				exit 1
-			fi
+            iOS=1
             ;;
         -h|--help)
             helpFunc
@@ -213,9 +212,10 @@ EOF
 }
 
 #make sure ovpns dir exists
-if [ ! -d "$INSTALL_HOME/ovpns" ]; then
-    mkdir "$INSTALL_HOME/ovpns"
-    chmod 0750 "$INSTALL_HOME/ovpns"
+if [ ! -d "$install_home/ovpns" ]; then
+    mkdir "$install_home/ovpns"
+    chown "$install_user":"$install_user" "$install_home/ovpns"
+    chmod 0750 "$install_home/ovpns"
 fi
 
 #bitWarden
@@ -341,29 +341,23 @@ if [ "$iOS" = "1" ]; then
     sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
     echo "</cert>"
 
-    #Finally, append the TA Private Key
-    if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
-      echo "<tls-crypt>"
-      cat "${TA}"
-      echo "</tls-crypt>"
-    else
-      echo "<tls-auth>"
-      cat "${TA}"
-      echo "</tls-auth>"
-    fi
+    #Finally, append the tls Private Key
+    echo "<tls-auth>"
+    cat "${TA}"
+    echo "</tls-auth>"
 
 	} > "${NAME}${FILEEXT}"
-	
+
 	# Copy the .ovpn profile to the home directory for convenient remote access
-		
+
 	printf "========================================================\n"
 	printf "Generating an .ovpn12 file for use with iOS devices\n"
 	printf "Please remember the export password\n"
 	printf "as you will need this import the certificate on your iOS device\n"
 	printf "========================================================\n"
-	openssl pkcs12 -passin pass:"$PASSWD_UNESCAPED" -export -in "issued/${NAME}${CRT}" -inkey "private/${NAME}${KEY}" -certfile ${CA} -name "${NAME}" -out "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
-	chown "$INSTALL_USER" "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
-	chmod 600 "/home/$INSTALL_USER/ovpns/$NAME.ovpn12"
+	openssl pkcs12 -passin pass:"$PASSWD_UNESCAPED" -export -in "issued/${NAME}${CRT}" -inkey "private/${NAME}${KEY}" -certfile ${CA} -name "${NAME}" -out "$install_home/ovpns/$NAME.ovpn12"
+	chown "$install_user":"$install_user" "$install_home/ovpns/$NAME.ovpn12"
+    chmod 640 "$install_home/ovpns/$NAME.ovpn12"
 	printf "========================================================\n"
 	printf "\e[1mDone! %s successfully created!\e[0m \n" "$NAME.ovpn12"
 	printf "You will need to transfer both the .ovpn and .ovpn12 files\n"
@@ -392,15 +386,9 @@ else
     echo "</key>"
 
     #Finally, append the tls Private Key
-    if [ -f /etc/pivpn/TWO_POINT_FOUR ]; then
-      echo "<tls-crypt>"
-      cat "${TA}"
-      echo "</tls-crypt>"
-    else
-      echo "<tls-auth>"
-      cat "${TA}"
-      echo "</tls-auth>"
-    fi
+    echo "<tls-auth>"
+    cat "${TA}"
+    echo "</tls-auth>"
 
 	} > "${NAME}${FILEEXT}"
 
@@ -408,15 +396,15 @@ fi
 
 
 # Copy the .ovpn profile to the home directory for convenient remote access
-cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
-chown "$INSTALL_USER" "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
+cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$install_home/ovpns/$NAME$FILEEXT"
+chown "$install_user":"$install_user" "$install_home/ovpns/$NAME$FILEEXT"
 chmod 640 "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
-chmod 640 "$INSTALL_HOME/ovpns/$NAME$FILEEXT"
+chmod 640 "$install_home/ovpns/$NAME$FILEEXT"
 printf "\n\n"
 printf "========================================================\n"
 printf "\e[1mDone! %s successfully created!\e[0m \n" "$NAME$FILEEXT"
 printf "%s was copied to:\n" "$NAME$FILEEXT"
-printf "  %s/ovpns\n" "$INSTALL_HOME"
+printf "  %s/ovpns\n" "$install_home"
 printf "for easy transfer. Please use this profile only on one\n"
 printf "device and create additional profiles for other devices.\n"
 printf "========================================================\n\n"
