@@ -571,7 +571,6 @@ avoidStaticIPv4Ubuntu() {
 	# If we are in Ubuntu then they need to have previously set their network, so just use what you have.
 	whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are not using Raspbian, we will not configure a static IP for you.
 If you are in Amazon then you can not configure a static IP anyway. Just ensure before this installer started you had set an elastic IP on your instance." ${r} ${c}
-
 }
 
 validIP(){
