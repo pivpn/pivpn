@@ -5,6 +5,16 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jan 20th 2020
+
+- Allow setting DHCP reservation preference with --unattended
+- Flip condition check on $dhcpReserv: first check if empty, and if not, check if it's not 1.
+  Doing it the other way (first check if not 1) would give a shell error if $dhcpReserv was empty.
+- Prepend 'pivpn-' to unstable repo files to limit naming conflicts
+- Update variables inside unattended examples
+- Remove openvpn logging setting when uninstalling the package
+- Run 'apt-get update' after removing the WireGuard PPA
+
 ## Jan 18th 2020
 
 Distro Support, Bug Fixes, Unattended install
@@ -15,6 +25,7 @@ tested and added support on Ubuntu 16.04 & 18.08
   * added kernel headers to dependencies as its requred for wireguard-dkms
 unattended install
   * When user is provided and doest exist, it will create one without password set
+  * Use metapackage to install kernel headers on Ubuntu 
 
 
 ## Jan 8th 2020
