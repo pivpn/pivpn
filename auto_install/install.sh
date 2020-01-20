@@ -1746,7 +1746,7 @@ confNetwork(){
 		# chain (using -I).
 
 		if [ "$INPUT_RULES_COUNT" -ne 0 ] || [ "$INPUT_POLICY" != "ACCEPT" ]; then
-			if $SUDO iptables -t nat -S | grep -q "${VPN}-input-rule"; then
+			if $SUDO iptables -S | grep -q "${VPN}-input-rule"; then
 				INPUT_CHAIN_EDITED=0
 			else
 				$SUDO iptables -I INPUT 1 -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule"
@@ -1757,7 +1757,7 @@ confNetwork(){
 		fi
 
 		if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
-			if $SUDO iptables -t nat -S | grep -q "${VPN}-forward-rule"; then
+			if $SUDO iptables -S | grep -q "${VPN}-forward-rule"; then
 				FORWARD_CHAIN_EDITED=0
 			else
 				$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"

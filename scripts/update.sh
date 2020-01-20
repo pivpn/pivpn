@@ -50,16 +50,10 @@ updatefromtest(){
 
 ##Clone and copy pivpn scripts to /opt/pivpn
 cloneandupdate(){
-  ##This is to be removed after merge.
-  ##Alert for users trying to update from master.
-    echo "ERROR: You have installed pivpn from test branch."
-    echo "Wireguard not yet available on master, please use -t flag"
-    exit 1
-  ## Remove Above and uncomment below when test is moved to master
-# git clone "$pivpnrepo" "$pivpnlocalpath"
-# cp "${pivpnlocalpath}"/scripts/*.sh "$pivpnscripts"
-# cp "${pivpnlocalpath}"/scripts/$VPN/*.sh "$pivpnscripts"
-# cp "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir"
+  git clone "$pivpnrepo" "$pivpnlocalpath"
+  cp "${pivpnlocalpath}"/scripts/*.sh "$pivpnscripts"
+  cp "${pivpnlocalpath}"/scripts/$VPN/*.sh "$pivpnscripts"
+  cp "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir"
 }
 
 ##same as cloneandupdate() but from test branch
