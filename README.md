@@ -50,8 +50,7 @@ Installation
 -----------------
 
 **Method 1**
-
-```shell
+```Shell
 curl -L https://install.pivpn.dev | bash
 ```
 

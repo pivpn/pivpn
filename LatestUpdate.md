@@ -146,6 +146,19 @@ Updated LatestChanges
   - Currently apt pulls all packages from the unstable repo because the script intendation created the file 'limit-unstable' with tabs in it. Fixed using printf to create a multiline file.
 - Accept debug fixes using just the enter key
 
+## Nov 25th 2019 - On Master
+
+* Changed pivpn command exit codes from 1 to 0
+  - exit code 1 means general error hence should not be used for exiting successfully
+* added backup script to backup openvpn and pivpn generated certificates
+* added update script to update /opt/pivpn scripts, -t | --test | test update from test branch
+* Fixed hostname length issue #831
+    - the script now checks for hostname length right at the beginning and prompts for a new one.
+    - HOST_NAME to host_name, as best practice variables with capitals, should be used by system variables only.
+* fixed ubuntu 18.04 being detected as not supported OS, now fully supported and tested.
+* changed how scripts are copied to /opt/pivpn, it hat a lot of long repetitive lines, now it copies all `*.sh` files making it easier to manage when adding new scripts/features
+* Changed how supported OS are presented when maybeOS_Support() is called.
+
 ## Nov 19th 2019
 
 - Added Ubuntu Bionic support
@@ -186,7 +199,7 @@ Updated LatestChanges
 - Renamed some variables (see pull request 849).
 - Refactored several functions.
 
-## Oct 12th 2019
+## Oct 12th 2019 - On test
 
 * Changed pivpn command exit codes from 1 to 0
   - exit code 1 means general error hence should not be used for exiting successfully
@@ -198,23 +211,6 @@ Updated LatestChanges
 * fixed ubuntu 18.04 being detected as not supported OS, now fully supported and tested.
 * changed how scripts are copied to /opt/pivpn, it hat a lot of long repetitive lines, now it copies all `*.sh` files making it easier to manage when adding new scripts/features
 * Changed how supported OS are presented when maybeOS_Support() is called.
-
-## Sept 1st 2019
-
-* Added support for Buster
-* .ovpn12 files making use of iOS keychain
-* Leverage the Hostname of the Server to generate server uuid
-* integrated support to bitwarden password manager into pivpn
-* Recreate ovpn folder if deleted
-* Handle older UFW version from Jessie
-* Only use iptables-legacy if platform is Buster
-* improved Buester and Jessie IPtables / ufw handling
-* bugfixes and typos
-* permissions hardening and writing uniformization
-* improved pivpn user and ovpns dirs handling
-* Changes variable and file naming in `install.sh`
-    -  $pivPNUser renamed to $INSTALL_USER
-    -  /tmp/pivpnUSR renamed to INSTALL_USER
 
 ### Merge Patch, Sept 2nd 2019
 
@@ -232,4 +228,19 @@ Updated LatestChanges
 * General improvments:
     - when runing updates, sudo password prompt now shows up in a new line
 
-----
+## Sept 1st 2019
+
+* Added support for Buster
+* .ovpn12 files making use of iOS keychain
+* Leverage the Hostname of the Server to generate server uuid
+* integrated support to bitwarden password manager into pivpn
+* Recreate ovpn folder if deleted
+* Handle older UFW version from Jessie
+* Only use iptables-legacy if platform is Buster
+* improved Buester and Jessie IPtables / ufw handling
+* bugfixes and typos
+* permissions hardening and writing uniformization
+* improved pivpn user and ovpns dirs handling
+* Changes variable and file naming in `install.sh`
+    -  $pivPNUser renamed to $INSTALL_USER
+    -  /tmp/pivpnUSR renamed to INSTALL_USER
