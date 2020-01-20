@@ -166,7 +166,7 @@ main(){
 		avoidStaticIPv4Ubuntu
 	else
 		getStaticIPv4Settings
-		if [ "$dhcpReserv" -ne 1 ] || [ -z "$dhcpReserv" ]; then
+		if [ -z "$dhcpReserv" ] || [ "$dhcpReserv" -ne 1 ]; then
 			setStaticIPv4
 		fi
 	fi
@@ -596,43 +596,48 @@ getStaticIPv4Settings() {
 
 	if [ "${runUnattended}" = 'true' ]; then
 
-		local INVALID_STATIC_IPV4_SETTINGS=0
+		if [ -z "$dhcpReserv" ] || [ "$dhcpReserv" -ne 1 ]; then
+			local INVALID_STATIC_IPV4_SETTINGS=0
 
-		if [ -z "$IPv4addr" ]; then
-			echo "::: Missing static IP address"
-			INVALID_STATIC_IPV4_SETTINGS=1
-		fi
+			if [ -z "$IPv4addr" ]; then
+				echo "::: Missing static IP address"
+				INVALID_STATIC_IPV4_SETTINGS=1
+			fi
 
-		if [ -z "$IPv4gw" ]; then
-			echo "::: Missing static IP gateway"
-			INVALID_STATIC_IPV4_SETTINGS=1
-		fi
+			if [ -z "$IPv4gw" ]; then
+				echo "::: Missing static IP gateway"
+				INVALID_STATIC_IPV4_SETTINGS=1
+			fi
 
-		if [ "$INVALID_STATIC_IPV4_SETTINGS" -eq 1 ]; then
-			echo "::: Incomplete static IP settings"
-			exit 1
-		fi
-
-		if [ -z "$IPv4addr" ] && [ -z "$IPv4gw" ]; then
-			echo "::: No static IP settings, using current settings"
-			echo "::: Your static IPv4 address:    ${IPv4addr}"
-			echo "::: Your static IPv4 gateway:    ${IPv4gw}"
-		else
-			if validIP "${IPv4addr%/*}"; then
-				echo "::: Your static IPv4 address:    ${IPv4addr}"
-			else
-				echo "::: ${IPv4addr%/*} is not a valid IP address"
+			if [ "$INVALID_STATIC_IPV4_SETTINGS" -eq 1 ]; then
+				echo "::: Incomplete static IP settings"
 				exit 1
 			fi
 
-			if validIP "${IPv4gw}"; then
+			if [ -z "$IPv4addr" ] && [ -z "$IPv4gw" ]; then
+				echo "::: No static IP settings, using current settings"
+				echo "::: Your static IPv4 address:    ${IPv4addr}"
 				echo "::: Your static IPv4 gateway:    ${IPv4gw}"
 			else
-				echo "::: ${IPv4gw} is not a valid IP address"
-				exit 1
+				if validIP "${IPv4addr%/*}"; then
+					echo "::: Your static IPv4 address:    ${IPv4addr}"
+				else
+					echo "::: ${IPv4addr%/*} is not a valid IP address"
+					exit 1
+				fi
+
+				if validIP "${IPv4gw}"; then
+					echo "::: Your static IPv4 gateway:    ${IPv4gw}"
+				else
+					echo "::: ${IPv4gw} is not a valid IP address"
+					exit 1
+				fi
 			fi
+		else
+			echo "::: Skipping setting static IP address"
 		fi
 
+		echo "dhcpReserv=${dhcpReserv}" >> /tmp/setupVars.conf
 		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
 		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
 		return
