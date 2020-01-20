@@ -111,11 +111,12 @@ removeAll(){
 							# there is no wireguard package). On Ubuntu, remove the PPA.
               ### FIXME: unconditionally rm'ing unstable.list isn't a good idea, it appears. What if someone else put it there manually?
 							if [ "$PLAT" = "Debian" ] || { [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv7l" ]; }; then
-								rm /etc/apt/sources.list.d/unstable.list
-								rm /etc/apt/preferences.d/limit-unstable
+								rm -f /etc/apt/sources.list.d/pivpn-unstable.list
+								rm -f /etc/apt/preferences.d/pivpn-limit-unstable
 								$PKG_MANAGER update &> /dev/null
 							elif [ "$PLAT" = "Ubuntu" ]; then
 								add-apt-repository ppa:wireguard/wireguard -r -y
+								$PKG_MANAGER update &> /dev/null
 							fi
 
 						elif [ "${i}" = "wireguard-dkms" ]; then
@@ -148,7 +149,11 @@ removeAll(){
 							rm -rf /etc/apt/apt.conf.d/*unattended-upgrades
 
 						elif [ "${i}" = "openvpn" ]; then
-              deluser openvpn
+
+							deluser openvpn
+							rm -f /etc/rsyslog.d/30-openvpn.conf
+							rm -f /etc/logrotate.d/openvpn
+
 						fi
 						printf ":::\\tRemoving %s..." "$i"; $PKG_MANAGER -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\\n";
 						break
