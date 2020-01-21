@@ -1473,8 +1473,8 @@ askPublicIPOrDNS(){
 askEncryption(){
 	if [ "${runUnattended}" = 'true' ]; then
 
-		if [ -z "$pivpnTWOPOINTFOUR" ] || [ "$pivpnTWOPOINTFOUR" -eq 1 ]; then
-			pivpnTWOPOINTFOUR=1
+		if [ -z "$TWO_POINT_FOUR" ] || [ "$TWO_POINT_FOUR" -eq 1 ]; then
+			TWO_POINT_FOUR=1
 			echo "::: Using OpenVPN 2.4 features"
 
 			if [ -z "$pivpnENCRYPT" ]; then
@@ -1489,7 +1489,7 @@ askEncryption(){
 				fi
 			fi
 		else
-			pivpnTWOPOINTFOUR=0
+			TWO_POINT_FOUR=0
 			echo "::: Using traditional OpenVPN configuration"
 
 			if [ -z "$pivpnENCRYPT" ]; then
@@ -1512,21 +1512,21 @@ askEncryption(){
 			fi
 		fi
 
-		echo "pivpnTWOPOINTFOUR=${pivpnTWOPOINTFOUR}" >> /tmp/setupVars.conf
+		echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> /tmp/setupVars.conf
 		echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
 		echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
 		return
 	fi
 
 	if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 can take advantage of Elliptic Curves to provide higher connection speed and improved security over RSA, while keeping smaller certificates.\\n\\nMoreover, the 'tls-crypt' directive encrypts the certificates being used while authenticating, increasing privacy.\\n\\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility." "${r}" "${c}"); then
-		pivpnTWOPOINTFOUR=1
+		TWO_POINT_FOUR=1
 		pivpnENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
 			"Choose the desired size of your certificate (press space to select):\\nThis is a certificate that will be generated on your system. The larger the certificate, the more time this will take. For most applications, it is recommended to use 256 bits. You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
 			"256" "Use a 256-bit certificate (recommended level)" ON \
 			"384" "Use a 384-bit certificate" OFF \
 			"521" "Use a 521-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
 	else
-		pivpnTWOPOINTFOUR=0
+		TWO_POINT_FOUR=0
 		pivpnENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA certificate size" --radiolist \
 			"Choose the desired size of your certificate (press space to select):\\nThis is a certificate that will be generated on your system. The larger the certificate, the more time this will take. For most applications, it is recommended to use 2048 bits. If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
 			"2048" "Use a 2048-bit certificate (recommended level)" ON \
@@ -1546,7 +1546,7 @@ askEncryption(){
 		DOWNLOAD_DH_PARAM=0
 	fi
 
-	echo "pivpnTWOPOINTFOUR=${pivpnTWOPOINTFOUR}" >> /tmp/setupVars.conf
+	echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> /tmp/setupVars.conf
 	echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
 	echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
 }
@@ -1583,7 +1583,7 @@ confOpenVPN(){
 
 	cd /etc/openvpn/easy-rsa || exit 1
 
-	if [ "$pivpnTWOPOINTFOUR" -eq 1 ]; then
+	if [ "$TWO_POINT_FOUR" -eq 1 ]; then
 		pivpnCERT="ec"
 		pivpnTLSPROT="tls-crypt"
 	else

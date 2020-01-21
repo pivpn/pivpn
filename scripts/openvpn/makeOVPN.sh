@@ -75,7 +75,7 @@ do
             DAYS="$_val"
             ;;
         -i|--iOS)
-            if [ "$pivpnTWOPOINTFOUR" -ne 1 ]; then
+            if [ "$TWO_POINT_FOUR" -ne 1 ]; then
                 iOS=1
             else
                echo "Sorry, can't generate iOS-specific configs for ECDSA certificates"
@@ -391,7 +391,7 @@ else
     echo "</key>"
 
     #Finally, append the tls Private Key
-    if [ "$pivpnTWOPOINTFOUR" -eq 1 ]; then
+    if [ "$TWO_POINT_FOUR" -eq 1 ]; then
         echo "<tls-crypt>"
         cat "${TA}"
         echo "</tls-crypt>"

@@ -151,7 +151,7 @@ removeAll(){
 						elif [ "${i}" = "openvpn" ]; then
 
 							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-								rm -r /etc/apt/sources.list.d/pivpn-openvpn-repo.list
+								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
 								$PKG_MANAGER update &> /dev/null
 							fi
 							deluser openvpn
