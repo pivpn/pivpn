@@ -962,10 +962,22 @@ askWhichVPN(){
 }
 
 installOpenVPN(){
+	local PIVPN_DEPS
+
+	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+		echo "::: Adding OpenVPN repository... "
+		# gnupg is used to add the openvpn PGP key to the APT keyring
+		PIVPN_DEPS=(gnupg)
+		installDependentPackages PIVPN_DEPS[@]
+		wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
+		echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
+		# shellcheck disable=SC2086
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+	fi
+
 	echo "::: Installing OpenVPN from Debian package... "
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
 	# to feed easy-rsa with passwords
-	local PIVPN_DEPS
 	PIVPN_DEPS=(openvpn grepcidr expect)
 	installDependentPackages PIVPN_DEPS[@]
 }
@@ -1460,35 +1472,67 @@ askPublicIPOrDNS(){
 
 askEncryption(){
 	if [ "${runUnattended}" = 'true' ]; then
-		if [ -z "$pivpnENCRYPT" ]; then
-			pivpnENCRYPT=2048
-			echo "::: Using a 2048 bit certificate"
-		else
-			if [ "$pivpnENCRYPT" -eq 2048 ] || [ "$pivpnENCRYPT" -eq 3072 ] || [ "$pivpnENCRYPT" -eq 4096 ]; then
-				echo "::: Using a ${pivpnENCRYPT}-bit certificate"
+
+		if [ -z "$pivpnTWOPOINTFOUR" ] || [ "$pivpnTWOPOINTFOUR" -eq 1 ]; then
+			pivpnTWOPOINTFOUR=1
+			echo "::: Using OpenVPN 2.4 features"
+
+			if [ -z "$pivpnENCRYPT" ]; then
+				pivpnENCRYPT=256
+				echo "::: Using a 256 bit certificate"
 			else
-				echo "::: ${pivpnENCRYPT} is not a valid certificate size, use 2048, 3072, or 4096"
-				exit 1
+				if [ "$pivpnENCRYPT" -eq 256 ] || [ "$pivpnENCRYPT" -eq 384 ] || [ "$pivpnENCRYPT" -eq 521 ]; then
+					echo "::: Using a ${pivpnENCRYPT}-bit certificate"
+				else
+					echo "::: ${pivpnENCRYPT} is not a valid certificate size, use 256, 384, or 521"
+					exit 1
+				fi
+			fi
+		else
+			pivpnTWOPOINTFOUR=0
+			echo "::: Using traditional OpenVPN configuration"
+
+			if [ -z "$pivpnENCRYPT" ]; then
+				pivpnENCRYPT=2048
+				echo "::: Using a 2048 bit certificate"
+			else
+				if [ "$pivpnENCRYPT" -eq 2048 ] || [ "$pivpnENCRYPT" -eq 3072 ] || [ "$pivpnENCRYPT" -eq 4096 ]; then
+					echo "::: Using a ${pivpnENCRYPT}-bit certificate"
+				else
+					echo "::: ${pivpnENCRYPT} is not a valid certificate size, use 2048, 3072, or 4096"
+					exit 1
+				fi
+			fi
+
+			if [ -z "$DOWNLOAD_DH_PARAM" ] || [ "$DOWNLOAD_DH_PARAM" -ne 1 ]; then
+				DOWNLOAD_DH_PARAM=0
+				echo "::: DH parameters will be generated locally"
+			else
+				echo "::: DH parameters will be downloaded from \"2 Ton Digital\""
 			fi
 		fi
 
-		if [ -z "$DOWNLOAD_DH_PARAM" ] || [ "$DOWNLOAD_DH_PARAM" -ne 1 ]; then
-			DOWNLOAD_DH_PARAM=0
-			echo "::: DH parameters will be generated locally"
-		else
-			echo "::: DH parameters will be downloaded from \"2 Ton Digital\""
-		fi
-
+		echo "pivpnTWOPOINTFOUR=${pivpnTWOPOINTFOUR}" >> /tmp/setupVars.conf
 		echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
 		echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
 		return
 	fi
 
-	pivpnENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA certificate size" --radiolist \
-		"Choose the desired size of your certificate (press space to select):\\nThis is a certificate that will be generated on your system. The larger the certificate, the more time this will take. For most applications, it is recommended to use 2048 bits. If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
+	if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 can take advantage of Elliptic Curves to provide higher connection speed and improved security over RSA, while keeping smaller certificates.\\n\\nMoreover, the 'tls-crypt' directive encrypts the certificates being used while authenticating, increasing privacy.\\n\\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility." "${r}" "${c}"); then
+		pivpnTWOPOINTFOUR=1
+		pivpnENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "ECDSA certificate size" --radiolist \
+			"Choose the desired size of your certificate (press space to select):\\nThis is a certificate that will be generated on your system. The larger the certificate, the more time this will take. For most applications, it is recommended to use 256 bits. You can increase the number of bits if you care about, however, consider that 256 bits are already as secure as 3072 bit RSA." ${r} ${c} 3 \
+			"256" "Use a 256-bit certificate (recommended level)" ON \
+			"384" "Use a 384-bit certificate" OFF \
+			"521" "Use a 521-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
+	else
+		pivpnTWOPOINTFOUR=0
+		pivpnENCRYPT=$(whiptail --backtitle "Setup OpenVPN" --title "RSA certificate size" --radiolist \
+			"Choose the desired size of your certificate (press space to select):\\nThis is a certificate that will be generated on your system. The larger the certificate, the more time this will take. For most applications, it is recommended to use 2048 bits. If you are paranoid about ... things... then grab a cup of joe and pick 4096 bits." ${r} ${c} 3 \
 			"2048" "Use a 2048-bit certificate (recommended level)" ON \
 			"3072" "Use a 3072-bit certificate " OFF \
 			"4096" "Use a 4096-bit certificate (paranoid level)" OFF 3>&1 1>&2 2>&3)
+	fi
 
 	exitstatus=$?
 	if [ $exitstatus != 0 ]; then
@@ -1496,12 +1540,13 @@ askEncryption(){
 		exit 1
 	fi
 
-	if ([ "$pivpnENCRYPT" -ge "3072" ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\\n\\nGenerating DH parameters for a $pivpnENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\\n\\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
+	if ([ "$pivpnENCRYPT" -ge 3072 ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\\n\\nGenerating DH parameters for a $pivpnENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\\n\\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
 		DOWNLOAD_DH_PARAM=1
 	else
 		DOWNLOAD_DH_PARAM=0
 	fi
 
+	echo "pivpnTWOPOINTFOUR=${pivpnTWOPOINTFOUR}" >> /tmp/setupVars.conf
 	echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
 	echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
 }
@@ -1538,6 +1583,14 @@ confOpenVPN(){
 
 	cd /etc/openvpn/easy-rsa || exit 1
 
+	if [ "$pivpnTWOPOINTFOUR" -eq 1 ]; then
+		pivpnCERT="ec"
+		pivpnTLSPROT="tls-crypt"
+	else
+		pivpnCERT="rsa"
+		pivpnTLSPROT="tls-auth"
+	fi
+
 	# Write out new vars file
 	echo "if [ -z \"\$EASYRSA_CALLER\" ]; then
 	echo \"Nope.\" >&2
@@ -1546,8 +1599,15 @@ fi
 set_var EASYRSA            \"/etc/openvpn/easy-rsa\"
 set_var EASYRSA_PKI        \"\$EASYRSA/pki\"
 set_var EASYRSA_CRL_DAYS   3650
-set_var EASYRSA_ALGO       rsa
-set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
+set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
+
+	# Set certificate type
+	if [ "$pivpnENCRYPT" -ge 2048 ]; then
+		echo "set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee -a vars >/dev/null
+	else
+		declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
+		echo "set_var EASYRSA_CURVE      ${ECDSA_MAP["${pivpnENCRYPT}"]}" | $SUDO tee -a vars >/dev/null
+	fi
 
 	# Remove any previous keys
 	${SUDOE} ./easyrsa --batch init-pki
@@ -1557,22 +1617,32 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 	${SUDOE} ./easyrsa --batch build-ca nopass
 	printf "\\n::: CA Complete.\\n"
 
-	if [ "${runUnattended}" = 'true' ]; then
-		echo "::: The server key, Diffie-Hellman parameters, and HMAC key will now be generated."
-	else
-		whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman parameters, and HMAC key will now be generated." ${r} ${c}
+	if [ "$pivpnCERT" = "rsa" ]; then
+		if [ "${runUnattended}" = 'true' ]; then
+			echo "::: The server key, Diffie-Hellman parameters, and HMAC key will now be generated."
+		else
+			whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman parameters, and HMAC key will now be generated." ${r} ${c}
+		fi
+	elif [ "$pivpnCERT" = "ec" ]; then
+		if [ "${runUnattended}" = 'true' ]; then
+			echo "::: The server key and HMAC key will now be generated."
+		else
+			whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key and HMAC key will now be generated." ${r} ${c}
+		fi
 	fi
 
 	# Build the server
 	EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full "${SERVER_NAME}" nopass
 
-	if [ ${DOWNLOAD_DH_PARAM} -eq 1 ]; then
-		# Downloading parameters
-		${SUDOE} curl -s "https://2ton.com.au/getprimes/random/dhparam/${pivpnENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem"
-	else
-		# Generate Diffie-Hellman key exchange
-		${SUDOE} ./easyrsa gen-dh
-		${SUDOE} mv "pki/dh.pem" "pki/dh${pivpnENCRYPT}.pem"
+	if [ "$pivpnCERT" = "rsa" ]; then
+		if [ ${DOWNLOAD_DH_PARAM} -eq 1 ]; then
+			# Downloading parameters
+			${SUDOE} curl -s "https://2ton.com.au/getprimes/random/dhparam/${pivpnENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem"
+		else
+			# Generate Diffie-Hellman key exchange
+			${SUDOE} ./easyrsa gen-dh
+			${SUDOE} mv "pki/dh.pem" "pki/dh${pivpnENCRYPT}.pem"
+		fi
 	fi
 
 	# Generate static HMAC key to defend against DDoS
@@ -1600,6 +1670,19 @@ set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee vars >/dev/null
 
 	# Set the user encryption key size
 	$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server.conf
+
+	if [ "$pivpnTLSPROT" = "tls-crypt" ]; then
+		#If they enabled 2.4 use tls-crypt instead of tls-auth to encrypt control channel
+		$SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server.conf
+	fi
+
+	if [ "$pivpnCERT" = "ec" ]; then
+		#If they enabled 2.4 disable dh parameters and specify the matching curve from the ECDSA certificate
+		$SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none\necdh-curve ${ECDSA_MAP["${pivpnENCRYPT}"]}/" /etc/openvpn/server.conf
+	elif [ "$pivpnCERT" = "rsa" ]; then
+		# Otherwise set the user encryption key size
+		$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server.conf
+	fi
 
 	# if they modified port put value in server.conf
 	if [ "$pivpnPORT" != 1194 ]; then
@@ -1637,6 +1720,11 @@ confOVPN(){
 
 	# verify server name to strengthen security
 	$SUDO sed -i "s/SRVRNAME/${SERVER_NAME}/" /etc/openvpn/easy-rsa/pki/Default.txt
+
+	if [ "$pivpnTLSPROT" = "tls-crypt" ]; then
+		#If they enabled 2.4 remove key-direction options since it's not required
+		$SUDO sed -i "/key-direction 1/d" /etc/openvpn/easy-rsa/pki/Default.txt
+	fi
 }
 
 confWireGuard(){

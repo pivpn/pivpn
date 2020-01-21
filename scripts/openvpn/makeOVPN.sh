@@ -75,7 +75,13 @@ do
             DAYS="$_val"
             ;;
         -i|--iOS)
-            iOS=1
+            if [ "$pivpnTWOPOINTFOUR" -ne 1 ]; then
+                iOS=1
+            else
+               echo "Sorry, can't generate iOS-specific configs for ECDSA certificates"
+               echo "Generate traditional certificates using 'pivpn -a' or reinstall PiVPN without opting in for OpenVPN 2.4 features"
+               exit 1
+            fi
             ;;
         -h|--help)
             helpFunc
@@ -85,13 +91,12 @@ do
             NO_PASS="1"
             ;;
         -b|--bitwarden)
-            if which bw; then
+            if command -v bw &> /dev/null; then
                 BITWARDEN="2"
             else
                echo "Bitwarden not found, please install bitwarden"
                exit 1
             fi
-
             ;;
         *)
             echo "Error: Got an unexpected argument '$1'"
@@ -386,9 +391,15 @@ else
     echo "</key>"
 
     #Finally, append the tls Private Key
-    echo "<tls-auth>"
-    cat "${TA}"
-    echo "</tls-auth>"
+    if [ "$pivpnTWOPOINTFOUR" -eq 1 ]; then
+        echo "<tls-crypt>"
+        cat "${TA}"
+        echo "</tls-crypt>"
+    else
+        echo "<tls-auth>"
+        cat "${TA}"
+        echo "</tls-auth>"
+    fi
 
 	} > "${NAME}${FILEEXT}"
 
