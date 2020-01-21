@@ -198,6 +198,6 @@ echo -e ":::: \e[1mWARNING\e[0m: This script should have automatically masked se
 echo -e ":::: information, however, still make sure that \e[4mPrivateKey\e[0m, \e[4mPublicKey\e[0m      ::::"
 echo -e ":::: and \e[4mPresharedKey\e[0m are masked before reporting an issue. An example key ::::"
 echo ":::: that you should NOT see in this log looks like this:                  ::::"
-echo ":::: WJhKKx+Uk1l1TxaH2KcEGeBdPBTp/k/Qy4EpBig5UnI=                          ::::"
+echo ":::: YIAoJVsdIeyvXfGGDDadHh6AxsMRymZTnnzZoAb9cxRe                          ::::"
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mDebug complete\e[0m\t\t ::::"
