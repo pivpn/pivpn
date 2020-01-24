@@ -101,7 +101,7 @@ removeAll(){
 	# Purge dependencies
 	echo "::: Purge dependencies..."
 
-	for i in "${TO_INSTALL[@]}"; do
+	for i in "${INSTALLED_PACKAGES[@]}"; do
 		while true; do
 			read -rp "::: Do you wish to remove $i from your system? [Y/n]: " yn
 			case $yn in

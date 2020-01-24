@@ -24,12 +24,12 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar wget grep dnsutils whiptail net-tools bsdmainutils)
+BASE_DEPS=(git tar wget curl grep dnsutils whiptail net-tools bsdmainutils)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
 # PiVPN we won't prompt to remove packages that may have been installed by the user for other reasons
-TO_INSTALL=()
+INSTALLED_PACKAGES=()
 
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
@@ -60,8 +60,8 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 # Find IP used to route to outside world
-IPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
-IPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
+CurrentIPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
+CurrentIPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
 availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 
 ######## SCRIPT ############
@@ -195,7 +195,7 @@ main(){
 	fi
 
 	# Save installation setting to the final location
-	echo "TO_INSTALL=(${TO_INSTALL[*]})" >> /tmp/setupVars.conf
+	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> /tmp/setupVars.conf
 	$SUDO cp /tmp/setupVars.conf "$setupVars"
 
 	installScripts
@@ -235,7 +235,7 @@ askAboutExistingInstall(){
 # distroCheck, maybeOSSupport, noOSSupport
 distroCheck(){
 	# if lsb_release command is on their system
-	if hash lsb_release 2>/dev/null; then
+	if command -v lsb_release > /dev/null; then
 
 		PLAT=$(lsb_release -si)
 		OSCN=$(lsb_release -sc)
@@ -436,7 +436,7 @@ preconfigurePackages(){
 
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
-	if $SUDO bash -c 'hash ufw' 2>/dev/null; then
+	if $SUDO bash -c 'command -v ufw' > /dev/null; then
 		if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
 		else
@@ -456,25 +456,46 @@ preconfigurePackages(){
 }
 
 installDependentPackages(){
+	declare -a TO_INSTALL=()
+
 	# Install packages passed in via argument array
 	# No spinner - conflicts with set -e
 	declare -a argArray1=("${!1}")
 
 	for i in "${argArray1[@]}"; do
 		echo -n ":::    Checking for $i..."
-			if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
-				echo " installed!"
-			else
-				TO_INSTALL+=("${i}")
-				echo " not installed!"
-			fi
+		if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
+			echo " installed!"
+		else
+			echo " not installed!"
+			# Add this package to the list of packages in the argument array that need to be installed
+			TO_INSTALL+=("${i}")
+		fi
 	done
 
-	if command -v debconf-apt-progress &> /dev/null; then
+	if command -v debconf-apt-progress > /dev/null; then
         # shellcheck disable=SC2086
-		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
+		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
 	else
-		${PKG_INSTALL} "${argArray1[@]}"
+		# shellcheck disable=SC2086
+		$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
+	fi
+
+	local FAILED=0
+
+	for i in "${TO_INSTALL[@]}"; do
+		if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
+			echo ":::    Package $i successfully installed!"
+			# Add this package to the total list of packages that were actually installed by the script
+			INSTALLED_PACKAGES+=("${i}")
+		else
+			echo ":::    Failed to install $i!"
+			((FAILED++))
+		fi
+	done
+
+	if [ "$FAILED" -gt 0 ]; then
+		exit 1
 	fi
 }
 
@@ -596,28 +617,21 @@ getStaticIPv4Settings() {
 	if [ "${runUnattended}" = 'true' ]; then
 
 		if [ -z "$dhcpReserv" ] || [ "$dhcpReserv" -ne 1 ]; then
-			local INVALID_STATIC_IPV4_SETTINGS=0
+			local MISSING_STATIC_IPV4_SETTINGS=0
 
 			if [ -z "$IPv4addr" ]; then
 				echo "::: Missing static IP address"
-				INVALID_STATIC_IPV4_SETTINGS=1
+				((MISSING_STATIC_IPV4_SETTINGS++))
 			fi
 
 			if [ -z "$IPv4gw" ]; then
 				echo "::: Missing static IP gateway"
-				INVALID_STATIC_IPV4_SETTINGS=1
+				((MISSING_STATIC_IPV4_SETTINGS++))
 			fi
 
-			if [ "$INVALID_STATIC_IPV4_SETTINGS" -eq 1 ]; then
-				echo "::: Incomplete static IP settings"
-				exit 1
-			fi
+			if [ "$MISSING_STATIC_IPV4_SETTINGS" -eq 0 ]; then
 
-			if [ -z "$IPv4addr" ] && [ -z "$IPv4gw" ]; then
-				echo "::: No static IP settings, using current settings"
-				echo "::: Your static IPv4 address:    ${IPv4addr}"
-				echo "::: Your static IPv4 gateway:    ${IPv4gw}"
-			else
+				# If both settings are not empty, check if they are valid and proceed
 				if validIP "${IPv4addr%/*}"; then
 					echo "::: Your static IPv4 address:    ${IPv4addr}"
 				else
@@ -631,6 +645,22 @@ getStaticIPv4Settings() {
 					echo "::: ${IPv4gw} is not a valid IP address"
 					exit 1
 				fi
+
+			elif [ "$MISSING_STATIC_IPV4_SETTINGS" -eq 1 ]; then
+
+				# If either of the settings is missing, consider the input inconsistent
+				echo "::: Incomplete static IP settings"
+				exit 1
+
+			elif [ "$MISSING_STATIC_IPV4_SETTINGS" -eq 2 ]; then
+
+				# If both of the settings are missing, assume the user wants to use current settings
+				IPv4addr="${CurrentIPv4addr}"
+				IPv4gw="${CurrentIPv4gw}"
+				echo "::: No static IP settings, using current settings"
+				echo "::: Your static IPv4 address:    ${IPv4addr}"
+				echo "::: Your static IPv4 gateway:    ${IPv4gw}"
+
 			fi
 		else
 			echo "::: Skipping setting static IP address"
@@ -645,6 +675,8 @@ getStaticIPv4Settings() {
 	local ipSettingsCorrect
 	# Some users reserve IP addresses on another DHCP Server or on their routers,
 	# Lets ask them if they want to make any changes to their interfaces.
+	IPv4addr="${CurrentIPv4addr}"
+	IPv4gw="${CurrentIPv4gw}"
 	if (whiptail --backtitle "Calibrating network interface" --title "DHCP Reservation" --yesno \
 	"Are you Using DHCP Reservation on your Router/DHCP Server?
 These are your current Network Settings:
@@ -1021,7 +1053,7 @@ installWireGuard(){
 			WG_TOOLS_SOURCE="https://git.zx2c4.com/wireguard-tools/snapshot/wireguard-tools-${WG_TOOLS_SNAPSHOT}.tar.xz"
 
 			echo "::: Downloading wireguard-tools source code... "
-			wget -qO- "${WG_TOOLS_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
+			wget -qO- "${WG_TOOLS_SOURCE}" | $SUDO tar xJ --directory /usr/src
 			echo "done!"
 
 			##  || exits if cd fails.
@@ -1042,7 +1074,7 @@ installWireGuard(){
 			# files from the file system
 			echo "::: Installing WireGuard tools... "
 			if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_TOOLS_SNAPSHOT}" -y; then
-				TO_INSTALL+=("wireguard-tools")
+				INSTALLED_PACKAGES+=("wireguard-tools")
 				echo "done!"
 			else
 				echo "failed!"
@@ -1055,16 +1087,16 @@ installWireGuard(){
 			WG_MODULE_SOURCE="https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-${WG_MODULE_SNAPSHOT}.tar.xz"
 
 			echo "::: Downloading wireguard-linux-compat source code... "
-			wget -qO- "${WG_MODULE_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
+			wget -qO- "${WG_MODULE_SOURCE}" | $SUDO tar xJ --directory /usr/src
 			echo "done!"
 
 			# Rename wireguard-linux-compat folder and move the source code to the parent folder
 			# such that dkms picks up the module when referencing wireguard/"${WG_MODULE_SNAPSHOT}"
 			cd /usr/src && \
-			$SUDO mv wireguard-linux-compat-"${WG_MODULE_SNAPSHOT}" wireguard-"${WG_MODULE_SNAPSHOT}"
+			$SUDO mv wireguard-linux-compat-"${WG_MODULE_SNAPSHOT}" wireguard-"${WG_MODULE_SNAPSHOT}" && \
 			cd wireguard-"${WG_MODULE_SNAPSHOT}" && \
 			$SUDO mv src/* . && \
-			$SUDO rmdir src
+			$SUDO rmdir src || exit 1
 
 			echo "::: Adding WireGuard modules via DKMS... "
 			if $SUDO dkms add wireguard/"${WG_MODULE_SNAPSHOT}"; then
@@ -1086,7 +1118,7 @@ installWireGuard(){
 
 			echo "::: Installing WireGuard modules via DKMS... "
 			if $SUDO dkms install wireguard/"${WG_MODULE_SNAPSHOT}"; then
-				TO_INSTALL+=("wireguard-dkms")
+				INSTALLED_PACKAGES+=("wireguard-dkms")
 				echo "done!"
 			else
 				echo "failed!"
@@ -1113,7 +1145,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from PPA... "
 		$SUDO add-apt-repository ppa:wireguard/wireguard -y
-		$SUDO ${UPDATE_PKG_CACHE}
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-generic)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1259,7 +1291,7 @@ askClientDNS(){
 	fi
 
 	# Detect and offer to use Pi-hole
-	if command -v pihole &>/dev/null; then
+	if command -v pihole > /dev/null; then
 		if (whiptail --backtitle "Setup PiVPN" --title "Pi-hole" --yesno "We have detected a Pi-hole installation, do you want to use it as the DNS server for the VPN, so you get ad blocking on the go?" ${r} ${c}); then
 			pivpnDNS1="$vpnGw"
 			echo "interface=$pivpnDEV" | $SUDO tee /etc/dnsmasq.d/02-pivpn.conf > /dev/null
@@ -1574,7 +1606,7 @@ confOpenVPN(){
 	fi
 
 	# Get easy-rsa
-	wget -qO- "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn
+	wget -qO- "${easyrsaRel}" | $SUDO tar xz --directory /etc/openvpn
 	$SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
 	# fix ownership
 	$SUDO chown -R root:root /etc/openvpn/easy-rsa
@@ -1939,7 +1971,7 @@ askUnattendedUpgrades(){
 
 confUnattendedUpgrades(){
 	local PIVPN_DEPS
-	PIVPN_DEPS+=(unattended-upgrades)
+	PIVPN_DEPS=(unattended-upgrades)
 	installDependentPackages PIVPN_DEPS[@]
   aptConfDir="/etc/apt/apt.conf.d"
 
@@ -1956,10 +1988,13 @@ confUnattendedUpgrades(){
 
 		# Fix Raspbian config
 		if [ "$PLAT" = "Raspbian" ]; then
-			wget -q -O "/tmp/${UNATTUPG_RELEASE}.tar.gz" "$UNATTUPG_CONFIG"
-			cd /tmp/ && $SUDO tar xzf "/tmp/${UNATTUPG_RELEASE}.tar.gz"
-			$SUDO cp /tmp/"unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
-			$SUDO rm -rf "/tmp/unattended-upgrades-$UNATTUPG_RELEASE"
+			wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz --directory "${aptConfDir}" "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" --strip-components 2
+			if test -s "${aptConfDir}/50unattended-upgrades.Raspbian"; then
+				$SUDO mv "${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
+			else
+				echo "$0: ERR: Failed to download \"50unattended-upgrades.Raspbian\"."
+				exit 1
+			fi
 		fi
 
 		# Add the remaining settings for all other distributions
