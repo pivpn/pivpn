@@ -59,9 +59,12 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
-# Find IP used to route to outside world
-CurrentIPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
+# Find IP (with netmask) and gateway used to route to outside world
+BaseIPv4addr=$(ip route get 192.0.2.1| awk '{print $7}')
+CurrentIPv4addr=$(ip -o -f inet address | grep "${BaseIPv4addr}/" | awk '{print $4}')
 CurrentIPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
+
+# Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
 availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 
 ######## SCRIPT ############
@@ -601,10 +604,28 @@ validIP(){
 	if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
 		OIFS=$IFS
 		IFS='.'
-	read -r -a ip <<< "$ip"
+		read -r -a ip <<< "$ip"
 		IFS=$OIFS
 		[[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
 		&& ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
+		stat=$?
+	fi
+	return $stat
+}
+
+validIPAndNetmask(){
+	local ip=$1
+	local stat=1
+	ip="${ip/\//.}"
+
+	if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,2}$ ]]; then
+		OIFS=$IFS
+		IFS='.'
+		read -r -a ip <<< "$ip"
+		IFS=$OIFS
+		[[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
+		&& ${ip[2]} -le 255 && ${ip[3]} -le 255 \
+		&& ${ip[4]} -le 32 ]]
 		stat=$?
 	fi
 	return $stat
@@ -632,10 +653,10 @@ getStaticIPv4Settings() {
 			if [ "$MISSING_STATIC_IPV4_SETTINGS" -eq 0 ]; then
 
 				# If both settings are not empty, check if they are valid and proceed
-				if validIP "${IPv4addr%/*}"; then
+				if validIPAndNetmask "${IPv4addr}"; then
 					echo "::: Your static IPv4 address:    ${IPv4addr}"
 				else
-					echo "::: ${IPv4addr%/*} is not a valid IP address"
+					echo "::: ${IPv4addr} is not a valid IP address"
 					exit 1
 				fi
 
@@ -667,22 +688,23 @@ getStaticIPv4Settings() {
 		fi
 
 		echo "dhcpReserv=${dhcpReserv}" >> /tmp/setupVars.conf
-		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+		echo "IPv4addr=${IPv4addr}" >> /tmp/setupVars.conf
 		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
 		return
 	fi
 
 	local ipSettingsCorrect
+	local IPv4AddrValid
+	local IPv4gwValid
 	# Some users reserve IP addresses on another DHCP Server or on their routers,
 	# Lets ask them if they want to make any changes to their interfaces.
-	IPv4addr="${CurrentIPv4addr}"
-	IPv4gw="${CurrentIPv4gw}"
+
 	if (whiptail --backtitle "Calibrating network interface" --title "DHCP Reservation" --yesno \
 	"Are you Using DHCP Reservation on your Router/DHCP Server?
 These are your current Network Settings:
 
-				IP address:    ${IPv4addr}
-				Gateway:       ${IPv4gw}
+			IP address:    ${CurrentIPv4addr}
+			Gateway:       ${CurrentIPv4gw}
 
 Yes: Keep using DHCP reservation
 No: Setup static IP address
@@ -690,56 +712,80 @@ Don't know what DHCP Reservation is? Answer No." ${r} ${c}); then
 		dhcpReserv=1
         # shellcheck disable=SC2129
 		echo "dhcpReserv=${dhcpReserv}" >> /tmp/setupVars.conf
-		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
-		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+		# We don't really need to save them as we won't set a static IP but they might be useful for debugging
+		echo "IPv4addr=${CurrentIPv4addr}" >> /tmp/setupVars.conf
+		echo "IPv4gw=${CurrentIPv4gw}" >> /tmp/setupVars.conf
 	else
 		# Ask if the user wants to use DHCP settings as their static IP
 		if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Do you want to use your current network settings as a static address?
-					IP address:    ${IPv4addr}
-					Gateway:       ${IPv4gw}" ${r} ${c}); then
 
-				echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
-				echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
-				# If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
-				whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
+				IP address:    ${CurrentIPv4addr}
+				Gateway:       ${CurrentIPv4gw}" ${r} ${c}); then
+			IPv4addr=${CurrentIPv4addr}
+			IPv4gw=${CurrentIPv4gw}
+			echo "IPv4addr=${IPv4addr}" >> /tmp/setupVars.conf
+			echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+
+			# If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
+			whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
 If you are worried, either manually set the address, or modify the DHCP reservation pool so it does not include the IP you want.
 It is also possible to use a DHCP reservation, but if you are going to do that, you might as well set a static address." ${r} ${c}
-		# Nothing else to do since the variables are already set above
+			# Nothing else to do since the variables are already set above
 		else
-		# Otherwise, we need to ask the user to input their desired settings.
-		# Start by getting the IPv4 address (pre-filling it with info gathered from DHCP)
-		# Start a loop to let the user enter their information with the chance to go back and edit it if necessary
+			# Otherwise, we need to ask the user to input their desired settings.
+			# Start by getting the IPv4 address (pre-filling it with info gathered from DHCP)
+			# Start a loop to let the user enter their information with the chance to go back and edit it if necessary
 			until [[ ${ipSettingsCorrect} = True ]]; do
-			# Ask for the IPv4 address
-				if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${IPv4addr}" 3>&1 1>&2 2>&3) ; then
-					echo "::: Your static IPv4 address:    ${IPv4addr}"
-					# Ask for the gateway
-					if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${IPv4gw}" 3>&1 1>&2 2>&3) ; then
-						echo "::: Your static IPv4 gateway:    ${IPv4gw}"
-						# Give the user a chance to review their settings before moving on
-						if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
-						IP address:    ${IPv4addr}
-						Gateway:       ${IPv4gw}" ${r} ${c}); then
-							# If the settings are correct, then we need to set the pivpnIP
-							echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
-							echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
-							# After that's done, the loop ends and we move on
-							ipSettingsCorrect=True
+
+				until [[ ${IPv4AddrValid} = True ]]; do
+					# Ask for the IPv4 address
+					if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${CurrentIPv4addr}" 3>&1 1>&2 2>&3) ; then
+						if validIPAndNetmask "${IPv4addr}"; then
+							echo "::: Your static IPv4 address:    ${IPv4addr}"
+							IPv4AddrValid=True
 						else
-							# If the settings are wrong, the loop continues
-							ipSettingsCorrect=False
+							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 address" "You entered an invalid IPv4 address.\\n\\nPlease enter an IP address in the CIDR notation, example: 192.168.23.211/24.\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
+							echo "::: Invalid IPv4 address:    ${IPv4addr}"
+							IPv4AddrValid=False
 						fi
 					else
-						# Cancelling gateway settings window
-						ipSettingsCorrect=False
+						# Cancelling IPv4 settings window
 						echo "::: Cancel selected. Exiting..."
 						exit 1
 					fi
+				done
+
+				until [[ ${IPv4gwValid} = True ]]; do
+					# Ask for the gateway
+					if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${CurrentIPv4gw}" 3>&1 1>&2 2>&3) ; then
+						if validIP "${IPv4gw}"; then
+							echo "::: Your static IPv4 gateway:    ${IPv4gw}"
+							IPv4gwValid=True
+						else
+							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" "You entered an invalid IPv4 address.\\n\\nPlease enter the IP address of your gateway (router), example: 192.168.23.1.\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
+							echo "::: Invalid IPv4 gateway:    ${IPv4gw}"
+							IPv4gwValid=False
+						fi
+					else
+						# Cancelling gateway settings window
+						echo "::: Cancel selected. Exiting..."
+						exit 1
+					fi
+				done
+
+				# Give the user a chance to review their settings before moving on
+				if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
+
+						IP address:    ${IPv4addr}
+						Gateway:       ${IPv4gw}" ${r} ${c}); then
+					# If the settings are correct, then we need to set the pivpnIP
+					echo "IPv4addr=${IPv4addr}" >> /tmp/setupVars.conf
+					echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+					# After that's done, the loop ends and we move on
+					ipSettingsCorrect=True
 				else
-					# Cancelling IPv4 settings window
+					# If the settings are wrong, the loop continues
 					ipSettingsCorrect=False
-					echo "::: Cancel selected. Exiting..."
-					exit 1
 				fi
 			done
 			# End the if statement for DHCP vs. static
