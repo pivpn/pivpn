@@ -114,9 +114,11 @@ removeAll(){
 							if [ "$PLAT" = "Debian" ] || { [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv7l" ]; }; then
 								rm -f /etc/apt/sources.list.d/pivpn-unstable.list
 								rm -f /etc/apt/preferences.d/pivpn-limit-unstable
+								echo "::: Updating package cache..."
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							elif [ "$PLAT" = "Ubuntu" ]; then
 								add-apt-repository ppa:wireguard/wireguard -r -y
+								echo "::: Updating package cache..."
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 
@@ -153,6 +155,7 @@ removeAll(){
 
 							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
 								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
+								echo "::: Updating package cache..."
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 							deluser openvpn

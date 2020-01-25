@@ -13,7 +13,7 @@ hr(){
 if DUMP="$(wg show wg0 dump)"; then
     DUMP="$(tail -n +2 <<< "$DUMP")"
 else
-   exit 1
+    exit 1
 fi
 
 printf "\e[1m::: Connected Clients List :::\e[0m\n"
