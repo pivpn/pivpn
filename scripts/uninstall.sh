@@ -5,6 +5,7 @@
 ### FIXME: use variables where appropriate, reduce magic numbers by 99.9%, at least.
 
 PKG_MANAGER="apt-get"
+UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 subnetClass="24"
 setupVars="/etc/pivpn/setupVars.conf"
 
@@ -33,7 +34,7 @@ spinner(){
 	local pid=$1
 	local delay=0.50
 	local spinstr='/-\|'
-	while ps a | awk '{print $1}' | grep "$pid"; do
+	while ps a | awk '{print $1}' | grep -q "$pid"; do
 		local temp=${spinstr#?}
 		printf " [%c]  " "$spinstr"
 		local spinstr=$temp${spinstr%"$temp"}
@@ -113,10 +114,10 @@ removeAll(){
 							if [ "$PLAT" = "Debian" ] || { [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv7l" ]; }; then
 								rm -f /etc/apt/sources.list.d/pivpn-unstable.list
 								rm -f /etc/apt/preferences.d/pivpn-limit-unstable
-								$PKG_MANAGER update &> /dev/null
+								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							elif [ "$PLAT" = "Ubuntu" ]; then
 								add-apt-repository ppa:wireguard/wireguard -r -y
-								$PKG_MANAGER update &> /dev/null
+								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 
 						elif [ "${i}" = "wireguard-dkms" ]; then
@@ -152,7 +153,7 @@ removeAll(){
 
 							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
 								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
-								$PKG_MANAGER update &> /dev/null
+								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 							deluser openvpn
 							rm -f /etc/rsyslog.d/30-openvpn.conf

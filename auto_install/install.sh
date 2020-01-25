@@ -335,7 +335,7 @@ spinner(){
 	local pid=$1
 	local delay=0.50
 	local spinstr='/-\|'
-	while ps a | awk '{print $1}' | grep "${pid}"; do
+	while ps a | awk '{print $1}' | grep -q "$pid"; do
 		local temp=${spinstr#?}
 		printf " [%c]  " "${spinstr}"
 		local spinstr=${temp}${spinstr%"$temp"}
@@ -399,7 +399,7 @@ updatePackageCache(){
 		echo ":::"
 		echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\n"
         # shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		echo " done!"
 	fi
 }
@@ -1004,7 +1004,7 @@ installOpenVPN(){
 		wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
 		echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
 		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 	fi
 
 	echo "::: Installing OpenVPN from Debian package... "
@@ -1036,7 +1036,7 @@ installWireGuard(){
 
 			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
             # shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
 			installDependentPackages PIVPN_DEPS[@]
 
@@ -1137,7 +1137,7 @@ installWireGuard(){
 		echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
 		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-unstable > /dev/null
         # shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1145,7 +1145,8 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from PPA... "
 		$SUDO add-apt-repository ppa:wireguard/wireguard -y
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+		# shellcheck disable=SC2086
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-generic)
 		installDependentPackages PIVPN_DEPS[@]
 
