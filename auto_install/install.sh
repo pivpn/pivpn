@@ -632,8 +632,33 @@ validIPAndNetmask(){
 }
 
 getStaticIPv4Settings() {
-	# Grab their current DNS Server
-	IPv4dns=$(grep nameserver /etc/resolv.conf | awk '{print $2}' | xargs)
+	# Grab their current DNS servers
+	CurrentIPv4dns=$(grep -v "^#" /etc/resolv.conf | grep -w nameserver | awk '{print $2}' | xargs)
+	read -r -a CurrentIPv4dns <<< "${CurrentIPv4dns}"
+
+	IPv4dns=()
+	for dns in "${CurrentIPv4dns[@]}"; do
+		if validIP "${dns}"; then
+			IPv4dns+=("${dns}")
+		else
+			echo "::: Warning: invalid system DNS ${dns}"
+		fi
+	done
+
+	if [ "${#IPv4dns[@]}" -eq 0 ]; then
+		echo "::: Couldn't get current DNS servers from \"/etc/resolv.conf\", exiting..."
+		exit 1
+	fi
+
+	if ! validIPAndNetmask "${CurrentIPv4addr}"; then
+		echo "::: Couldn't get current IP address, exiting..."
+		exit 1
+	fi
+
+	if ! validIP "${CurrentIPv4gw}"; then
+		echo "::: Couldn't get current gateway IP, exiting..."
+		exit 1
+	fi
 
 	if [ "${runUnattended}" = 'true' ]; then
 
@@ -699,7 +724,7 @@ getStaticIPv4Settings() {
 	# Some users reserve IP addresses on another DHCP Server or on their routers,
 	# Lets ask them if they want to make any changes to their interfaces.
 
-	if (whiptail --backtitle "Calibrating network interface" --title "DHCP Reservation" --yesno \
+	if (whiptail --backtitle "Calibrating network interface" --title "DHCP Reservation" --yesno --defaultno \
 	"Are you Using DHCP Reservation on your Router/DHCP Server?
 These are your current Network Settings:
 
@@ -744,7 +769,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 							echo "::: Your static IPv4 address:    ${IPv4addr}"
 							IPv4AddrValid=True
 						else
-							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 address" "You entered an invalid IPv4 address.\\n\\nPlease enter an IP address in the CIDR notation, example: 192.168.23.211/24.\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
+							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 address" "You've entered an invalid IP address: ${IPv4addr}\\n\\nPlease enter an IP address in the CIDR notation, example: 192.168.23.211/24\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
 							echo "::: Invalid IPv4 address:    ${IPv4addr}"
 							IPv4AddrValid=False
 						fi
@@ -762,7 +787,7 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 							echo "::: Your static IPv4 gateway:    ${IPv4gw}"
 							IPv4gwValid=True
 						else
-							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" "You entered an invalid IPv4 address.\\n\\nPlease enter the IP address of your gateway (router), example: 192.168.23.1.\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
+							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" "You've entered an invalid gateway IP: ${IPv4gw}\\n\\nPlease enter the IP address of your gateway (router), example: 192.168.23.1\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
 							echo "::: Invalid IPv4 gateway:    ${IPv4gw}"
 							IPv4gwValid=False
 						fi
@@ -801,7 +826,7 @@ setDHCPCD(){
 	echo "interface ${IPv4dev}
 	static ip_address=${IPv4addr}
 	static routers=${IPv4gw}
-	static domain_name_servers=${IPv4dns}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
+	static domain_name_servers=${IPv4dns[*]}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
 }
 
 setStaticIPv4(){
@@ -1523,34 +1548,44 @@ askPublicIPOrDNS(){
 		return
 	fi
 
-	METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server (press space to select)?" ${r} ${c} 2 \
-		"$IPv4pub" "Use this public IP" "ON" \
-		"DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3)
+	local publicDNSCorrect
+	local publicDNSValid
 
-	exitstatus=$?
-	if [ $exitstatus != 0 ]; then
+	if METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server (press space to select)?" ${r} ${c} 2 \
+		"$IPv4pub" "Use this public IP" "ON" \
+		"DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3); then
+
+		if [ "$METH" = "$IPv4pub" ]; then
+			pivpnHOST="${IPv4pub}"
+		else
+			until [[ ${publicDNSCorrect} = True ]]; do
+
+				until [[ ${publicDNSValid} = True ]]; do
+					if PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" ${r} ${c} 3>&1 1>&2 2>&3); then
+						if validDomain "$PUBLICDNS"; then
+							publicDNSValid=True
+							pivpnHOST="${PUBLICDNS}"
+						else
+							whiptail --msgbox --backtitle "PiVPN Setup" --title "Invalid DNS name" "This DNS name is invalid. Please try again.\\n\\n    DNS name:   $PUBLICDNS\\n" ${r} ${c}
+							publicDNSValid=False
+						fi
+					else
+						echo "::: Cancel selected. Exiting..."
+						exit 1
+					fi
+				done
+
+				if (whiptail --backtitle "PiVPN Setup" --title "Confirm DNS Name" --yesno "Is this correct?\\n\\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
+					publicDNSCorrect=True
+				else
+					publicDNSCorrect=False
+					publicDNSValid=False
+				fi
+			done
+		fi
+	else
 		echo "::: Cancel selected. Exiting..."
 		exit 1
-	fi
-
-	if [ "$METH" == "$IPv4pub" ]; then
-		pivpnHOST="${IPv4pub}"
-	else
-		until [[ $publicDNSCorrect = True ]]
-		do
-			PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" ${r} ${c} 3>&1 1>&2 2>&3)
-			exitstatus=$?
-			if [ $exitstatus != 0 ]; then
-			echo "::: Cancel selected. Exiting..."
-			exit 1
-			fi
-			if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\\n\\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
-				publicDNSCorrect=True
-				pivpnHOST="${PUBLICDNS}"
-			else
-				publicDNSCorrect=False
-			fi
-		done
 	fi
 
 	echo "pivpnHOST=${pivpnHOST}" >> /tmp/setupVars.conf
