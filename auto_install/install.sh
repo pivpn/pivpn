@@ -60,7 +60,7 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 # Find IP (with netmask) and gateway used to route to outside world
-BaseIPv4addr=$(ip route get 192.0.2.1| awk '{print $7}')
+BaseIPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
 CurrentIPv4addr=$(ip -o -f inet address | grep "${BaseIPv4addr}/" | awk '{print $4}')
 CurrentIPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
 
@@ -786,6 +786,8 @@ It is also possible to use a DHCP reservation, but if you are going to do that, 
 				else
 					# If the settings are wrong, the loop continues
 					ipSettingsCorrect=False
+					IPv4AddrValid=False
+					IPv4gwValid=False
 				fi
 			done
 			# End the if statement for DHCP vs. static
@@ -1062,6 +1064,8 @@ installOpenVPN(){
 }
 
 installWireGuard(){
+	local PIVPN_DEPS
+
 	if [ "$PLAT" = "Raspbian" ]; then
 
 		# If this Raspberry Pi uses armv7l we can use the package from the repo
