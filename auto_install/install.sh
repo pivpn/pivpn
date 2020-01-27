@@ -468,7 +468,7 @@ installDependentPackages(){
 	for i in "${argArray1[@]}"; do
 		echo -n ":::    Checking for $i..."
 		if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
-			echo " installed!"
+			echo " already installed!"
 		else
 			echo " not installed!"
 			# Add this package to the list of packages in the argument array that need to be installed
@@ -1069,19 +1069,29 @@ askWhichVPN(){
 installOpenVPN(){
 	local PIVPN_DEPS
 
+	echo "::: Installing OpenVPN from Debian package... "
+
 	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-		echo "::: Adding OpenVPN repository... "
 		# gnupg is used to add the openvpn PGP key to the APT keyring
 		PIVPN_DEPS=(gnupg)
 		installDependentPackages PIVPN_DEPS[@]
+
+		# We will download the repository key regardless of whether the user
+		# has already enabled the openvpn repository or not, just to make sure
+		# we have the right key
+		echo "::: Adding repository key..."
 		wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
-		echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
+
+		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
+			echo "::: Adding OpenVPN repository... "
+			echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
+		fi
+
 		echo "::: Updating package cache..."
 		# shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 	fi
 
-	echo "::: Installing OpenVPN from Debian package... "
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
 	# to feed easy-rsa with passwords
 	PIVPN_DEPS=(openvpn grepcidr expect)
@@ -1101,20 +1111,28 @@ installWireGuard(){
 		if [ "$(uname -m)" = "armv7l" ]; then
 
 			echo "::: Installing WireGuard from Debian package... "
-			# dirmngr is used to download repository keys, whereas qrencode is used to generate qrcodes
-			# from config file, for use with mobile clients
-			PIVPN_DEPS=(dirmngr qrencode)
+			# dirmngr is used to download repository keys for the unstable repo
+			PIVPN_DEPS=(dirmngr)
 			installDependentPackages PIVPN_DEPS[@]
+
+			echo "::: Adding repository keys..."
+			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
+
+			# This regular expression should match combinations like http[s]://mirror.example.com/debian[/] unstable main
+			if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
+				echo "::: Adding Debian repository... "
+				echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
+			fi
+
 			# Do not upgrade packages from the unstable repository except for wireguard
-			echo "::: Adding Debian repository... "
-			echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
 			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-unstable > /dev/null
 
-			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
 			echo "::: Updating package cache..."
 			# shellcheck disable=SC2086
 			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
-			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
+
+			# qrencode is used to generate qrcodes from config file, for use with mobile clients
+			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms qrencode)
 			installDependentPackages PIVPN_DEPS[@]
 
 		elif [ "$(uname -m)" = "armv6l" ]; then
@@ -1210,12 +1228,17 @@ installWireGuard(){
 	elif [ "$PLAT" = "Debian" ]; then
 
 		echo "::: Installing WireGuard from Debian package... "
-		echo "::: Adding Debian repository... "
-		echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
+		if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
+			echo "::: Adding Debian repository... "
+			echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
+		fi
+
 		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-unstable > /dev/null
+
 		echo "::: Updating package cache..."
 		# shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1223,9 +1246,11 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from PPA... "
 		$SUDO add-apt-repository ppa:wireguard/wireguard -y
+
 		echo "::: Updating package cache..."
 		# shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+
 		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-generic)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1759,6 +1784,15 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 		if [ ${DOWNLOAD_DH_PARAM} -eq 1 ]; then
 			# Downloading parameters
 			${SUDOE} curl -s "https://2ton.com.au/getprimes/random/dhparam/${pivpnENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem"
+			# Basic sanity check
+			if DH_MSG="$(${SUDOE} openssl dhparam -check -noout -in "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem" 2>&1 | tee /dev/tty)"; then
+				if [ "$DH_MSG" != "DH parameters appear to be ok." ]; then
+					echo "Invalid DH parameters, exiting..."
+					exit 1
+				fi
+			else
+				exit 1
+			fi
 		else
 			# Generate Diffie-Hellman key exchange
 			${SUDOE} ./easyrsa gen-dh

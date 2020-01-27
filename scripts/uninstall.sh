@@ -114,13 +114,11 @@ removeAll(){
 							if [ "$PLAT" = "Debian" ] || { [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv7l" ]; }; then
 								rm -f /etc/apt/sources.list.d/pivpn-unstable.list
 								rm -f /etc/apt/preferences.d/pivpn-limit-unstable
-								echo "::: Updating package cache..."
-								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							elif [ "$PLAT" = "Ubuntu" ]; then
 								add-apt-repository ppa:wireguard/wireguard -r -y
-								echo "::: Updating package cache..."
-								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
+							echo "::: Updating package cache..."
+							${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
 						elif [ "${i}" = "wireguard-dkms" ]; then
 
@@ -137,12 +135,6 @@ removeAll(){
 							if [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv6l" ]; then
 								rm -rf /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}"
 							fi
-
-						elif [ "${i}" = "dirmngr" ]; then
-
-							# If dirmngr was installed, then we had previously installed wireguard on armv7l Raspbian
-							# so we remove the repository keys
-							apt-key remove E1CF20DDFFE4B89E802658F1E0B11894F66AEC98 80D15823B7FD1561F9F7BCDDDC30D7C23CBBABEE &> /dev/null
 
 						elif [ "${i}" = "unattended-upgrades" ]; then
 
