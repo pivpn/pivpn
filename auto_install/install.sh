@@ -59,10 +59,8 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
-# Find IP (with netmask) and gateway used to route to outside world
-BaseIPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
-CurrentIPv4addr=$(ip -o -f inet address | grep "${BaseIPv4addr}/" | awk '{print $4}')
-CurrentIPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
+# Find the gateway IP used to route to outside world
+CurrentIPv4gw="$(ip -o route get 192.0.2.1 | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | awk 'NR==2')"
 
 # Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
 availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
@@ -632,33 +630,11 @@ validIPAndNetmask(){
 }
 
 getStaticIPv4Settings() {
+	# Find the IP address (and netmask) of the desidered interface
+	CurrentIPv4addr="$(ip -o -f inet address show dev "${IPv4dev}" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
+
 	# Grab their current DNS servers
-	CurrentIPv4dns=$(grep -v "^#" /etc/resolv.conf | grep -w nameserver | awk '{print $2}' | xargs)
-	read -r -a CurrentIPv4dns <<< "${CurrentIPv4dns}"
-
-	IPv4dns=()
-	for dns in "${CurrentIPv4dns[@]}"; do
-		if validIP "${dns}"; then
-			IPv4dns+=("${dns}")
-		else
-			echo "::: Warning: invalid system DNS ${dns}"
-		fi
-	done
-
-	if [ "${#IPv4dns[@]}" -eq 0 ]; then
-		echo "::: Couldn't get current DNS servers from \"/etc/resolv.conf\", exiting..."
-		exit 1
-	fi
-
-	if ! validIPAndNetmask "${CurrentIPv4addr}"; then
-		echo "::: Couldn't get current IP address, exiting..."
-		exit 1
-	fi
-
-	if ! validIP "${CurrentIPv4gw}"; then
-		echo "::: Couldn't get current gateway IP, exiting..."
-		exit 1
-	fi
+	IPv4dns=$(grep -v "^#" /etc/resolv.conf | grep -w nameserver | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | xargs)
 
 	if [ "${runUnattended}" = 'true' ]; then
 
@@ -826,7 +802,7 @@ setDHCPCD(){
 	echo "interface ${IPv4dev}
 	static ip_address=${IPv4addr}
 	static routers=${IPv4gw}
-	static domain_name_servers=${IPv4dns[*]}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
+	static domain_name_servers=${IPv4dns}" | $SUDO tee -a ${dhcpcdFile} >/dev/null
 }
 
 setStaticIPv4(){
