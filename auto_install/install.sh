@@ -985,6 +985,49 @@ installOpenVPN(){
 installWireGuard(){
 	if [ "$PLAT" = "Raspbian" ]; then
 
+		# If the running kernel is older than the kernel from the repo, dkms will
+		# install the module for the newer kernel therefore WireGuard will not start.
+		# Telling the user to update the whole system is probably the easiest way to
+		# handle this situation.
+
+		# This issue is very common for users that flash Raspbian and install PiVPN
+		# straight, so it's also a good suggestion in such case because they will have
+		# a lot of outdated packages.
+
+		INSTALLED_KERNEL="$(apt-cache policy raspberrypi-kernel | grep 'Installed:' | awk '{print $2}')"
+		CANDIDATE_KERNEL="$(apt-cache policy raspberrypi-kernel | grep 'Candidate:' | awk '{print $2}')"
+
+		if dpkg --compare-versions "${CANDIDATE_KERNEL}" gt "${INSTALLED_KERNEL}"; then
+			if [ "${runUnattended}" = 'true' ]; then
+				echo "::: Installing WireGuard requires the latest kernel. Please upgrade all packages, reboot and run the script again."
+				echo "::: Commands:"
+				echo ":::    sudo apt-get upgrade -y"
+				echo ":::    sudo shutdown -r now"
+				echo ":::    curl -L https://install.pivpn.dev | bash"
+				exit 1
+			else
+				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel $(uname -r), which is not the latest.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
+					if command -v debconf-apt-progress &> /dev/null; then
+						# shellcheck disable=SC2086
+						$SUDO debconf-apt-progress -- ${PKG_MANAGER} upgrade -y
+					else
+						$SUDO ${PKG_MANAGER} upgrade -y
+					fi
+					if (whiptail --title "Reboot" --yesno "You need to reboot after upgrading to run the new kernel.\n\nWould you like to reboot now?" ${r} ${c}); then
+						whiptail --title "Rebooting" --msgbox "The system will now reboot.\n\nWhen you come back, just run the installation command again:\n\n    curl -L https://install.pivpn.dev | bash" ${r} ${c}
+						printf "\\nRebooting system...\\n"
+						$SUDO sleep 3
+						$SUDO shutdown -r now
+					else
+						exit 1
+					fi
+				else
+					echo "::: Can't continue without upgrading the system first, exiting..."
+					exit 1
+				fi
+			fi
+		fi
+
 		# If this Raspberry Pi uses armv7l we can use the package from the repo
 		# https://lists.zx2c4.com/pipermail/wireguard/2017-November/001885.html
 		# Otherwhise compile and build the kernel module via DKMS (so it will
