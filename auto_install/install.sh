@@ -59,12 +59,6 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
-# Find the gateway IP used to route to outside world
-CurrentIPv4gw="$(ip -o route get 192.0.2.1 | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | awk 'NR==2')"
-
-# Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
-availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
-
 ######## SCRIPT ############
 
 main(){
@@ -529,6 +523,9 @@ local chooseInterfaceOptions
 # Loop sentinel variable
 local firstloop=1
 
+# Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
+availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
+
 if [ -z "$availableInterfaces" ]; then
     echo "::: Could not find any active network interface, exiting"
     exit 1
@@ -630,6 +627,9 @@ validIPAndNetmask(){
 }
 
 getStaticIPv4Settings() {
+	# Find the gateway IP used to route to outside world
+	CurrentIPv4gw="$(ip -o route get 192.0.2.1 | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | awk 'NR==2')"
+
 	# Find the IP address (and netmask) of the desidered interface
 	CurrentIPv4addr="$(ip -o -f inet address show dev "${IPv4dev}" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
 
