@@ -1626,17 +1626,21 @@ askEncryption(){
 				fi
 			fi
 
-			if [ -z "$DOWNLOAD_DH_PARAM" ] || [ "$DOWNLOAD_DH_PARAM" -ne 1 ]; then
-				DOWNLOAD_DH_PARAM=0
-				echo "::: DH parameters will be generated locally"
+			if [ -z "$USE_PREDEFINED_DH_PARAM" ]; then
+				USE_PREDEFINED_DH_PARAM=1
+				echo "::: Pre-defined DH parameters will be used"
 			else
-				echo "::: DH parameters will be downloaded from \"2 Ton Digital\""
+				if [ "$USE_PREDEFINED_DH_PARAM" -eq 1 ]; then
+					echo "::: Pre-defined DH parameters will be used"
+				else
+					echo "::: DH parameters will be generated locally"
+				fi
 			fi
 		fi
 
 		echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> /tmp/setupVars.conf
 		echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
-		echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
+		echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> /tmp/setupVars.conf
 		return
 	fi
 
@@ -1662,15 +1666,15 @@ askEncryption(){
 		exit 1
 	fi
 
-	if ([ "$pivpnENCRYPT" -ge 3072 ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\\n\\nGenerating DH parameters for a $pivpnENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\\n\\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
-		DOWNLOAD_DH_PARAM=1
+	if ([ "$pivpnENCRYPT" -ge 2048 ] && whiptail --backtitle "Setup OpenVPN" --title "Generate Diffie-Hellman Parameters" --yesno "Generating DH parameters can take many hours on a Raspberry Pi. You can instead use Pre-defined DH parameters recommended by the Internet Engineering Task Force.\\n\\nMore information about those can be found here: https://wiki.mozilla.org/Security/Archive/Server_Side_TLS_4.0#Pre-defined_DHE_groups\\n\\nIf you want unique parameters, choose 'No' and new Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
+		USE_PREDEFINED_DH_PARAM=1
 	else
-		DOWNLOAD_DH_PARAM=0
+		USE_PREDEFINED_DH_PARAM=0
 	fi
 
 	echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> /tmp/setupVars.conf
 	echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
-	echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
+	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> /tmp/setupVars.conf
 }
 
 confOpenVPN(){
@@ -1739,13 +1743,13 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	${SUDOE} ./easyrsa --batch build-ca nopass
 	printf "\\n::: CA Complete.\\n"
 
-	if [ "$pivpnCERT" = "rsa" ]; then
+	if [ "$pivpnCERT" = "rsa" ] && [ "$USE_PREDEFINED_DH_PARAM" -ne 1 ]; then
 		if [ "${runUnattended}" = 'true' ]; then
 			echo "::: The server key, Diffie-Hellman parameters, and HMAC key will now be generated."
 		else
 			whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman parameters, and HMAC key will now be generated." ${r} ${c}
 		fi
-	elif [ "$pivpnCERT" = "ec" ]; then
+	elif [ "$pivpnCERT" = "ec" ] || { [ "$pivpnCERT" = "rsa" ] && [ "$USE_PREDEFINED_DH_PARAM" -eq 1 ]; }; then
 		if [ "${runUnattended}" = 'true' ]; then
 			echo "::: The server key and HMAC key will now be generated."
 		else
@@ -1757,22 +1761,13 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full "${SERVER_NAME}" nopass
 
 	if [ "$pivpnCERT" = "rsa" ]; then
-		if [ ${DOWNLOAD_DH_PARAM} -eq 1 ]; then
-			# Downloading parameters
-			${SUDOE} curl -s "https://2ton.com.au/getprimes/random/dhparam/${pivpnENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem"
-			# Basic sanity check
-			if DH_MSG="$(${SUDOE} openssl dhparam -check -noout -in "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem" 2>&1 | tee /dev/tty)"; then
-				if [ "$DH_MSG" != "DH parameters appear to be ok." ]; then
-					echo "Invalid DH parameters, exiting..."
-					exit 1
-				fi
-			else
-				exit 1
-			fi
+		if [ "${USE_PREDEFINED_DH_PARAM}" -eq 1 ]; then
+			# Use Diffie-Hellman parameters from RFC 7919 (FFDHE)
+			${SUDOE} install -m 644 "${pivpnFilesDir}"/files/etc/openvpn/easy-rsa/pki/ffdhe"${pivpnENCRYPT}".pem pki/dh"${pivpnENCRYPT}".pem
 		else
 			# Generate Diffie-Hellman key exchange
 			${SUDOE} ./easyrsa gen-dh
-			${SUDOE} mv "pki/dh.pem" "pki/dh${pivpnENCRYPT}.pem"
+			${SUDOE} mv pki/dh.pem pki/dh"${pivpnENCRYPT}".pem
 		fi
 	fi
 
@@ -1788,7 +1783,7 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
-	$SUDO cp $pivpnFilesDir/server_config.txt /etc/openvpn/server.conf
+	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
 
 	# Apply client DNS settings
 	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${pivpnDNS1}'\"/' /etc/openvpn/server.conf
@@ -1835,7 +1830,7 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 }
 
 confOVPN(){
-	$SUDO cp $pivpnFilesDir/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
+	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/easy-rsa/pki/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
 	$SUDO sed -i 's/IPv4pub/'"$pivpnHOST"'/' /etc/openvpn/easy-rsa/pki/Default.txt
 
@@ -2128,14 +2123,11 @@ installScripts(){
 		$SUDO chmod 0755 /opt/pivpn
 	fi
 
-	$SUDO cp "$pivpnFilesDir"/scripts/*.sh /opt/pivpn/
-	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/*.sh /opt/pivpn/
-	$SUDO chmod 0755 /opt/pivpn/*.sh
-	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/pivpn /usr/local/bin/pivpn
-	$SUDO chmod 0755 /usr/local/bin/pivpn
-	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/bash-completion /etc/bash_completion.d/pivpn
-	$SUDO chmod 0644 /etc/bash_completion.d/pivpn
-  # shellcheck disable=SC1091
+	$SUDO install -m 755 "$pivpnFilesDir"/scripts/*.sh -t /opt/pivpn
+	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/*.sh -t /opt/pivpn
+	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/pivpn /usr/local/bin/pivpn
+	$SUDO install -m 644 "$pivpnFilesDir"/scripts/"$VPN"/bash-completion /etc/bash_completion.d/pivpn
+	# shellcheck disable=SC1091
 	. /etc/bash_completion.d/pivpn
 	echo " done."
 }
