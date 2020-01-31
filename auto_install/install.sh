@@ -24,12 +24,12 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar wget curl grep dnsutils whiptail net-tools bsdmainutils)
+BASE_DEPS=(git tar wget grep dnsutils whiptail net-tools bsdmainutils)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
 # PiVPN we won't prompt to remove packages that may have been installed by the user for other reasons
-INSTALLED_PACKAGES=()
+TO_INSTALL=()
 
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
@@ -58,6 +58,11 @@ c=$(( columns / 2 ))
 # Unless the screen is tiny
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
+
+# Find IP used to route to outside world
+IPv4addr=$(ip route get 192.0.2.1 | awk '{print $7}')
+IPv4gw=$(ip route get 192.0.2.1 | awk '{print $3}')
+availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 
 ######## SCRIPT ############
 
@@ -190,7 +195,7 @@ main(){
 	fi
 
 	# Save installation setting to the final location
-	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> /tmp/setupVars.conf
+	echo "TO_INSTALL=(${TO_INSTALL[*]})" >> /tmp/setupVars.conf
 	$SUDO cp /tmp/setupVars.conf "$setupVars"
 
 	installScripts
@@ -230,7 +235,7 @@ askAboutExistingInstall(){
 # distroCheck, maybeOSSupport, noOSSupport
 distroCheck(){
 	# if lsb_release command is on their system
-	if command -v lsb_release > /dev/null; then
+	if hash lsb_release 2>/dev/null; then
 
 		PLAT=$(lsb_release -si)
 		OSCN=$(lsb_release -sc)
@@ -330,7 +335,7 @@ spinner(){
 	local pid=$1
 	local delay=0.50
 	local spinstr='/-\|'
-	while ps a | awk '{print $1}' | grep -q "$pid"; do
+	while ps a | awk '{print $1}' | grep "${pid}"; do
 		local temp=${spinstr#?}
 		printf " [%c]  " "${spinstr}"
 		local spinstr=${temp}${spinstr%"$temp"}
@@ -394,7 +399,7 @@ updatePackageCache(){
 		echo ":::"
 		echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\n"
         # shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		echo " done!"
 	fi
 }
@@ -431,7 +436,7 @@ preconfigurePackages(){
 
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
-	if $SUDO bash -c 'command -v ufw' > /dev/null; then
+	if $SUDO bash -c 'hash ufw' 2>/dev/null; then
 		if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
 		else
@@ -451,46 +456,25 @@ preconfigurePackages(){
 }
 
 installDependentPackages(){
-	declare -a TO_INSTALL=()
-
 	# Install packages passed in via argument array
 	# No spinner - conflicts with set -e
 	declare -a argArray1=("${!1}")
 
 	for i in "${argArray1[@]}"; do
 		echo -n ":::    Checking for $i..."
-		if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
-			echo " already installed!"
-		else
-			echo " not installed!"
-			# Add this package to the list of packages in the argument array that need to be installed
-			TO_INSTALL+=("${i}")
-		fi
+			if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
+				echo " installed!"
+			else
+				TO_INSTALL+=("${i}")
+				echo " not installed!"
+			fi
 	done
 
-	if command -v debconf-apt-progress > /dev/null; then
+	if command -v debconf-apt-progress &> /dev/null; then
         # shellcheck disable=SC2086
-		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
+		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${argArray1[@]}"
 	else
-		# shellcheck disable=SC2086
-		$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
-	fi
-
-	local FAILED=0
-
-	for i in "${TO_INSTALL[@]}"; do
-		if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
-			echo ":::    Package $i successfully installed!"
-			# Add this package to the total list of packages that were actually installed by the script
-			INSTALLED_PACKAGES+=("${i}")
-		else
-			echo ":::    Failed to install $i!"
-			((FAILED++))
-		fi
-	done
-
-	if [ "$FAILED" -gt 0 ]; then
-		exit 1
+		${PKG_INSTALL} "${argArray1[@]}"
 	fi
 }
 
@@ -522,9 +506,6 @@ local chooseInterfaceCmd
 local chooseInterfaceOptions
 # Loop sentinel variable
 local firstloop=1
-
-# Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
-availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
 
 if [ -z "$availableInterfaces" ]; then
     echo "::: Could not find any active network interface, exiting"
@@ -599,7 +580,7 @@ validIP(){
 	if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
 		OIFS=$IFS
 		IFS='.'
-		read -r -a ip <<< "$ip"
+	read -r -a ip <<< "$ip"
 		IFS=$OIFS
 		[[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
 		&& ${ip[2]} -le 255 && ${ip[3]} -le 255 ]]
@@ -608,56 +589,39 @@ validIP(){
 	return $stat
 }
 
-validIPAndNetmask(){
-	local ip=$1
-	local stat=1
-	ip="${ip/\//.}"
-
-	if [[ $ip =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,2}$ ]]; then
-		OIFS=$IFS
-		IFS='.'
-		read -r -a ip <<< "$ip"
-		IFS=$OIFS
-		[[ ${ip[0]} -le 255 && ${ip[1]} -le 255 \
-		&& ${ip[2]} -le 255 && ${ip[3]} -le 255 \
-		&& ${ip[4]} -le 32 ]]
-		stat=$?
-	fi
-	return $stat
-}
-
 getStaticIPv4Settings() {
-	# Find the gateway IP used to route to outside world
-	CurrentIPv4gw="$(ip -o route get 192.0.2.1 | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | awk 'NR==2')"
-
-	# Find the IP address (and netmask) of the desidered interface
-	CurrentIPv4addr="$(ip -o -f inet address show dev "${IPv4dev}" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
-
-	# Grab their current DNS servers
-	IPv4dns=$(grep -v "^#" /etc/resolv.conf | grep -w nameserver | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | xargs)
+	# Grab their current DNS Server
+	IPv4dns=$(grep nameserver /etc/resolv.conf | awk '{print $2}' | xargs)
 
 	if [ "${runUnattended}" = 'true' ]; then
 
 		if [ -z "$dhcpReserv" ] || [ "$dhcpReserv" -ne 1 ]; then
-			local MISSING_STATIC_IPV4_SETTINGS=0
+			local INVALID_STATIC_IPV4_SETTINGS=0
 
 			if [ -z "$IPv4addr" ]; then
 				echo "::: Missing static IP address"
-				((MISSING_STATIC_IPV4_SETTINGS++))
+				INVALID_STATIC_IPV4_SETTINGS=1
 			fi
 
 			if [ -z "$IPv4gw" ]; then
 				echo "::: Missing static IP gateway"
-				((MISSING_STATIC_IPV4_SETTINGS++))
+				INVALID_STATIC_IPV4_SETTINGS=1
 			fi
 
-			if [ "$MISSING_STATIC_IPV4_SETTINGS" -eq 0 ]; then
+			if [ "$INVALID_STATIC_IPV4_SETTINGS" -eq 1 ]; then
+				echo "::: Incomplete static IP settings"
+				exit 1
+			fi
 
-				# If both settings are not empty, check if they are valid and proceed
-				if validIPAndNetmask "${IPv4addr}"; then
+			if [ -z "$IPv4addr" ] && [ -z "$IPv4gw" ]; then
+				echo "::: No static IP settings, using current settings"
+				echo "::: Your static IPv4 address:    ${IPv4addr}"
+				echo "::: Your static IPv4 gateway:    ${IPv4gw}"
+			else
+				if validIP "${IPv4addr%/*}"; then
 					echo "::: Your static IPv4 address:    ${IPv4addr}"
 				else
-					echo "::: ${IPv4addr} is not a valid IP address"
+					echo "::: ${IPv4addr%/*} is not a valid IP address"
 					exit 1
 				fi
 
@@ -667,45 +631,26 @@ getStaticIPv4Settings() {
 					echo "::: ${IPv4gw} is not a valid IP address"
 					exit 1
 				fi
-
-			elif [ "$MISSING_STATIC_IPV4_SETTINGS" -eq 1 ]; then
-
-				# If either of the settings is missing, consider the input inconsistent
-				echo "::: Incomplete static IP settings"
-				exit 1
-
-			elif [ "$MISSING_STATIC_IPV4_SETTINGS" -eq 2 ]; then
-
-				# If both of the settings are missing, assume the user wants to use current settings
-				IPv4addr="${CurrentIPv4addr}"
-				IPv4gw="${CurrentIPv4gw}"
-				echo "::: No static IP settings, using current settings"
-				echo "::: Your static IPv4 address:    ${IPv4addr}"
-				echo "::: Your static IPv4 gateway:    ${IPv4gw}"
-
 			fi
 		else
 			echo "::: Skipping setting static IP address"
 		fi
 
 		echo "dhcpReserv=${dhcpReserv}" >> /tmp/setupVars.conf
-		echo "IPv4addr=${IPv4addr}" >> /tmp/setupVars.conf
+		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
 		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
 		return
 	fi
 
 	local ipSettingsCorrect
-	local IPv4AddrValid
-	local IPv4gwValid
 	# Some users reserve IP addresses on another DHCP Server or on their routers,
 	# Lets ask them if they want to make any changes to their interfaces.
-
-	if (whiptail --backtitle "Calibrating network interface" --title "DHCP Reservation" --yesno --defaultno \
+	if (whiptail --backtitle "Calibrating network interface" --title "DHCP Reservation" --yesno \
 	"Are you Using DHCP Reservation on your Router/DHCP Server?
 These are your current Network Settings:
 
-			IP address:    ${CurrentIPv4addr}
-			Gateway:       ${CurrentIPv4gw}
+				IP address:    ${IPv4addr}
+				Gateway:       ${IPv4gw}
 
 Yes: Keep using DHCP reservation
 No: Setup static IP address
@@ -713,82 +658,56 @@ Don't know what DHCP Reservation is? Answer No." ${r} ${c}); then
 		dhcpReserv=1
         # shellcheck disable=SC2129
 		echo "dhcpReserv=${dhcpReserv}" >> /tmp/setupVars.conf
-		# We don't really need to save them as we won't set a static IP but they might be useful for debugging
-		echo "IPv4addr=${CurrentIPv4addr}" >> /tmp/setupVars.conf
-		echo "IPv4gw=${CurrentIPv4gw}" >> /tmp/setupVars.conf
+		echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+		echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
 	else
 		# Ask if the user wants to use DHCP settings as their static IP
 		if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Do you want to use your current network settings as a static address?
+					IP address:    ${IPv4addr}
+					Gateway:       ${IPv4gw}" ${r} ${c}); then
 
-				IP address:    ${CurrentIPv4addr}
-				Gateway:       ${CurrentIPv4gw}" ${r} ${c}); then
-			IPv4addr=${CurrentIPv4addr}
-			IPv4gw=${CurrentIPv4gw}
-			echo "IPv4addr=${IPv4addr}" >> /tmp/setupVars.conf
-			echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
-
-			# If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
-			whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
+				echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+				echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+				# If they choose yes, let the user know that the IP address will not be available via DHCP and may cause a conflict.
+				whiptail --msgbox --backtitle "IP information" --title "FYI: IP Conflict" "It is possible your router could still try to assign this IP to a device, which would cause a conflict.  But in most cases the router is smart enough to not do that.
 If you are worried, either manually set the address, or modify the DHCP reservation pool so it does not include the IP you want.
 It is also possible to use a DHCP reservation, but if you are going to do that, you might as well set a static address." ${r} ${c}
-			# Nothing else to do since the variables are already set above
+		# Nothing else to do since the variables are already set above
 		else
-			# Otherwise, we need to ask the user to input their desired settings.
-			# Start by getting the IPv4 address (pre-filling it with info gathered from DHCP)
-			# Start a loop to let the user enter their information with the chance to go back and edit it if necessary
+		# Otherwise, we need to ask the user to input their desired settings.
+		# Start by getting the IPv4 address (pre-filling it with info gathered from DHCP)
+		# Start a loop to let the user enter their information with the chance to go back and edit it if necessary
 			until [[ ${ipSettingsCorrect} = True ]]; do
-
-				until [[ ${IPv4AddrValid} = True ]]; do
-					# Ask for the IPv4 address
-					if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${CurrentIPv4addr}" 3>&1 1>&2 2>&3) ; then
-						if validIPAndNetmask "${IPv4addr}"; then
-							echo "::: Your static IPv4 address:    ${IPv4addr}"
-							IPv4AddrValid=True
-						else
-							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 address" "You've entered an invalid IP address: ${IPv4addr}\\n\\nPlease enter an IP address in the CIDR notation, example: 192.168.23.211/24\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
-							echo "::: Invalid IPv4 address:    ${IPv4addr}"
-							IPv4AddrValid=False
-						fi
-					else
-						# Cancelling IPv4 settings window
-						echo "::: Cancel selected. Exiting..."
-						exit 1
-					fi
-				done
-
-				until [[ ${IPv4gwValid} = True ]]; do
+			# Ask for the IPv4 address
+				if IPv4addr=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 address" --inputbox "Enter your desired IPv4 address" ${r} ${c} "${IPv4addr}" 3>&1 1>&2 2>&3) ; then
+					echo "::: Your static IPv4 address:    ${IPv4addr}"
 					# Ask for the gateway
-					if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${CurrentIPv4gw}" 3>&1 1>&2 2>&3) ; then
-						if validIP "${IPv4gw}"; then
-							echo "::: Your static IPv4 gateway:    ${IPv4gw}"
-							IPv4gwValid=True
+					if IPv4gw=$(whiptail --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" --inputbox "Enter your desired IPv4 default gateway" ${r} ${c} "${IPv4gw}" 3>&1 1>&2 2>&3) ; then
+						echo "::: Your static IPv4 gateway:    ${IPv4gw}"
+						# Give the user a chance to review their settings before moving on
+						if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
+						IP address:    ${IPv4addr}
+						Gateway:       ${IPv4gw}" ${r} ${c}); then
+							# If the settings are correct, then we need to set the pivpnIP
+							echo "IPv4addr=${IPv4addr%/*}" >> /tmp/setupVars.conf
+							echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
+							# After that's done, the loop ends and we move on
+							ipSettingsCorrect=True
 						else
-							whiptail --msgbox --backtitle "Calibrating network interface" --title "IPv4 gateway (router)" "You've entered an invalid gateway IP: ${IPv4gw}\\n\\nPlease enter the IP address of your gateway (router), example: 192.168.23.1\\n\\nIf you are not sure, please just keep the default." ${r} ${c}
-							echo "::: Invalid IPv4 gateway:    ${IPv4gw}"
-							IPv4gwValid=False
+							# If the settings are wrong, the loop continues
+							ipSettingsCorrect=False
 						fi
 					else
 						# Cancelling gateway settings window
+						ipSettingsCorrect=False
 						echo "::: Cancel selected. Exiting..."
 						exit 1
 					fi
-				done
-
-				# Give the user a chance to review their settings before moving on
-				if (whiptail --backtitle "Calibrating network interface" --title "Static IP Address" --yesno "Are these settings correct?
-
-						IP address:    ${IPv4addr}
-						Gateway:       ${IPv4gw}" ${r} ${c}); then
-					# If the settings are correct, then we need to set the pivpnIP
-					echo "IPv4addr=${IPv4addr}" >> /tmp/setupVars.conf
-					echo "IPv4gw=${IPv4gw}" >> /tmp/setupVars.conf
-					# After that's done, the loop ends and we move on
-					ipSettingsCorrect=True
 				else
-					# If the settings are wrong, the loop continues
+					# Cancelling IPv4 settings window
 					ipSettingsCorrect=False
-					IPv4AddrValid=False
-					IPv4gwValid=False
+					echo "::: Cancel selected. Exiting..."
+					exit 1
 				fi
 			done
 			# End the if statement for DHCP vs. static
@@ -1045,29 +964,18 @@ askWhichVPN(){
 installOpenVPN(){
 	local PIVPN_DEPS
 
-	echo "::: Installing OpenVPN from Debian package... "
-
 	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+		echo "::: Adding OpenVPN repository... "
 		# gnupg is used to add the openvpn PGP key to the APT keyring
 		PIVPN_DEPS=(gnupg)
 		installDependentPackages PIVPN_DEPS[@]
-
-		# We will download the repository key regardless of whether the user
-		# has already enabled the openvpn repository or not, just to make sure
-		# we have the right key
-		echo "::: Adding repository key..."
 		wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
-
-		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
-			echo "::: Adding OpenVPN repository... "
-			echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
-		fi
-
-		echo "::: Updating package cache..."
+		echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
 		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 	fi
 
+	echo "::: Installing OpenVPN from Debian package... "
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
 	# to feed easy-rsa with passwords
 	PIVPN_DEPS=(openvpn grepcidr expect)
@@ -1075,8 +983,6 @@ installOpenVPN(){
 }
 
 installWireGuard(){
-	local PIVPN_DEPS
-
 	if [ "$PLAT" = "Raspbian" ]; then
 
 		# If the running kernel is older than the kernel from the repo, dkms will
@@ -1130,28 +1036,19 @@ installWireGuard(){
 		if [ "$(uname -m)" = "armv7l" ]; then
 
 			echo "::: Installing WireGuard from Debian package... "
-			# dirmngr is used to download repository keys for the unstable repo
-			PIVPN_DEPS=(dirmngr)
+			# dirmngr is used to download repository keys, whereas qrencode is used to generate qrcodes
+			# from config file, for use with mobile clients
+			PIVPN_DEPS=(dirmngr qrencode)
 			installDependentPackages PIVPN_DEPS[@]
-
-			echo "::: Adding repository keys..."
-			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
-
-			# This regular expression should match combinations like http[s]://mirror.example.com/debian[/] unstable main
-			if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
-				echo "::: Adding Debian repository... "
-				echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
-			fi
-
 			# Do not upgrade packages from the unstable repository except for wireguard
+			echo "::: Adding Debian repository... "
+			echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
 			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-unstable > /dev/null
 
-			echo "::: Updating package cache..."
-			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
-
-			# qrencode is used to generate qrcodes from config file, for use with mobile clients
-			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms qrencode)
+			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
+            # shellcheck disable=SC2086
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
+			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms)
 			installDependentPackages PIVPN_DEPS[@]
 
 		elif [ "$(uname -m)" = "armv6l" ]; then
@@ -1167,7 +1064,7 @@ installWireGuard(){
 			WG_TOOLS_SOURCE="https://git.zx2c4.com/wireguard-tools/snapshot/wireguard-tools-${WG_TOOLS_SNAPSHOT}.tar.xz"
 
 			echo "::: Downloading wireguard-tools source code... "
-			wget -qO- "${WG_TOOLS_SOURCE}" | $SUDO tar xJ --directory /usr/src
+			wget -qO- "${WG_TOOLS_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
 			echo "done!"
 
 			##  || exits if cd fails.
@@ -1188,7 +1085,7 @@ installWireGuard(){
 			# files from the file system
 			echo "::: Installing WireGuard tools... "
 			if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_TOOLS_SNAPSHOT}" -y; then
-				INSTALLED_PACKAGES+=("wireguard-tools")
+				TO_INSTALL+=("wireguard-tools")
 				echo "done!"
 			else
 				echo "failed!"
@@ -1201,16 +1098,16 @@ installWireGuard(){
 			WG_MODULE_SOURCE="https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-${WG_MODULE_SNAPSHOT}.tar.xz"
 
 			echo "::: Downloading wireguard-linux-compat source code... "
-			wget -qO- "${WG_MODULE_SOURCE}" | $SUDO tar xJ --directory /usr/src
+			wget -qO- "${WG_MODULE_SOURCE}" | $SUDO tar Jxf - --directory /usr/src
 			echo "done!"
 
 			# Rename wireguard-linux-compat folder and move the source code to the parent folder
 			# such that dkms picks up the module when referencing wireguard/"${WG_MODULE_SNAPSHOT}"
 			cd /usr/src && \
-			$SUDO mv wireguard-linux-compat-"${WG_MODULE_SNAPSHOT}" wireguard-"${WG_MODULE_SNAPSHOT}" && \
+			$SUDO mv wireguard-linux-compat-"${WG_MODULE_SNAPSHOT}" wireguard-"${WG_MODULE_SNAPSHOT}"
 			cd wireguard-"${WG_MODULE_SNAPSHOT}" && \
 			$SUDO mv src/* . && \
-			$SUDO rmdir src || exit 1
+			$SUDO rmdir src
 
 			echo "::: Adding WireGuard modules via DKMS... "
 			if $SUDO dkms add wireguard/"${WG_MODULE_SNAPSHOT}"; then
@@ -1232,7 +1129,7 @@ installWireGuard(){
 
 			echo "::: Installing WireGuard modules via DKMS... "
 			if $SUDO dkms install wireguard/"${WG_MODULE_SNAPSHOT}"; then
-				INSTALLED_PACKAGES+=("wireguard-dkms")
+				TO_INSTALL+=("wireguard-dkms")
 				echo "done!"
 			else
 				echo "failed!"
@@ -1247,17 +1144,11 @@ installWireGuard(){
 	elif [ "$PLAT" = "Debian" ]; then
 
 		echo "::: Installing WireGuard from Debian package... "
-		if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
-			echo "::: Adding Debian repository... "
-			echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
-		fi
-
+		echo "::: Adding Debian repository... "
+		echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
 		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-unstable > /dev/null
-
-		echo "::: Updating package cache..."
-		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
-
+        # shellcheck disable=SC2086
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null
 		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1265,11 +1156,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from PPA... "
 		$SUDO add-apt-repository ppa:wireguard/wireguard -y
-
-		echo "::: Updating package cache..."
-		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
-
+		$SUDO ${UPDATE_PKG_CACHE}
 		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-generic)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1415,10 +1302,11 @@ askClientDNS(){
 	fi
 
 	# Detect and offer to use Pi-hole
-	if command -v pihole > /dev/null; then
+	if command -v pihole &>/dev/null; then
 		if (whiptail --backtitle "Setup PiVPN" --title "Pi-hole" --yesno "We have detected a Pi-hole installation, do you want to use it as the DNS server for the VPN, so you get ad blocking on the go?" ${r} ${c}); then
 			pivpnDNS1="$vpnGw"
 			echo "interface=$pivpnDEV" | $SUDO tee /etc/dnsmasq.d/02-pivpn.conf > /dev/null
+			$SUDO pihole restartdns
 			echo "pivpnDNS1=${pivpnDNS1}" >> /tmp/setupVars.conf
 			echo "pivpnDNS2=${pivpnDNS2}" >> /tmp/setupVars.conf
 			return
@@ -1592,44 +1480,34 @@ askPublicIPOrDNS(){
 		return
 	fi
 
-	local publicDNSCorrect
-	local publicDNSValid
-
-	if METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server (press space to select)?" ${r} ${c} 2 \
+	METH=$(whiptail --title "Public IP or DNS" --radiolist "Will clients use a Public IP or DNS Name to connect to your server (press space to select)?" ${r} ${c} 2 \
 		"$IPv4pub" "Use this public IP" "ON" \
-		"DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3); then
+		"DNS Entry" "Use a public DNS" "OFF" 3>&1 1>&2 2>&3)
 
-		if [ "$METH" = "$IPv4pub" ]; then
-			pivpnHOST="${IPv4pub}"
-		else
-			until [[ ${publicDNSCorrect} = True ]]; do
-
-				until [[ ${publicDNSValid} = True ]]; do
-					if PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" ${r} ${c} 3>&1 1>&2 2>&3); then
-						if validDomain "$PUBLICDNS"; then
-							publicDNSValid=True
-							pivpnHOST="${PUBLICDNS}"
-						else
-							whiptail --msgbox --backtitle "PiVPN Setup" --title "Invalid DNS name" "This DNS name is invalid. Please try again.\\n\\n    DNS name:   $PUBLICDNS\\n" ${r} ${c}
-							publicDNSValid=False
-						fi
-					else
-						echo "::: Cancel selected. Exiting..."
-						exit 1
-					fi
-				done
-
-				if (whiptail --backtitle "PiVPN Setup" --title "Confirm DNS Name" --yesno "Is this correct?\\n\\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
-					publicDNSCorrect=True
-				else
-					publicDNSCorrect=False
-					publicDNSValid=False
-				fi
-			done
-		fi
-	else
+	exitstatus=$?
+	if [ $exitstatus != 0 ]; then
 		echo "::: Cancel selected. Exiting..."
 		exit 1
+	fi
+
+	if [ "$METH" == "$IPv4pub" ]; then
+		pivpnHOST="${IPv4pub}"
+	else
+		until [[ $publicDNSCorrect = True ]]
+		do
+			PUBLICDNS=$(whiptail --title "PiVPN Setup" --inputbox "What is the public DNS name of this Server?" ${r} ${c} 3>&1 1>&2 2>&3)
+			exitstatus=$?
+			if [ $exitstatus != 0 ]; then
+			echo "::: Cancel selected. Exiting..."
+			exit 1
+			fi
+			if (whiptail --backtitle "Confirm DNS Name" --title "Confirm DNS Name" --yesno "Is this correct?\\n\\n Public DNS Name:  $PUBLICDNS" ${r} ${c}) then
+				publicDNSCorrect=True
+				pivpnHOST="${PUBLICDNS}"
+			else
+				publicDNSCorrect=False
+			fi
+		done
 	fi
 
 	echo "pivpnHOST=${pivpnHOST}" >> /tmp/setupVars.conf
@@ -1669,21 +1547,17 @@ askEncryption(){
 				fi
 			fi
 
-			if [ -z "$USE_PREDEFINED_DH_PARAM" ]; then
-				USE_PREDEFINED_DH_PARAM=1
-				echo "::: Pre-defined DH parameters will be used"
+			if [ -z "$DOWNLOAD_DH_PARAM" ] || [ "$DOWNLOAD_DH_PARAM" -ne 1 ]; then
+				DOWNLOAD_DH_PARAM=0
+				echo "::: DH parameters will be generated locally"
 			else
-				if [ "$USE_PREDEFINED_DH_PARAM" -eq 1 ]; then
-					echo "::: Pre-defined DH parameters will be used"
-				else
-					echo "::: DH parameters will be generated locally"
-				fi
+				echo "::: DH parameters will be downloaded from \"2 Ton Digital\""
 			fi
 		fi
 
 		echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> /tmp/setupVars.conf
 		echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
-		echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> /tmp/setupVars.conf
+		echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
 		return
 	fi
 
@@ -1709,15 +1583,15 @@ askEncryption(){
 		exit 1
 	fi
 
-	if ([ "$pivpnENCRYPT" -ge 2048 ] && whiptail --backtitle "Setup OpenVPN" --title "Generate Diffie-Hellman Parameters" --yesno "Generating DH parameters can take many hours on a Raspberry Pi. You can instead use Pre-defined DH parameters recommended by the Internet Engineering Task Force.\\n\\nMore information about those can be found here: https://wiki.mozilla.org/Security/Archive/Server_Side_TLS_4.0#Pre-defined_DHE_groups\\n\\nIf you want unique parameters, choose 'No' and new Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
-		USE_PREDEFINED_DH_PARAM=1
+	if ([ "$pivpnENCRYPT" -ge 3072 ] && whiptail --backtitle "Setup OpenVPN" --title "Download Diffie-Hellman Parameters" --yesno --defaultno "Download Diffie-Hellman parameters from a public DH parameter generation service?\\n\\nGenerating DH parameters for a $pivpnENCRYPT-bit key can take many hours on a Raspberry Pi. You can instead download DH parameters from \"2 Ton Digital\" that are generated at regular intervals as part of a public service. Downloaded DH parameters will be randomly selected from their database.\\nMore information about this service can be found here: https://2ton.com.au/safeprimes/\\n\\nIf you're paranoid, choose 'No' and Diffie-Hellman parameters will be generated on your device." ${r} ${c}); then
+		DOWNLOAD_DH_PARAM=1
 	else
-		USE_PREDEFINED_DH_PARAM=0
+		DOWNLOAD_DH_PARAM=0
 	fi
 
 	echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> /tmp/setupVars.conf
 	echo "pivpnENCRYPT=${pivpnENCRYPT}" >> /tmp/setupVars.conf
-	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> /tmp/setupVars.conf
+	echo "DOWNLOAD_DH_PARAM=${DOWNLOAD_DH_PARAM}" >> /tmp/setupVars.conf
 }
 
 confOpenVPN(){
@@ -1743,7 +1617,7 @@ confOpenVPN(){
 	fi
 
 	# Get easy-rsa
-	wget -qO- "${easyrsaRel}" | $SUDO tar xz --directory /etc/openvpn
+	wget -qO- "${easyrsaRel}" | $SUDO tar xz -C /etc/openvpn
 	$SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
 	# fix ownership
 	$SUDO chown -R root:root /etc/openvpn/easy-rsa
@@ -1786,13 +1660,13 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	${SUDOE} ./easyrsa --batch build-ca nopass
 	printf "\\n::: CA Complete.\\n"
 
-	if [ "$pivpnCERT" = "rsa" ] && [ "$USE_PREDEFINED_DH_PARAM" -ne 1 ]; then
+	if [ "$pivpnCERT" = "rsa" ]; then
 		if [ "${runUnattended}" = 'true' ]; then
 			echo "::: The server key, Diffie-Hellman parameters, and HMAC key will now be generated."
 		else
 			whiptail --msgbox --backtitle "Setup OpenVPN" --title "Server Information" "The server key, Diffie-Hellman parameters, and HMAC key will now be generated." ${r} ${c}
 		fi
-	elif [ "$pivpnCERT" = "ec" ] || { [ "$pivpnCERT" = "rsa" ] && [ "$USE_PREDEFINED_DH_PARAM" -eq 1 ]; }; then
+	elif [ "$pivpnCERT" = "ec" ]; then
 		if [ "${runUnattended}" = 'true' ]; then
 			echo "::: The server key and HMAC key will now be generated."
 		else
@@ -1804,13 +1678,13 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa build-server-full "${SERVER_NAME}" nopass
 
 	if [ "$pivpnCERT" = "rsa" ]; then
-		if [ "${USE_PREDEFINED_DH_PARAM}" -eq 1 ]; then
-			# Use Diffie-Hellman parameters from RFC 7919 (FFDHE)
-			${SUDOE} install -m 644 "${pivpnFilesDir}"/files/etc/openvpn/easy-rsa/pki/ffdhe"${pivpnENCRYPT}".pem pki/dh"${pivpnENCRYPT}".pem
+		if [ ${DOWNLOAD_DH_PARAM} -eq 1 ]; then
+			# Downloading parameters
+			${SUDOE} curl -s "https://2ton.com.au/getprimes/random/dhparam/${pivpnENCRYPT}" -o "/etc/openvpn/easy-rsa/pki/dh${pivpnENCRYPT}.pem"
 		else
 			# Generate Diffie-Hellman key exchange
 			${SUDOE} ./easyrsa gen-dh
-			${SUDOE} mv pki/dh.pem pki/dh"${pivpnENCRYPT}".pem
+			${SUDOE} mv "pki/dh.pem" "pki/dh${pivpnENCRYPT}.pem"
 		fi
 	fi
 
@@ -1826,7 +1700,7 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
-	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
+	$SUDO cp $pivpnFilesDir/server_config.txt /etc/openvpn/server.conf
 
 	# Apply client DNS settings
 	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${pivpnDNS1}'\"/' /etc/openvpn/server.conf
@@ -1873,7 +1747,7 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 }
 
 confOVPN(){
-	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/easy-rsa/pki/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
+	$SUDO cp $pivpnFilesDir/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
 	$SUDO sed -i 's/IPv4pub/'"$pivpnHOST"'/' /etc/openvpn/easy-rsa/pki/Default.txt
 
@@ -2077,10 +1951,6 @@ restartServices(){
 			fi
 		;;
 	esac
-
-	if [ -f /etc/dnsmasq.d/02-pivpn.conf ]; then
-		$SUDO pihole restartdns
-	fi
 }
 
 askUnattendedUpgrades(){
@@ -2112,7 +1982,7 @@ askUnattendedUpgrades(){
 
 confUnattendedUpgrades(){
 	local PIVPN_DEPS
-	PIVPN_DEPS=(unattended-upgrades)
+	PIVPN_DEPS+=(unattended-upgrades)
 	installDependentPackages PIVPN_DEPS[@]
   aptConfDir="/etc/apt/apt.conf.d"
 
@@ -2129,13 +1999,10 @@ confUnattendedUpgrades(){
 
 		# Fix Raspbian config
 		if [ "$PLAT" = "Raspbian" ]; then
-			wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz --directory "${aptConfDir}" "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" --strip-components 2
-			if test -s "${aptConfDir}/50unattended-upgrades.Raspbian"; then
-				$SUDO mv "${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
-			else
-				echo "$0: ERR: Failed to download \"50unattended-upgrades.Raspbian\"."
-				exit 1
-			fi
+			wget -q -O "/tmp/${UNATTUPG_RELEASE}.tar.gz" "$UNATTUPG_CONFIG"
+			cd /tmp/ && $SUDO tar xzf "/tmp/${UNATTUPG_RELEASE}.tar.gz"
+			$SUDO cp /tmp/"unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
+			$SUDO rm -rf "/tmp/unattended-upgrades-$UNATTUPG_RELEASE"
 		fi
 
 		# Add the remaining settings for all other distributions
@@ -2166,11 +2033,14 @@ installScripts(){
 		$SUDO chmod 0755 /opt/pivpn
 	fi
 
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/*.sh -t /opt/pivpn
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/*.sh -t /opt/pivpn
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/pivpn /usr/local/bin/pivpn
-	$SUDO install -m 644 "$pivpnFilesDir"/scripts/"$VPN"/bash-completion /etc/bash_completion.d/pivpn
-	# shellcheck disable=SC1091
+	$SUDO cp "$pivpnFilesDir"/scripts/*.sh /opt/pivpn/
+	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/*.sh /opt/pivpn/
+	$SUDO chmod 0755 /opt/pivpn/*.sh
+	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/pivpn /usr/local/bin/pivpn
+	$SUDO chmod 0755 /usr/local/bin/pivpn
+	$SUDO cp "$pivpnFilesDir"/scripts/"$VPN"/bash-completion /etc/bash_completion.d/pivpn
+	$SUDO chmod 0644 /etc/bash_completion.d/pivpn
+  # shellcheck disable=SC1091
 	. /etc/bash_completion.d/pivpn
 	echo " done."
 }

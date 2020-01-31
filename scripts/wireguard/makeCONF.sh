@@ -2,13 +2,6 @@
 
 setupVars="/etc/pivpn/setupVars.conf"
 
-if [ ! -f "${setupVars}" ]; then
-    echo "::: Missing setup vars file!"
-    exit 1
-fi
-
-source "${setupVars}"
-
 helpFunc(){
     echo "::: Create a client conf profile"
     echo ":::"
@@ -45,6 +38,13 @@ while test $# -gt 0; do
     esac
     shift
 done
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+source "${setupVars}"
 
 # The home folder variable was sourced from the settings file.
 if [ ! -d "${install_home}/configs" ]; then

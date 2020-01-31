@@ -91,7 +91,7 @@ do
             NO_PASS="1"
             ;;
         -b|--bitwarden)
-            if command -v bw > /dev/null; then
+            if command -v bw &> /dev/null; then
                 BITWARDEN="2"
             else
                echo "Bitwarden not found, please install bitwarden"

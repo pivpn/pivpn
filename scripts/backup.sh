@@ -1,16 +1,9 @@
 #!/bin/bash
-
+# shellcheck disable=SC1091
+source /etc/pivpn/setupVars.conf
+# shellcheck disable=SC1090
 backupdir=pivpnbackup
 date=$(date +%Y%m%d-%H%M%S)
-setupVars="/etc/pivpn/setupVars.conf"
-
-if [ ! -f "${setupVars}" ]; then
-    echo "::: Missing setup vars file!"
-    exit 1
-fi
-
-# shellcheck disable=SC1090
-source "${setupVars}"
 
 checkbackupdir(){
 

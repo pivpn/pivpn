@@ -2,13 +2,6 @@
 
 setupVars="/etc/pivpn/setupVars.conf"
 
-if [ ! -f "${setupVars}" ]; then
-    echo "::: Missing setup vars file!"
-    exit 1
-fi
-
-source "${setupVars}"
-
 helpFunc(){
     echo "::: Remove a client conf profile"
     echo ":::"
@@ -35,6 +28,13 @@ do
     esac
     shift
 done
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+source "${setupVars}"
 
 cd /etc/wireguard
 if [ ! -s configs/clients.txt ]; then

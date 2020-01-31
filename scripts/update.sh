@@ -15,17 +15,6 @@ fi
 
 source "${setupVars}"
 
-scriptusage(){
-    echo "::: Updates PiVPN scripts"
-    echo ":::"
-    echo "::: Usage: pivpn <-up|update> [-t|--test]"
-    echo ":::"
-    echo "::: Commands:"
-    echo ":::  [none]              Updates from master branch"
-    echo ":::  -t, test            Updates from test branch"
-    echo ":::  -h, help            Show this usage dialog"
-}
-
 ###Functions
 ##Updates scripts
 updatepivpnscripts(){
@@ -79,6 +68,14 @@ cloneupdttest(){
   git -C "$pivpnlocalpath" checkout master
 }
 
+scriptusage(){
+    echo -e "Updates pivpn scripts,
+
+              Usage:
+              pivpn update              | updates from master branch
+              pivpn update -t or --test | updates from test branch"
+}
+
 ## SCRIPT
 
 if [[ $# -eq 0 ]]; then
@@ -86,15 +83,15 @@ if [[ $# -eq 0 ]]; then
 else
   while true; do
     case "$1" in
-      -t|test)
+      -t|--test|test)
           updatefromtest
           exit 0
           ;;
-      -h|help)
+      -h|--help|help)
           scriptusage
           exit 0
           ;;
-      *)
+      * )
         updatepivpnscripts
         exit 0
         ;;
