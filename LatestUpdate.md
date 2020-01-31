@@ -5,6 +5,17 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jan 31th 2020
+
+- More validation of user input
+- Check if package installation is successful
+- Detect netmask when setting a static IP
+- Avoid adding repositories if they already exist
+- Switch DH params from 2ton.com.au to RFC 7919
+- Using 'install' to copy files into place
+- Move the self check to a different script and use it for both OpenVPN and WireGuard
+- Add 'pivpn -wg' to update WireGuard on older Raspberry Pis
+
 ## Jan 20th 2020
 
 - Allow setting DHCP reservation preference with --unattended
