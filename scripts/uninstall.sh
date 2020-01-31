@@ -5,6 +5,7 @@
 ### FIXME: use variables where appropriate, reduce magic numbers by 99.9%, at least.
 
 PKG_MANAGER="apt-get"
+UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 subnetClass="24"
 setupVars="/etc/pivpn/setupVars.conf"
 
@@ -33,7 +34,7 @@ spinner(){
 	local pid=$1
 	local delay=0.50
 	local spinstr='/-\|'
-	while ps a | awk '{print $1}' | grep "$pid"; do
+	while ps a | awk '{print $1}' | grep -q "$pid"; do
 		local temp=${spinstr#?}
 		printf " [%c]  " "$spinstr"
 		local spinstr=$temp${spinstr%"$temp"}
@@ -101,7 +102,7 @@ removeAll(){
 	# Purge dependencies
 	echo "::: Purge dependencies..."
 
-	for i in "${TO_INSTALL[@]}"; do
+	for i in "${INSTALLED_PACKAGES[@]}"; do
 		while true; do
 			read -rp "::: Do you wish to remove $i from your system? [Y/n]: " yn
 			case $yn in
@@ -113,11 +114,11 @@ removeAll(){
 							if [ "$PLAT" = "Debian" ] || { [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv7l" ]; }; then
 								rm -f /etc/apt/sources.list.d/pivpn-unstable.list
 								rm -f /etc/apt/preferences.d/pivpn-limit-unstable
-								$PKG_MANAGER update &> /dev/null
 							elif [ "$PLAT" = "Ubuntu" ]; then
 								add-apt-repository ppa:wireguard/wireguard -r -y
-								$PKG_MANAGER update &> /dev/null
 							fi
+							echo "::: Updating package cache..."
+							${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
 						elif [ "${i}" = "wireguard-dkms" ]; then
 
@@ -135,12 +136,6 @@ removeAll(){
 								rm -rf /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}"
 							fi
 
-						elif [ "${i}" = "dirmngr" ]; then
-
-							# If dirmngr was installed, then we had previously installed wireguard on armv7l Raspbian
-							# so we remove the repository keys
-							apt-key remove E1CF20DDFFE4B89E802658F1E0B11894F66AEC98 80D15823B7FD1561F9F7BCDDDC30D7C23CBBABEE &> /dev/null
-
 						elif [ "${i}" = "unattended-upgrades" ]; then
 
               ### REALLY???
@@ -152,7 +147,8 @@ removeAll(){
 
 							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
 								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
-								$PKG_MANAGER update &> /dev/null
+								echo "::: Updating package cache..."
+								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 							deluser openvpn
 							rm -f /etc/rsyslog.d/30-openvpn.conf
