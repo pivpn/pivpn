@@ -59,13 +59,13 @@ curl -L https://install.pivpn.dev | bash
 **Method 2**
 ```Shell
 curl -L https://install.pivpn.dev > pivpn.sh
-sudo sh pivpn.sh
+sudo bash pivpn.sh
 ```
 
 **Method 3**
 ```Shell
 git clone https://github.com/pivpn/pivpn.git
-sudo sh pivpn/auto_install/install.sh
+sudo bash pivpn/auto_install/install.sh
 ```
 
 **OBS:**  
