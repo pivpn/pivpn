@@ -22,9 +22,9 @@ Please report unacceptable behavior to any project maintainer.
 
 * Ensure the PR description clearly describes the problem and solution. Include the relevant issue number if applicable.
 
-### **PiVPN.io Website**
+### **PiVPN Website**
 
-* Yes the site is open source as well!  You can find and contribute to [pivpn.dev](https://github.com/pivpn/pivpn.github.io) directly.
+* Yes the site is open source as well! You can find and contribute to [pivpn.io](https://github.com/pivpn/pivpn.io) directly.
 
 </br>
 
