@@ -1,11 +1,11 @@
 ![WireGuard + OpenVPN logo](logos.jpg)
 
-**[Is pivpn.dev down?](https://p.datadoghq.com/sb/od1t7p4rmqi6x1fm-cd513e61b0eb77a5d5f6a52fe0662205?theme=dark)**
+**[Is pivpn.io down?](https://p.datadoghq.com/sb/od1t7p4rmqi6x1fm-cd513e61b0eb77a5d5f6a52fe0662205?theme=dark)**
 
 About
 -----
 
-Visit the [PiVPN](https://pivpn.dev) site for more information.
+Visit the [PiVPN](https://pivpn.io) site for more information.
 This is a set of shell scripts initially developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
 into a VPN server using two free, open-source protocols:
   * [WireGuard](https://www.wireguard.com/)
@@ -53,12 +53,12 @@ Installation
 
 **Method 1**
 ```Shell
-curl -L https://install.pivpn.dev | bash
+curl -L https://install.pivpn.io | bash
 ```
 
 **Method 2**
 ```Shell
-curl -L https://install.pivpn.dev > pivpn.sh
+curl -L https://install.pivpn.io > pivpn.sh
 sudo bash pivpn.sh
 ```
 
@@ -69,7 +69,7 @@ sudo bash pivpn/auto_install/install.sh
 ```
 
 **OBS:**  
-In alternative to install.pivpn.dev you can use the raw github link:   
+In alternative to install.pivpn.io you can use the raw github link:   
 https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh
 
 **To install from Test/Development branch**
