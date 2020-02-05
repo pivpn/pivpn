@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # PiVPN: Trivial OpenVPN or WireGuard setup and configuration
 # Easiest setup and mangement of OpenVPN or WireGuard on Raspberry Pi
-# https://pivpn.dev
+# https://pivpn.io
 # Heavily adapted from the pi-hole.net project and...
 # https://github.com/StarshipEngineer/OpenVPN-Setup/
 #
 # Install with this command (from your Pi):
 #
-# curl -L https://install.pivpn.dev | bash
+# curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
 ######## VARIABLES #########
@@ -371,7 +371,7 @@ verifyFreeDiskSpace(){
 		echo "::: You only have ${existing_free_kilobytes} KiloBytes free."
 		echo "::: If this is a new install on a Raspberry Pi you may need to expand your disk."
 		echo "::: Try running 'sudo raspi-config', and choose the 'expand file system option'"
-		echo "::: After rebooting, run this installation again. (curl -L https://install.pivpn.dev | bash)"
+		echo "::: After rebooting, run this installation again. (curl -L https://install.pivpn.io | bash)"
 
 		echo "Insufficient free space, exiting..."
 		exit 1
@@ -1097,7 +1097,7 @@ installWireGuard(){
 				echo "::: Commands:"
 				echo ":::    sudo apt-get upgrade -y"
 				echo ":::    sudo shutdown -r now"
-				echo ":::    curl -L https://install.pivpn.dev | bash"
+				echo ":::    curl -L https://install.pivpn.io | bash"
 				exit 1
 			else
 				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel $(uname -r), which is not the latest.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
@@ -1108,7 +1108,7 @@ installWireGuard(){
 						$SUDO ${PKG_MANAGER} upgrade -y
 					fi
 					if (whiptail --title "Reboot" --yesno "You need to reboot after upgrading to run the new kernel.\n\nWould you like to reboot now?" ${r} ${c}); then
-						whiptail --title "Rebooting" --msgbox "The system will now reboot.\n\nWhen you come back, just run the installation command again:\n\n    curl -L https://install.pivpn.dev | bash" ${r} ${c}
+						whiptail --title "Rebooting" --msgbox "The system will now reboot.\n\nWhen you come back, just run the installation command again:\n\n    curl -L https://install.pivpn.io | bash" ${r} ${c}
 						printf "\\nRebooting system...\\n"
 						$SUDO sleep 3
 						$SUDO shutdown -r now
