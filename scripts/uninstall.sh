@@ -7,6 +7,7 @@
 PKG_MANAGER="apt-get"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 subnetClass="24"
+dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 setupVars="/etc/pivpn/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
@@ -176,8 +177,8 @@ removeAll(){
 	# Removing pivpn files
 	echo "::: Removing pivpn system files..."
 
-	if [ -f /etc/dnsmasq.d/02-pivpn.conf ]; then
-		rm -f /etc/dnsmasq.d/02-pivpn.conf
+	if [ -f "$dnsmasqConfig" ]; then
+		rm -f "$dnsmasqConfig"
 		pihole restartdns
 	fi
 

@@ -113,6 +113,15 @@ AllowedIPs = 10.6.0.${COUNT}/32
 # end ${CLIENT_NAME}" >> wg0.conf
 echo "::: Updated server config"
 
+if [ -f /etc/pivpn/hosts.wireguard ]; then
+    echo "10.6.0.${COUNT} ${CLIENT_NAME}.pivpn" >> /etc/pivpn/hosts.wireguard
+    if killall -SIGHUP pihole-FTL; then
+        echo "::: Updated hosts file for Pi-hole"
+    else
+        echo "::: Failed to reload pihole-FTL configuration"
+    fi
+fi
+
 if systemctl restart wg-quick@wg0; then
     echo "::: WireGuard restarted"
 else
