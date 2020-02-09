@@ -1740,6 +1740,13 @@ confOpenVPN(){
 		$SUDO rm /etc/openvpn/server.conf
 	fi
 
+	if [ -d /etc/openvpn/ccd ]; then
+		$SUDO rm -rf /etc/openvpn/ccd
+	fi
+
+	# Create folder to store client specific directives used to push static IPs
+	$SUDO mkdir /etc/openvpn/ccd
+
 	# If easy-rsa exists, remove it
 	if [[ -d /etc/openvpn/easy-rsa/ ]]; then
 		$SUDO rm -rf /etc/openvpn/easy-rsa/

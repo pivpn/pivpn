@@ -203,6 +203,7 @@ removeAll(){
 		rm -f /etc/openvpn/server.conf
 		rm -f /etc/openvpn/crl.pem
 		rm -rf /etc/openvpn/easy-rsa
+		rm -rf /etc/openvpn/ccd
 		rm -rf "$install_home/ovpns"
 	fi
 

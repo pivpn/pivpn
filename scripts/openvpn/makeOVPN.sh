@@ -405,6 +405,17 @@ else
 
 fi
 
+# Find an unused number for the last octet of the client IP
+for i in {2..254}; do
+    # find returns 0 if the folder is empty, so we create the 'ls -A [...]'
+    # exception to stop at the first static IP (10.8.0.2). Otherwise it would
+    # cycle to the end without finding and available octet.
+    if [ -z "$(ls -A /etc/openvpn/ccd)" ] || ! find /etc/openvpn/ccd -type f -exec grep -q "10.8.0.$i" {} +; then
+        COUNT="$i"
+        echo "ifconfig-push 10.8.0.$i 255.255.255.0" >> /etc/openvpn/ccd/"${NAME}"
+        break
+    fi
+done
 
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$install_home/ovpns/$NAME$FILEEXT"
