@@ -417,6 +417,15 @@ for i in {2..254}; do
     fi
 done
 
+if [ -f /etc/pivpn/hosts.openvpn ]; then
+    echo "10.8.0.${COUNT} ${NAME}.pivpn" >> /etc/pivpn/hosts.openvpn
+    if killall -SIGHUP pihole-FTL; then
+        echo "::: Updated hosts file for Pi-hole"
+    else
+        echo "::: Failed to reload pihole-FTL configuration"
+    fi
+fi
+
 # Copy the .ovpn profile to the home directory for convenient remote access
 cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$install_home/ovpns/$NAME$FILEEXT"
 chown "$install_user":"$install_user" "$install_home/ovpns/$NAME$FILEEXT"
