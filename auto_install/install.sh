@@ -418,12 +418,13 @@ notifyPackageUpdatesAvailable(){
 }
 
 preconfigurePackages(){
-	# Add support for https repositories if there are any that use it otherwise the installation will silently fail
-  if [[ -f /etc/apt/sources.list ]]; then
-		if grep -q https /etc/apt/sources.list; then
-	  	BASE_DEPS+=("apt-transport-https")
+	# Add support for https repositories that will be used later on
+	if [[ -f /etc/apt/sources.list ]]; then
+		# Only on stretch because on buster apt already support https transport
+		if [[ ${OSCN} == "stretch" ]]; then
+			BASE_DEPS+=("apt-transport-https")
 		fi
-  fi
+	fi
 
 	if [[ ${OSCN} == "buster" ]]; then
 		$SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
