@@ -43,6 +43,11 @@ debianOvpnUserGroup="openvpn:openvpn"
 UNATTUPG_RELEASE="1.16"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
+# GPG fingerprints (you can look them up at https://keyserver.ubuntu.com)
+OPENVPN_REPO_KEY="0x30ebf4e73cce63eee124dd278e6da8b4e158c569"
+DEBIAN_STRETCH_KEY="0xe1cf20ddffe4b89e802658f1e0b11894f66aec98"
+DEBIAN_BUSTER_KEY="0x80d15823b7fd1561f9f7bcdddc30d7c23cbbabee"
+
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo "$screen_size" | awk '{print $1}')
@@ -1050,7 +1055,8 @@ installOpenVPN(){
 	echo "::: Installing OpenVPN from Debian package... "
 
 	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-		# gnupg is used to add the openvpn PGP key to the APT keyring
+		# gnupg is used by apt-key to import the openvpn GPG key into the
+		# APT keyring
 		PIVPN_DEPS=(gnupg)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1058,7 +1064,10 @@ installOpenVPN(){
 		# has already enabled the openvpn repository or not, just to make sure
 		# we have the right key
 		echo "::: Adding repository key..."
-		wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
+		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_REPO_KEY"; then
+			echo "::: Failed to import OpenVPN GPG key"
+			exit 1
+		fi
 
 		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
 			echo "::: Adding OpenVPN repository... "
@@ -1132,12 +1141,16 @@ installWireGuard(){
 		if [ "$(uname -m)" = "armv7l" ]; then
 
 			echo "::: Installing WireGuard from Debian package... "
-			# dirmngr is used to download repository keys for the unstable repo
+			# dirmngr is used by apt-key to import the debian GPG keys for the unstable
+			# repo into the APT keyring.
 			PIVPN_DEPS=(dirmngr)
 			installDependentPackages PIVPN_DEPS[@]
 
 			echo "::: Adding repository keys..."
-			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
+			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$DEBIAN_STRETCH_KEY" "$DEBIAN_BUSTER_KEY"; then
+				echo "::: Failed to import Debian GPG keys"
+				exit 1
+			fi
 
 			# This regular expression should match combinations like http[s]://mirror.example.com/debian[/] unstable main
 			if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
