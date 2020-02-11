@@ -425,8 +425,8 @@ notifyPackageUpdatesAvailable(){
 preconfigurePackages(){
 	# Add support for https repositories that will be used later on
 	if [[ -f /etc/apt/sources.list ]]; then
-		# Only on stretch because on buster apt already support https transport
-		if [[ ${OSCN} == "stretch" ]]; then
+		# buster and bionic have apt >= 1.5 which has https support built in
+		if [[ ${OSCN} != "buster" ]] && [[ ${OSCN} != "bionic" ]]; then
 			BASE_DEPS+=("apt-transport-https")
 		fi
 	fi
@@ -439,7 +439,7 @@ preconfigurePackages(){
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
 	if $SUDO bash -c 'command -v ufw' > /dev/null; then
-		if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive; then
+		if LC_ALL=C $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
 		else
 			USING_UFW=1
