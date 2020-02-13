@@ -14,6 +14,7 @@
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 setupVars="/etc/pivpn/setupVars.conf"
 pivpnFilesDir="/etc/.pivpn"
+piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
 ### PKG Vars ###
@@ -1432,10 +1433,28 @@ askClientDNS(){
 	# Detect and offer to use Pi-hole
 	if command -v pihole > /dev/null; then
 		if (whiptail --backtitle "Setup PiVPN" --title "Pi-hole" --yesno "We have detected a Pi-hole installation, do you want to use it as the DNS server for the VPN, so you get ad blocking on the go?" ${r} ${c}); then
-			echo "interface=$pivpnDEV" | $SUDO tee "$dnsmasqConfig" > /dev/null
-			echo "addn-hosts=/etc/pivpn/hosts.$VPN" | $SUDO tee -a "$dnsmasqConfig" > /dev/null
+			if [ ! -r "$piholeSetupVars" ]; then
+				echo "::: Unable to read $piholeSetupVars"
+				exit 1
+			fi
+
+			# Add a custom hosts file for VPN clients so they appear as 'name.pivpn' in the
+			# Pi-hole dashboard as well as resolve by their names.
+			echo "addn-hosts=/etc/pivpn/hosts.$VPN" | $SUDO tee "$dnsmasqConfig" > /dev/null
+
+			# Then create an empty hosts file or clear if it exists.
 			$SUDO bash -c "> /etc/pivpn/hosts.$VPN"
+
+			# If the listening behavior is "Listen only on interface whatever", tell dnsmasq
+			# to listen on the VPN interface as well. Other listening behaviors are permissive
+			# enough.
+			if [ "$(source "$piholeSetupVars" && echo "${DNSMASQ_LISTENING}")" = "single" ]; then
+				echo "interface=$pivpnDEV" | $SUDO tee -a "$dnsmasqConfig" > /dev/null
+			fi
+
+			# Use the Raspberry Pi VPN IP as DNS server.
 			pivpnDNS1="$vpnGw"
+
 			echo "pivpnDNS1=${pivpnDNS1}" >> /tmp/setupVars.conf
 			echo "pivpnDNS2=${pivpnDNS2}" >> /tmp/setupVars.conf
 			return
