@@ -1173,7 +1173,7 @@ installWireGuard(){
 		elif [ "$(uname -m)" = "armv6l" ]; then
 
 			echo "::: Installing WireGuard from source... "
-			PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
+			PIVPN_DEPS=(checkinstall dkms libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
 			installDependentPackages PIVPN_DEPS[@]
 
 			# Delete any leftover code
