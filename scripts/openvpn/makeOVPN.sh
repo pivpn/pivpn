@@ -405,20 +405,29 @@ else
 
 fi
 
+cidrToMask(){
+	# Source: https://stackoverflow.com/a/20767392
+	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
+	[ $1 -gt 1 ] && shift $1 || shift
+	echo ${1-0}.${2-0}.${3-0}.${4-0}
+}
+
+NET_REDUCED="${pivpnNET::-2}"
+
 # Find an unused number for the last octet of the client IP
 for i in {2..254}; do
     # find returns 0 if the folder is empty, so we create the 'ls -A [...]'
     # exception to stop at the first static IP (10.8.0.2). Otherwise it would
     # cycle to the end without finding and available octet.
-    if [ -z "$(ls -A /etc/openvpn/ccd)" ] || ! find /etc/openvpn/ccd -type f -exec grep -q "10.8.0.$i" {} +; then
-        COUNT="$i"
-        echo "ifconfig-push 10.8.0.$i 255.255.255.0" >> /etc/openvpn/ccd/"${NAME}"
+    if [ -z "$(ls -A /etc/openvpn/ccd)" ] || ! find /etc/openvpn/ccd -type f -exec grep -q "${NET_REDUCED}.${i}" {} +; then
+        COUNT="${i}"
+        echo "ifconfig-push ${NET_REDUCED}.${i} $(cidrToMask "$subnetClass")" >> /etc/openvpn/ccd/"${NAME}"
         break
     fi
 done
 
 if [ -f /etc/pivpn/hosts.openvpn ]; then
-    echo "10.8.0.${COUNT} ${NAME}.pivpn" >> /etc/pivpn/hosts.openvpn
+    echo "${NET_REDUCED}.${COUNT} ${NAME}.pivpn" >> /etc/pivpn/hosts.openvpn
     if killall -SIGHUP pihole-FTL; then
         echo "::: Updated hosts file for Pi-hole"
     else

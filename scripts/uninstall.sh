@@ -6,7 +6,6 @@
 
 PKG_MANAGER="apt-get"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
-subnetClass="24"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 setupVars="/etc/pivpn/setupVars.conf"
 
@@ -59,16 +58,6 @@ removeAll(){
 
 	# Removing firewall rules.
 	echo "::: Removing firewall rules..."
-
-  ### FIXME: introduce global config space!
-	if [ "$VPN" = "wireguard" ]; then
-		pivpnPROTO="udp"
-		pivpnDEV="wg0"
-		pivpnNET="10.6.0.0"
-	elif [ "$VPN" = "openvpn" ]; then
-		pivpnDEV="tun0"
-		pivpnNET="10.8.0.0"
-	fi
 
 	if [ "$USING_UFW" -eq 1 ]; then
 

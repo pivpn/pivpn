@@ -1038,7 +1038,11 @@ askWhichVPN(){
 	fi
 
 	if [ "$VPN" = "wireguard" ]; then
+		# Since WireGuard only uses UDP, askCustomProto() is never called so we
+		# set the protocol here (it's not actually required to save the value, but
+		# it might be useful for the user when port forwarding).
 		pivpnPROTO="udp"
+		echo "pivpnPROTO=${pivpnPROTO}" >> /tmp/setupVars.conf
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0"
 	elif [ "$VPN" = "openvpn" ]; then
@@ -1048,6 +1052,9 @@ askWhichVPN(){
 	vpnGw="${pivpnNET/.0.0/.0.1}"
 
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
+	echo "pivpnDEV=${pivpnDEV}" >> /tmp/setupVars.conf
+	echo "pivpnNET=${pivpnNET}" >> /tmp/setupVars.conf
+	echo "subnetClass=${subnetClass}" >> /tmp/setupVars.conf
 }
 
 installOpenVPN(){
@@ -1762,6 +1769,13 @@ askEncryption(){
 	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> /tmp/setupVars.conf
 }
 
+cidrToMask(){
+	# Source: https://stackoverflow.com/a/20767392
+	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
+	[ $1 -gt 1 ] && shift $1 || shift
+	echo ${1-0}.${2-0}.${3-0}.${4-0}
+}
+
 confOpenVPN(){
 	# Grab the existing Hostname
 	host_name=$(hostname -s)
@@ -1903,6 +1917,16 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	elif [ "$pivpnCERT" = "rsa" ]; then
 		# Otherwise set the user encryption key size
 		$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server.conf
+	fi
+
+	# if they modified VPN network put value in server.conf
+	if [ "$pivpnNET" != "10.8.0.0" ]; then
+		$SUDO sed -i "s/10.8.0.0/${pivpnNET}/g" /etc/openvpn/server.conf
+	fi
+
+	# if they modified VPN subnet class put value in server.conf
+	if [ "$(cidrToMask "$subnetClass")" != "255.255.255.0" ]; then
+		$SUDO sed -i "s/255.255.255.0/$(cidrToMask "$subnetClass")/g" /etc/openvpn/server.conf
 	fi
 
 	# if they modified port put value in server.conf

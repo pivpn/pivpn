@@ -86,9 +86,11 @@ for i in {2..254}; do
     fi
 done
 
+NET_REDUCED="${pivpnNET::-2}"
+
 echo -n "[Interface]
 PrivateKey = $(cat "keys/${CLIENT_NAME}_priv")
-Address = 10.6.0.${COUNT}/24
+Address = ${NET_REDUCED}.${COUNT}/${subnetClass}
 DNS = ${pivpnDNS1}" > "configs/${CLIENT_NAME}.conf"
 
 if [ -n "${pivpnDNS2}" ]; then
@@ -109,12 +111,12 @@ echo "# begin ${CLIENT_NAME}
 [Peer]
 PublicKey = $(cat "keys/${CLIENT_NAME}_pub")
 PresharedKey = $(cat keys/psk)
-AllowedIPs = 10.6.0.${COUNT}/32
+AllowedIPs = ${NET_REDUCED}.${COUNT}/32
 # end ${CLIENT_NAME}" >> wg0.conf
 echo "::: Updated server config"
 
 if [ -f /etc/pivpn/hosts.wireguard ]; then
-    echo "10.6.0.${COUNT} ${CLIENT_NAME}.pivpn" >> /etc/pivpn/hosts.wireguard
+    echo "${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn" >> /etc/pivpn/hosts.wireguard
     if killall -SIGHUP pihole-FTL; then
         echo "::: Updated hosts file for Pi-hole"
     else
