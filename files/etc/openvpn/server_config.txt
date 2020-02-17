@@ -17,6 +17,7 @@ push "block-outside-dns"
 # overriding but not wiping out the original default gateway.
 push "redirect-gateway def1"
 client-to-client
+client-config-dir /etc/openvpn/ccd
 keepalive 15 120
 remote-cert-tls client
 tls-version-min 1.2

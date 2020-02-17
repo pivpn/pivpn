@@ -101,9 +101,20 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
                 fi
             done
 
+            ((DELETED_COUNT++))
             echo "::: Successfully deleted ${CLIENT_NAME}"
 
-            ((DELETED_COUNT++))
+            # If using Pi-hole, remove the client from the hosts file
+            if [ -f /etc/pivpn/hosts.wireguard ]; then
+                NET_REDUCED="${pivpnNET::-2}"
+                sed "\#${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn#d" -i /etc/pivpn/hosts.wireguard
+                if killall -SIGHUP pihole-FTL; then
+                    echo "::: Updated hosts file for Pi-hole"
+                else
+                    echo "::: Failed to reload pihole-FTL configuration"
+                fi
+            fi
+
         fi
     fi
 

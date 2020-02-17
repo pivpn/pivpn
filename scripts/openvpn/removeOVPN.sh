@@ -120,8 +120,23 @@ for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     rm -rf "pki/private/${CERTS_TO_REVOKE[ii]}.key"
     rm -rf "pki/issued/${CERTS_TO_REVOKE[ii]}.crt"
 
+    # Grab the client IP address
+    NET_REDUCED="${pivpnNET::-2}"
+    STATIC_IP=$(grep -v "^#" /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}" | grep -w ifconfig-push | grep -oE "${NET_REDUCED}\.[0-9]{1,3}")
+    rm -rf /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}"
+
     rm -rf "${install_home}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
     rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
     cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
+
+    # If using Pi-hole, remove the client from the hosts file
+    if [ -f /etc/pivpn/hosts.openvpn ]; then
+        sed "\#${STATIC_IP} ${CERTS_TO_REVOKE[ii]}.pivpn#d" -i /etc/pivpn/hosts.openvpn
+        if killall -SIGHUP pihole-FTL; then
+            echo "::: Updated hosts file for Pi-hole"
+        else
+            echo "::: Failed to reload pihole-FTL configuration"
+        fi
+    fi
 done
 printf "::: Completed!\n"

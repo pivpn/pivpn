@@ -6,7 +6,7 @@
 
 PKG_MANAGER="apt-get"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
-subnetClass="24"
+dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 setupVars="/etc/pivpn/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
@@ -58,16 +58,6 @@ removeAll(){
 
 	# Removing firewall rules.
 	echo "::: Removing firewall rules..."
-
-  ### FIXME: introduce global config space!
-	if [ "$VPN" = "wireguard" ]; then
-		pivpnPROTO="udp"
-		pivpnDEV="wg0"
-		pivpnNET="10.6.0.0"
-	elif [ "$VPN" = "openvpn" ]; then
-		pivpnDEV="tun0"
-		pivpnNET="10.8.0.0"
-	fi
 
 	if [ "$USING_UFW" -eq 1 ]; then
 
@@ -176,8 +166,8 @@ removeAll(){
 	# Removing pivpn files
 	echo "::: Removing pivpn system files..."
 
-	if [ -f /etc/dnsmasq.d/02-pivpn.conf ]; then
-		rm -f /etc/dnsmasq.d/02-pivpn.conf
+	if [ -f "$dnsmasqConfig" ]; then
+		rm -f "$dnsmasqConfig"
 		pihole restartdns
 	fi
 
@@ -202,6 +192,7 @@ removeAll(){
 		rm -f /etc/openvpn/server.conf
 		rm -f /etc/openvpn/crl.pem
 		rm -rf /etc/openvpn/easy-rsa
+		rm -rf /etc/openvpn/ccd
 		rm -rf "$install_home/ovpns"
 	fi
 

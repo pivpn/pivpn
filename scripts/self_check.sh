@@ -1,6 +1,5 @@
 #!/bin/bash
 
-subnetClass="24"
 setupVars="/etc/pivpn/setupVars.conf"
 ERR=0
 
@@ -12,14 +11,9 @@ fi
 source "${setupVars}"
 
 if [ "$VPN" = "wireguard" ]; then
-	pivpnPROTO="udp"
-	pivpnDEV="wg0"
-	pivpnNET="10.6.0.0"
 	VPN_SERVICE="wg-quick@wg0"
 	VPN_PRETTY_NAME="WireGuard"
 elif [ "$VPN" = "openvpn" ]; then
-	pivpnDEV="tun0"
-	pivpnNET="10.8.0.0"
 	VPN_SERVICE="openvpn"
 	VPN_PRETTY_NAME="OpenVPN"
 fi

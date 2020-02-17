@@ -14,6 +14,8 @@
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 setupVars="/etc/pivpn/setupVars.conf"
 pivpnFilesDir="/etc/.pivpn"
+piholeSetupVars="/etc/pihole/setupVars.conf"
+dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
 ### PKG Vars ###
 PKG_MANAGER="apt-get"
@@ -41,6 +43,11 @@ debianOvpnUserGroup="openvpn:openvpn"
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_RELEASE="1.16"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
+
+# GPG fingerprints (you can look them up at https://keyserver.ubuntu.com)
+OPENVPN_REPO_KEY="0x30ebf4e73cce63eee124dd278e6da8b4e158c569"
+DEBIAN_STRETCH_KEY="0xe1cf20ddffe4b89e802658f1e0b11894f66aec98"
+DEBIAN_BUSTER_KEY="0x80d15823b7fd1561f9f7bcdddc30d7c23cbbabee"
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
@@ -417,12 +424,13 @@ notifyPackageUpdatesAvailable(){
 }
 
 preconfigurePackages(){
-	# Add support for https repositories if there are any that use it otherwise the installation will silently fail
-  if [[ -f /etc/apt/sources.list ]]; then
-		if grep -q https /etc/apt/sources.list; then
-	  	BASE_DEPS+=("apt-transport-https")
+	# Add support for https repositories that will be used later on
+	if [[ -f /etc/apt/sources.list ]]; then
+		# buster and bionic have apt >= 1.5 which has https support built in
+		if [[ ${OSCN} != "buster" ]] && [[ ${OSCN} != "bionic" ]]; then
+			BASE_DEPS+=("apt-transport-https")
 		fi
-  fi
+	fi
 
 	if [[ ${OSCN} == "buster" ]]; then
 		$SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
@@ -432,7 +440,7 @@ preconfigurePackages(){
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
 	if $SUDO bash -c 'command -v ufw' > /dev/null; then
-		if LANG=en_US.UTF-8 $SUDO ufw status | grep -q inactive; then
+		if LC_ALL=C $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
 		else
 			USING_UFW=1
@@ -1030,7 +1038,11 @@ askWhichVPN(){
 	fi
 
 	if [ "$VPN" = "wireguard" ]; then
+		# Since WireGuard only uses UDP, askCustomProto() is never called so we
+		# set the protocol here (it's not actually required to save the value, but
+		# it might be useful for the user when port forwarding).
 		pivpnPROTO="udp"
+		echo "pivpnPROTO=${pivpnPROTO}" >> /tmp/setupVars.conf
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0"
 	elif [ "$VPN" = "openvpn" ]; then
@@ -1040,6 +1052,9 @@ askWhichVPN(){
 	vpnGw="${pivpnNET/.0.0/.0.1}"
 
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
+	echo "pivpnDEV=${pivpnDEV}" >> /tmp/setupVars.conf
+	echo "pivpnNET=${pivpnNET}" >> /tmp/setupVars.conf
+	echo "subnetClass=${subnetClass}" >> /tmp/setupVars.conf
 }
 
 installOpenVPN(){
@@ -1048,7 +1063,8 @@ installOpenVPN(){
 	echo "::: Installing OpenVPN from Debian package... "
 
 	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-		# gnupg is used to add the openvpn PGP key to the APT keyring
+		# gnupg is used by apt-key to import the openvpn GPG key into the
+		# APT keyring
 		PIVPN_DEPS=(gnupg)
 		installDependentPackages PIVPN_DEPS[@]
 
@@ -1056,7 +1072,10 @@ installOpenVPN(){
 		# has already enabled the openvpn repository or not, just to make sure
 		# we have the right key
 		echo "::: Adding repository key..."
-		wget -qO- https://swupdate.openvpn.net/repos/repo-public.gpg | $SUDO apt-key add -
+		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_REPO_KEY"; then
+			echo "::: Failed to import OpenVPN GPG key"
+			exit 1
+		fi
 
 		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
 			echo "::: Adding OpenVPN repository... "
@@ -1130,12 +1149,16 @@ installWireGuard(){
 		if [ "$(uname -m)" = "armv7l" ]; then
 
 			echo "::: Installing WireGuard from Debian package... "
-			# dirmngr is used to download repository keys for the unstable repo
+			# dirmngr is used by apt-key to import the debian GPG keys for the unstable
+			# repo into the APT keyring.
 			PIVPN_DEPS=(dirmngr)
 			installDependentPackages PIVPN_DEPS[@]
 
 			echo "::: Adding repository keys..."
-			$SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC 648ACFD622F3D138
+			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$DEBIAN_STRETCH_KEY" "$DEBIAN_BUSTER_KEY"; then
+				echo "::: Failed to import Debian GPG keys"
+				exit 1
+			fi
 
 			# This regular expression should match combinations like http[s]://mirror.example.com/debian[/] unstable main
 			if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
@@ -1157,7 +1180,7 @@ installWireGuard(){
 		elif [ "$(uname -m)" = "armv6l" ]; then
 
 			echo "::: Installing WireGuard from source... "
-			PIVPN_DEPS=(checkinstall dkms libmnl-dev libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
+			PIVPN_DEPS=(checkinstall dkms libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
 			installDependentPackages PIVPN_DEPS[@]
 
 			# Delete any leftover code
@@ -1417,8 +1440,34 @@ askClientDNS(){
 	# Detect and offer to use Pi-hole
 	if command -v pihole > /dev/null; then
 		if (whiptail --backtitle "Setup PiVPN" --title "Pi-hole" --yesno "We have detected a Pi-hole installation, do you want to use it as the DNS server for the VPN, so you get ad blocking on the go?" ${r} ${c}); then
+			if [ ! -r "$piholeSetupVars" ]; then
+				echo "::: Unable to read $piholeSetupVars"
+				exit 1
+			fi
+
+			# Add a custom hosts file for VPN clients so they appear as 'name.pivpn' in the
+			# Pi-hole dashboard as well as resolve by their names.
+			echo "addn-hosts=/etc/pivpn/hosts.$VPN" | $SUDO tee "$dnsmasqConfig" > /dev/null
+
+			# Then create an empty hosts file or clear if it exists.
+			$SUDO bash -c "> /etc/pivpn/hosts.$VPN"
+
+			# If the listening behavior is "Listen only on interface whatever", which is the
+			# default, tell dnsmasq to listen on the VPN interface as well. Other listening
+			# behaviors are permissive enough.
+
+			# Source in a subshell to prevent overwriting script's variables
+			DNSMASQ_LISTENING="$(source "$piholeSetupVars" && echo "${DNSMASQ_LISTENING}")"
+
+			# $DNSMASQ_LISTENING is not set if you never edit/save settings in the DNS page,
+			# so if the variable is empty, we still add the 'interface=' directive.
+			if [ -z "${DNSMASQ_LISTENING}" ] || [ "${DNSMASQ_LISTENING}" = "single" ]; then
+				echo "interface=$pivpnDEV" | $SUDO tee -a "$dnsmasqConfig" > /dev/null
+			fi
+
+			# Use the Raspberry Pi VPN IP as DNS server.
 			pivpnDNS1="$vpnGw"
-			echo "interface=$pivpnDEV" | $SUDO tee /etc/dnsmasq.d/02-pivpn.conf > /dev/null
+
 			echo "pivpnDNS1=${pivpnDNS1}" >> /tmp/setupVars.conf
 			echo "pivpnDNS2=${pivpnDNS2}" >> /tmp/setupVars.conf
 			return
@@ -1720,6 +1769,13 @@ askEncryption(){
 	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> /tmp/setupVars.conf
 }
 
+cidrToMask(){
+	# Source: https://stackoverflow.com/a/20767392
+	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
+	[ $1 -gt 1 ] && shift $1 || shift
+	echo ${1-0}.${2-0}.${3-0}.${4-0}
+}
+
 confOpenVPN(){
 	# Grab the existing Hostname
 	host_name=$(hostname -s)
@@ -1731,11 +1787,21 @@ confOpenVPN(){
 	# Backup the openvpn folder
 	OPENVPN_BACKUP="openvpn_$(date +%Y-%m-%d-%H%M%S).tar.gz"
 	echo "::: Backing up the openvpn folder to /etc/${OPENVPN_BACKUP}"
+	CURRENT_UMASK=$(umask)
+	umask 0077
 	$SUDO tar czf "/etc/${OPENVPN_BACKUP}" /etc/openvpn &> /dev/null
+	umask "$CURRENT_UMASK"
 
 	if [ -f /etc/openvpn/server.conf ]; then
 		$SUDO rm /etc/openvpn/server.conf
 	fi
+
+	if [ -d /etc/openvpn/ccd ]; then
+		$SUDO rm -rf /etc/openvpn/ccd
+	fi
+
+	# Create folder to store client specific directives used to push static IPs
+	$SUDO mkdir /etc/openvpn/ccd
 
 	# If easy-rsa exists, remove it
 	if [[ -d /etc/openvpn/easy-rsa/ ]]; then
@@ -1853,6 +1919,16 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 		$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server.conf
 	fi
 
+	# if they modified VPN network put value in server.conf
+	if [ "$pivpnNET" != "10.8.0.0" ]; then
+		$SUDO sed -i "s/10.8.0.0/${pivpnNET}/g" /etc/openvpn/server.conf
+	fi
+
+	# if they modified VPN subnet class put value in server.conf
+	if [ "$(cidrToMask "$subnetClass")" != "255.255.255.0" ]; then
+		$SUDO sed -i "s/255.255.255.0/$(cidrToMask "$subnetClass")/g" /etc/openvpn/server.conf
+	fi
+
 	# if they modified port put value in server.conf
 	if [ "$pivpnPORT" != 1194 ]; then
 		$SUDO sed -i "s/1194/${pivpnPORT}/g" /etc/openvpn/server.conf
@@ -1901,7 +1977,10 @@ confWireGuard(){
 		# Backup the wireguard folder
 		WIREGUARD_BACKUP="wireguard_$(date +%Y-%m-%d-%H%M%S).tar.gz"
 		echo "::: Backing up the wireguard folder to /etc/${WIREGUARD_BACKUP}"
+		CURRENT_UMASK=$(umask)
+		umask 0077
 		$SUDO tar czf "/etc/${WIREGUARD_BACKUP}" /etc/wireguard &> /dev/null
+		umask "$CURRENT_UMASK"
 
 		if [ -f /etc/wireguard/wg0.conf ]; then
 			$SUDO rm /etc/wireguard/wg0.conf
@@ -2078,7 +2157,7 @@ restartServices(){
 		;;
 	esac
 
-	if [ -f /etc/dnsmasq.d/02-pivpn.conf ]; then
+	if [ -f "$dnsmasqConfig" ]; then
 		$SUDO pihole restartdns
 	fi
 }
