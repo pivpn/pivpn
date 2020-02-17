@@ -5,6 +5,16 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Feb 17th 2020
+
+- When offering to use Pi-hole, identify VPN clients via clientname.pivpn using a dedicated hosts file. Clients can now be resolved by their names and also show up in the Pi-hole dashboard.
+- Decide whether to tell dnsmasq to listen on the VPN interface depending on the user settings. The default Pi-hole listening behavior is **Listen only on interface whatever**, which means dnsmasq needs to know the additional VPN interface. However, if the user has **Listen on all interfaces** or **Listen on all interfaces, permit all origins**, then, there is no need to add the interface (self-explanatory).
+- Set static IPs by default when using OpenVPN.
+- Restrict access to automatic backups (.tar.gz) of **/etc/wireguard** and **/etc/openvpn** to root.
+- Drop libmnl-dev requirement on armv6l as it's not required anymore to build wireguard-tools.
+- Require apt-transport-https on Ubuntu < Bionic and Debian < Buster as those older version have APT without HTTPS repositories support and the script uses them.
+- Import OpenVPN PGP key from keyserver as it should be more secure than downloading from the website since we specifically tell the keyserver which key we want, referring to its fingerprint.
+
 ## Jan 31th 2020
 
 - More validation of user input
