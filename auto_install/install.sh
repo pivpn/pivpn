@@ -1062,29 +1062,33 @@ installOpenVPN(){
 
 	echo "::: Installing OpenVPN from Debian package... "
 
+	# Use x86-only OpenVPN APT repo on x86 Debian/Ubuntu systems
 	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-		# gnupg is used by apt-key to import the openvpn GPG key into the
-		# APT keyring
-		PIVPN_DEPS=(gnupg)
-		installDependentPackages PIVPN_DEPS[@]
+		local DPKG_ARCH="$(dpkg --print-architecture)"
+		if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
+			# gnupg is used by apt-key to import the openvpn GPG key into the
+			# APT keyring
+			PIVPN_DEPS=(gnupg)
+			installDependentPackages PIVPN_DEPS[@]
 
-		# We will download the repository key regardless of whether the user
-		# has already enabled the openvpn repository or not, just to make sure
-		# we have the right key
-		echo "::: Adding repository key..."
-		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_REPO_KEY"; then
-			echo "::: Failed to import OpenVPN GPG key"
-			exit 1
+			# We will download the repository key regardless of whether the user
+			# has already enabled the openvpn repository or not, just to make sure
+			# we have the right key
+			echo "::: Adding repository key..."
+			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_REPO_KEY"; then
+				echo "::: Failed to import OpenVPN GPG key"
+				exit 1
+			fi
+
+			if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
+				echo "::: Adding OpenVPN repository... "
+				echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
+			fi
+
+			echo "::: Updating package cache..."
+			# shellcheck disable=SC2086
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		fi
-
-		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
-			echo "::: Adding OpenVPN repository... "
-			echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
-		fi
-
-		echo "::: Updating package cache..."
-		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 	fi
 
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
