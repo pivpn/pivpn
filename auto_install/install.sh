@@ -1291,6 +1291,8 @@ installWireGuard(){
 	elif [ "$PLAT" = "Ubuntu" ]; then
 
 		echo "::: Installing WireGuard from PPA... "
+		PIVPN_DEPS=(software-properties-common)
+		installDependentPackages PIVPN_DEPS[@]
 		$SUDO add-apt-repository ppa:wireguard/wireguard -y
 
 		echo "::: Updating package cache..."
