@@ -14,10 +14,18 @@
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 setupVars="/etc/pivpn/setupVars.conf"
 pivpnFilesDir="/etc/.pivpn"
+
 piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
-### PKG Vars ###
+dhcpcdFile="/etc/dhcpcd.conf"
+subnetClass="24"
+debianOvpnUserGroup="openvpn:openvpn"
+
+# OpenVPN GPG fingerprint (you can look it up at https://keyserver.ubuntu.com)
+OPENVPN_KEY_ID="0x30ebf4e73cce63eee124dd278e6da8b4e158c569"
+
+######## PKG Vars ########
 PKG_MANAGER="apt-get"
 PKG_CACHE="/var/lib/apt/lists/"
 ### FIXME: quoting UPDATE_PKG_CACHE and PKG_INSTALL hangs the script, shellcheck SC2086
@@ -33,31 +41,25 @@ BASE_DEPS=(git tar wget curl grep dnsutils whiptail net-tools bsdmainutils)
 # PiVPN we won't prompt to remove packages that may have been installed by the user for other reasons
 INSTALLED_PACKAGES=()
 
+######## URLs ########
 easyrsaVer="3.0.6"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
-
-subnetClass="24"
-dhcpcdFile="/etc/dhcpcd.conf"
-debianOvpnUserGroup="openvpn:openvpn"
 
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_RELEASE="1.16"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
-# GPG fingerprints (you can look them up at https://keyserver.ubuntu.com)
-OPENVPN_REPO_KEY="0x30ebf4e73cce63eee124dd278e6da8b4e158c569"
-DEBIAN_STRETCH_KEY="0xe1cf20ddffe4b89e802658f1e0b11894f66aec98"
-DEBIAN_BUSTER_KEY="0x80d15823b7fd1561f9f7bcdddc30d7c23cbbabee"
+######## Undocumented Flags. Shhh ########
+runUnattended=false
+skipSpaceCheck=false
+reconfigure=false
+
+######## SCRIPT ########
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo "$screen_size" | awk '{print $1}')
 columns=$(echo "$screen_size" | awk '{print $2}')
-
-######## Undocumented Flags. Shhh ########
-runUnattended=false
-skipSpaceCheck=false
-reconfigure=false
 
 # Divide by two so the dialogs take up half of the screen, which looks nice.
 r=$(( rows / 2 ))
@@ -65,8 +67,6 @@ c=$(( columns / 2 ))
 # Unless the screen is tiny
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
-
-######## SCRIPT ############
 
 main(){
 
@@ -250,6 +250,15 @@ distroCheck(){
 		VER="$VERSION_ID"
 		declare -A VER_MAP=(["9"]="stretch" ["10"]="buster" ["16.04"]="xenial" ["18.04"]="bionic")
 		OSCN=${VER_MAP["${VER}"]}
+	fi
+
+	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+		DPKG_ARCH="$(dpkg --print-architecture)"
+		if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
+			X86_SYSTEM=1
+		else
+			X86_SYSTEM=0
+		fi
 	fi
 
 	case ${PLAT} in
@@ -986,6 +995,11 @@ installPiVPN(){
 	askWhichVPN
 
 	if [ "$VPN" = "openvpn" ]; then
+
+		pivpnDEV="tun0"
+		pivpnNET="10.8.0.0"
+		vpnGw="${pivpnNET/.0.0/.0.1}"
+
 		installOpenVPN
 		askCustomProto
 		askCustomPort
@@ -997,64 +1011,83 @@ installPiVPN(){
 		confOVPN
 		confNetwork
 		confLogging
+
 	elif [ "$VPN" = "wireguard" ]; then
+
+		# Since WireGuard only uses UDP, askCustomProto() is never called so we
+		# set the protocol here.
+		pivpnPROTO="udp"
+		pivpnDEV="wg0"
+		pivpnNET="10.6.0.0"
+		vpnGw="${pivpnNET/.0.0/.0.1}"
+
 		installWireGuard
 		askCustomPort
 		askClientDNS
 		askPublicIPOrDNS
 		confWireGuard
 		confNetwork
+
+		echo "pivpnPROTO=${pivpnPROTO}" >> /tmp/setupVars.conf
+
 	fi
+
+	echo "pivpnDEV=${pivpnDEV}" >> /tmp/setupVars.conf
+	echo "pivpnNET=${pivpnNET}" >> /tmp/setupVars.conf
+	echo "subnetClass=${subnetClass}" >> /tmp/setupVars.conf
 }
 
 askWhichVPN(){
 	if [ "${runUnattended}" = 'true' ]; then
-		if [ -z "$VPN" ]; then
-			echo ":: No VPN protocol specified, using WireGuard"
-			VPN="wireguard"
-		else
-			VPN="${VPN,,}"
-			if [ "$VPN" = "wireguard" ]; then
-				echo "::: WireGuard will be installed"
-			elif [ "$VPN" = "openvpn" ]; then
-				echo "::: OpenVPN will be installed"
+		if [ "$PLAT" = "Raspbian" ] || [ "$X86_SYSTEM" -eq 1 ]; then
+			if [ -z "$VPN" ]; then
+				echo ":: No VPN protocol specified, using WireGuard"
+				VPN="wireguard"
 			else
-				echo ":: $VPN is not a supported VPN protocol, please specify 'wireguard' or 'openvpn'"
-				exit 1
+				VPN="${VPN,,}"
+				if [ "$VPN" = "wireguard" ]; then
+					echo "::: WireGuard will be installed"
+				elif [ "$VPN" = "openvpn" ]; then
+					echo "::: OpenVPN will be installed"
+				else
+					echo ":: $VPN is not a supported VPN protocol, please specify 'wireguard' or 'openvpn'"
+					exit 1
+				fi
+			fi
+		elif [ "$X86_SYSTEM" -eq 0 ]; then
+			if [ -z "$VPN" ]; then
+				echo ":: No VPN protocol specified, using OpenVPN"
+				VPN="openvpn"
+			else
+				VPN="${VPN,,}"
+				if [ "$VPN" = "openvpn" ]; then
+					echo "::: OpenVPN will be installed"
+				else
+					echo ":: $VPN is not a supported VPN protocol on $DPKG_ARCH $PLAT, only 'openvpn' is"
+					exit 1
+				fi
 			fi
 		fi
 	else
-		chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\\n\\nIt's the recommended choice expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (press space to select):" "${r}" "${c}" 2)
-		VPNChooseOptions=(WireGuard "" on
-							OpenVPN "" off)
+		if [ "$PLAT" = "Raspbian" ] || [ "$X86_SYSTEM" -eq 1 ]; then
+			chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\\n\\nIt's the recommended choice expecially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (press space to select):" "${r}" "${c}" 2)
+			VPNChooseOptions=(WireGuard "" on
+								OpenVPN "" off)
 
-		if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
-			echo "::: Using VPN: $VPN"
-			VPN="${VPN,,}"
-		else
-			echo "::: Cancel selected, exiting...."
-			exit 1
+			if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
+				echo "::: Using VPN: $VPN"
+				VPN="${VPN,,}"
+			else
+				echo "::: Cancel selected, exiting...."
+				exit 1
+			fi
+		elif [ "$X86_SYSTEM" -eq 0 ]; then
+			echo "::: Using VPN: OpenVPN"
+			VPN="openvpn"
 		fi
 	fi
 
-	if [ "$VPN" = "wireguard" ]; then
-		# Since WireGuard only uses UDP, askCustomProto() is never called so we
-		# set the protocol here (it's not actually required to save the value, but
-		# it might be useful for the user when port forwarding).
-		pivpnPROTO="udp"
-		echo "pivpnPROTO=${pivpnPROTO}" >> /tmp/setupVars.conf
-		pivpnDEV="wg0"
-		pivpnNET="10.6.0.0"
-	elif [ "$VPN" = "openvpn" ]; then
-		pivpnDEV="tun0"
-		pivpnNET="10.8.0.0"
-	fi
-	vpnGw="${pivpnNET/.0.0/.0.1}"
-
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
-	echo "pivpnDEV=${pivpnDEV}" >> /tmp/setupVars.conf
-	echo "pivpnNET=${pivpnNET}" >> /tmp/setupVars.conf
-	echo "subnetClass=${subnetClass}" >> /tmp/setupVars.conf
 }
 
 installOpenVPN(){
@@ -1063,32 +1096,29 @@ installOpenVPN(){
 	echo "::: Installing OpenVPN from Debian package... "
 
 	# Use x86-only OpenVPN APT repo on x86 Debian/Ubuntu systems
-	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-		local DPKG_ARCH="$(dpkg --print-architecture)"
-		if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
-			# gnupg is used by apt-key to import the openvpn GPG key into the
-			# APT keyring
-			PIVPN_DEPS=(gnupg)
-			installDependentPackages PIVPN_DEPS[@]
+	if [ "$PLAT" != "Raspbian" ] && [ "$X86_SYSTEM" -eq 1 ]; then
+		# gnupg is used by apt-key to import the openvpn GPG key into the
+		# APT keyring
+		PIVPN_DEPS=(gnupg)
+		installDependentPackages PIVPN_DEPS[@]
 
-			# We will download the repository key regardless of whether the user
-			# has already enabled the openvpn repository or not, just to make sure
-			# we have the right key
-			echo "::: Adding repository key..."
-			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_REPO_KEY"; then
-				echo "::: Failed to import OpenVPN GPG key"
-				exit 1
-			fi
-
-			if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
-				echo "::: Adding OpenVPN repository... "
-				echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
-			fi
-
-			echo "::: Updating package cache..."
-			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		# We will download the repository key regardless of whether the user
+		# has already enabled the openvpn repository or not, just to make sure
+		# we have the right key
+		echo "::: Adding repository key..."
+		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
+			echo "::: Failed to import OpenVPN GPG key"
+			exit 1
 		fi
+
+		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
+			echo "::: Adding OpenVPN repository... "
+			echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
+		fi
+
+		echo "::: Updating package cache..."
+		# shellcheck disable=SC2086
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 	fi
 
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
@@ -1145,147 +1175,40 @@ installWireGuard(){
 			fi
 		fi
 
-		# If this Raspberry Pi uses armv7l we can use the package from the repo
-		# https://lists.zx2c4.com/pipermail/wireguard/2017-November/001885.html
-		# Otherwhise compile and build the kernel module via DKMS (so it will
-		# be recompiled on kernel upgrades)
-
-		if [ "$(uname -m)" = "armv7l" ]; then
-
-			echo "::: Installing WireGuard from Debian package... "
-			# dirmngr is used by apt-key to import the debian GPG keys for the unstable
-			# repo into the APT keyring.
-			PIVPN_DEPS=(dirmngr)
-			installDependentPackages PIVPN_DEPS[@]
-
-			echo "::: Adding repository keys..."
-			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$DEBIAN_STRETCH_KEY" "$DEBIAN_BUSTER_KEY"; then
-				echo "::: Failed to import Debian GPG keys"
-				exit 1
-			fi
-
-			# This regular expression should match combinations like http[s]://mirror.example.com/debian[/] unstable main
-			if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
-				echo "::: Adding Debian repository... "
-				echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
-			fi
-
-			# Do not upgrade packages from the unstable repository except for wireguard
-			printf 'Package: *\nPin: release a=unstable\nPin-Priority: 1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release a=unstable\nPin-Priority: 500\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-unstable > /dev/null
-
-			echo "::: Updating package cache..."
-			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
-
-			# qrencode is used to generate qrcodes from config file, for use with mobile clients
-			PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms qrencode)
-			installDependentPackages PIVPN_DEPS[@]
-
-		elif [ "$(uname -m)" = "armv6l" ]; then
-
-			echo "::: Installing WireGuard from source... "
-			PIVPN_DEPS=(checkinstall dkms libelf-dev raspberrypi-kernel-headers build-essential pkg-config qrencode jq)
-			installDependentPackages PIVPN_DEPS[@]
-
-			# Delete any leftover code
-			$SUDO rm -rf /usr/src/wireguard-*
-
-			WG_TOOLS_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-tools"."version"')"
-			WG_TOOLS_SOURCE="https://git.zx2c4.com/wireguard-tools/snapshot/wireguard-tools-${WG_TOOLS_SNAPSHOT}.tar.xz"
-
-			echo "::: Downloading wireguard-tools source code... "
-			wget -qO- "${WG_TOOLS_SOURCE}" | $SUDO tar xJ --directory /usr/src
-			echo "done!"
-
-			##  || exits if cd fails.
-			cd /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}/src" || exit 1
-
-			# We install the userspace tools manually since DKMS only compiles and
-			# installs the kernel module
-			echo "::: Compiling WireGuard tools... "
-			if $SUDO make; then
-				echo "done!"
-			else
-				echo "failed!"
-				exit 1
-			fi
-
-			# Use checkinstall to install userspace tools so if the user wants to uninstall
-			# PiVPN we can just do apt remove wireguard-tools, instead of manually removing
-			# files from the file system
-			echo "::: Installing WireGuard tools... "
-			if $SUDO checkinstall --pkgname wireguard-tools --pkgversion "${WG_TOOLS_SNAPSHOT}" -y; then
-				INSTALLED_PACKAGES+=("wireguard-tools")
-				echo "done!"
-			else
-				echo "failed!"
-				exit 1
-			fi
-
-			echo "WG_TOOLS_SNAPSHOT=${WG_TOOLS_SNAPSHOT}" >> /tmp/setupVars.conf
-
-			WG_MODULE_SNAPSHOT="$(curl -s https://build.wireguard.com/distros.json | jq -r '."upstream-linuxcompat"."version"')"
-			WG_MODULE_SOURCE="https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-${WG_MODULE_SNAPSHOT}.tar.xz"
-
-			echo "::: Downloading wireguard-linux-compat source code... "
-			wget -qO- "${WG_MODULE_SOURCE}" | $SUDO tar xJ --directory /usr/src
-			echo "done!"
-
-			# Rename wireguard-linux-compat folder and move the source code to the parent folder
-			# such that dkms picks up the module when referencing wireguard/"${WG_MODULE_SNAPSHOT}"
-			cd /usr/src && \
-			$SUDO mv wireguard-linux-compat-"${WG_MODULE_SNAPSHOT}" wireguard-"${WG_MODULE_SNAPSHOT}" && \
-			cd wireguard-"${WG_MODULE_SNAPSHOT}" && \
-			$SUDO mv src/* . && \
-			$SUDO rmdir src || exit 1
-
-			echo "::: Adding WireGuard modules via DKMS... "
-			if $SUDO dkms add wireguard/"${WG_MODULE_SNAPSHOT}"; then
-				echo "done!"
-			else
-				echo "failed!"
-				$SUDO dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
-				exit 1
-			fi
-
-			echo "::: Compiling WireGuard modules via DKMS... "
-			if $SUDO dkms build wireguard/"${WG_MODULE_SNAPSHOT}"; then
-				echo "done!"
-			else
-				echo "failed!"
-				$SUDO dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
-				exit 1
-			fi
-
-			echo "::: Installing WireGuard modules via DKMS... "
-			if $SUDO dkms install wireguard/"${WG_MODULE_SNAPSHOT}"; then
-				INSTALLED_PACKAGES+=("wireguard-dkms")
-				echo "done!"
-			else
-				echo "failed!"
-				$SUDO dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
-				exit 1
-			fi
-
-			echo "WG_MODULE_SNAPSHOT=${WG_MODULE_SNAPSHOT}" >> /tmp/setupVars.conf
-
-		fi
-
-	elif [ "$PLAT" = "Debian" ]; then
-
 		echo "::: Installing WireGuard from Debian package... "
-		if ! grep -qR 'deb http.\?://.*/debian.\? unstable main' /etc/apt/sources.list*; then
-			echo "::: Adding Debian repository... "
-			echo "deb https://deb.debian.org/debian/ unstable main" | $SUDO tee /etc/apt/sources.list.d/pivpn-unstable.list > /dev/null
+
+		# This regular expression should match combinations like http[s]://mirror.example.com/raspbian[/] bullseye main
+		if ! grep -qR 'deb http.\?://.*/raspbian.\? bullseye main' /etc/apt/sources.list*; then
+			echo "::: Adding Raspbian repository... "
+			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye.list > /dev/null
 		fi
 
-		printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-unstable > /dev/null
+		# Do not upgrade packages from the bullseye repository except for wireguard
+		printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
 
 		echo "::: Updating package cache..."
 		# shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
-		PIVPN_DEPS=(linux-headers-amd64 qrencode wireguard wireguard-tools wireguard-dkms)
+		# qrencode is used to generate qrcodes from config file, for use with mobile clients
+		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms qrencode)
+		installDependentPackages PIVPN_DEPS[@]
+
+	elif [ "$PLAT" = "Debian" ]; then
+
+		echo "::: Installing WireGuard from Debian package... "
+		if ! grep -qR 'deb http.\?://.*/debian.\? bullseye main' /etc/apt/sources.list*; then
+			echo "::: Adding Debian repository... "
+			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye.list > /dev/null
+		fi
+
+		printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
+
+		echo "::: Updating package cache..."
+		# shellcheck disable=SC2086
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+
+		PIVPN_DEPS=(linux-headers-amd64 wireguard wireguard-tools wireguard-dkms qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$PLAT" = "Ubuntu" ]; then
@@ -1299,7 +1222,7 @@ installWireGuard(){
 		# shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
-		PIVPN_DEPS=(qrencode wireguard wireguard-tools wireguard-dkms linux-headers-generic)
+		PIVPN_DEPS=(linux-headers-generic wireguard wireguard-tools wireguard-dkms qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
@@ -2233,10 +2156,12 @@ confUnattendedUpgrades(){
 
 	fi
 
-	# Enable automatic updates via the unstable repository when installing from debian package
-	if [ "$VPN" = "wireguard" ] && [ "$PLAT" != "Ubuntu" ] && [ "$(uname -m)" != "armv6l" ]; then
-		if ! grep -q '"o=Debian,a=unstable";' "${aptConfDir}/50unattended-upgrades"; then
-			$SUDO sed -i '/Unattended-Upgrade::Origins-Pattern {/a"o=Debian,a=unstable";' "${aptConfDir}/50unattended-upgrades"
+	# Enable automatic updates via the bullseye repository when installing from debian package
+	if [ "$VPN" = "wireguard" ]; then
+		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
+			if ! grep -q "\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"; then
+				$SUDO sed -i "/Unattended-Upgrade::Origins-Pattern {/a\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"
+			fi
 		fi
 	fi
 }

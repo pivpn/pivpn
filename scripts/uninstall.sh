@@ -98,37 +98,18 @@ removeAll(){
 			case $yn in
 				[Yy]* ) if [ "${i}" = "wireguard" ]; then
 
-							# On Debian and armv7l Raspbian, remove the unstable repo (on armv6l Raspbian
-							# there is no wireguard package). On Ubuntu, remove the PPA.
-              ### FIXME: unconditionally rm'ing unstable.list isn't a good idea, it appears. What if someone else put it there manually?
-							if [ "$PLAT" = "Debian" ] || { [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv7l" ]; }; then
-								rm -f /etc/apt/sources.list.d/pivpn-unstable.list
-								rm -f /etc/apt/preferences.d/pivpn-limit-unstable
+							# On Debian and Raspbian, remove the bullseye repo. On Ubuntu, remove the PPA.
+							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
+								rm -f /etc/apt/sources.list.d/pivpn-bullseye.list
+								rm -f /etc/apt/preferences.d/pivpn-limit-bullseye
 							elif [ "$PLAT" = "Ubuntu" ]; then
 								add-apt-repository ppa:wireguard/wireguard -r -y
 							fi
 							echo "::: Updating package cache..."
 							${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
-						elif [ "${i}" = "wireguard-dkms" ]; then
-
-							# On armv6l Raspbian we manually remove the kernel module and skip the apt
-							# uninstallation (since it's not an actual package).
-							if [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv6l" ]; then
-								dkms remove wireguard/"${WG_MODULE_SNAPSHOT}" --all
-								rm -rf /usr/src/wireguard-"${WG_MODULE_SNAPSHOT}"
-								break
-							fi
-
-						elif [ "${i}" = "wireguard-tools" ]; then
-
-							if [ "$PLAT" = "Raspbian" ] && [ "$(uname -m)" = "armv6l" ]; then
-								rm -rf /usr/src/wireguard-tools-"${WG_TOOLS_SNAPSHOT}"
-							fi
-
 						elif [ "${i}" = "unattended-upgrades" ]; then
 
-              ### REALLY???
 							rm -rf /var/log/unattended-upgrades
 							rm -rf /etc/apt/apt.conf.d/*periodic
 							rm -rf /etc/apt/apt.conf.d/*unattended-upgrades
