@@ -22,8 +22,8 @@ dhcpcdFile="/etc/dhcpcd.conf"
 subnetClass="24"
 debianOvpnUserGroup="openvpn:openvpn"
 
-# OpenVPN GPG fingerprint (you can look it up at https://keyserver.ubuntu.com)
-OPENVPN_KEY_ID="0x30ebf4e73cce63eee124dd278e6da8b4e158c569"
+# OpenVPN GPG fingerprint, you can look it up at https://keyserver.ubuntu.com (prepend '0x' before it)
+OPENVPN_KEY_ID="30EBF4E73CCE63EEE124DD278E6DA8B4E158C569"
 
 ######## PKG Vars ########
 PKG_MANAGER="apt-get"
@@ -48,6 +48,9 @@ easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
 UNATTUPG_RELEASE="1.16"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
+
+# Fallback url for the OpenVPN key
+OPENVPN_KEY_URL="https://swupdate.openvpn.net/repos/repo-public.gpg"
 
 ######## Undocumented Flags. Shhh ########
 runUnattended=false
@@ -1090,6 +1093,32 @@ askWhichVPN(){
 	echo "VPN=${VPN}" >> /tmp/setupVars.conf
 }
 
+downloadVerifyKey(){
+	local KEY_URL="$1"
+	local EXPECTED_KEY_ID="$2"
+
+	local KEY_CONTENT
+	local KEY_INFO
+	local DOWNLOADED_KEY_ID
+
+	if ! KEY_CONTENT="$(wget -qO- "$KEY_URL")"; then
+		return 1
+	fi
+
+	if ! KEY_INFO="$(gpg --show-key --with-colons <<< "$KEY_CONTENT")"; then
+		return 1
+	fi
+
+	DOWNLOADED_KEY_ID="$(sed -n '/^pub:/,/^fpr:/p' <<< "$KEY_INFO" | grep '^fpr' | cut -d ':' -f 10)"
+
+	if [ "$DOWNLOADED_KEY_ID" != "$EXPECTED_KEY_ID" ]; then
+		return 1
+	fi
+
+	echo "$KEY_CONTENT"
+	return 0
+}
+
 installOpenVPN(){
 	local PIVPN_DEPS
 
@@ -1107,8 +1136,13 @@ installOpenVPN(){
 		# we have the right key
 		echo "::: Adding repository key..."
 		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
-			echo "::: Failed to import OpenVPN GPG key"
-			exit 1
+			echo "::: Import via keyserver failed, now trying wget"
+			if ! downloadVerifyKey "$OPENVPN_KEY_URL" "$OPENVPN_KEY_ID" | $SUDO apt-key add -; then
+				echo "::: Can't import OpenVPN GPG key"
+				exit 1
+			else
+				echo "::: Acquired key $OPENVPN_KEY_ID"
+			fi
 		fi
 
 		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
