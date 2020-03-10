@@ -1129,33 +1129,35 @@ installOpenVPN(){
 
 	# Use x86-only OpenVPN APT repo on x86 Debian/Ubuntu systems
 	if [ "$PLAT" != "Raspbian" ] && [ "$X86_SYSTEM" -eq 1 ]; then
-		# gnupg is used by apt-key to import the openvpn GPG key into the
-		# APT keyring
-		PIVPN_DEPS=(gnupg)
-		installDependentPackages PIVPN_DEPS[@]
+		if [ -n "$(apt-cache policy openvpn | grep 'Candidate:' | awk '{print $2}')" ]; then
+			echo "::: OpenVPN is already available in the repositories"
+		else
+			# gnupg is used by apt-key to import the openvpn GPG key into the
+			# APT keyring
+			PIVPN_DEPS=(gnupg)
+			installDependentPackages PIVPN_DEPS[@]
 
-		# We will download the repository key regardless of whether the user
-		# has already enabled the openvpn repository or not, just to make sure
-		# we have the right key
-		echo "::: Adding repository key..."
-		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
-			echo "::: Import via keyserver failed, now trying wget"
-			if ! downloadVerifyKey "$OPENVPN_KEY_URL" "$OPENVPN_KEY_ID" | $SUDO apt-key add -; then
-				echo "::: Can't import OpenVPN GPG key"
-				exit 1
-			else
-				echo "::: Acquired key $OPENVPN_KEY_ID"
+			# We will download the repository key regardless of whether the user
+			# has already enabled the openvpn repository or not, just to make sure
+			# we have the right key
+			echo "::: Adding repository key..."
+			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
+				echo "::: Import via keyserver failed, now trying wget"
+				if ! downloadVerifyKey "$OPENVPN_KEY_URL" "$OPENVPN_KEY_ID" | $SUDO apt-key add -; then
+					echo "::: Can't import OpenVPN GPG key"
+					exit 1
+				else
+					echo "::: Acquired key $OPENVPN_KEY_ID"
+				fi
 			fi
-		fi
 
-		if ! grep -qR "deb http.\?://build.openvpn.net/debian/openvpn/stable.\? $OSCN main" /etc/apt/sources.list*; then
 			echo "::: Adding OpenVPN repository... "
 			echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
-		fi
 
-		echo "::: Updating package cache..."
-		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+			echo "::: Updating package cache..."
+			# shellcheck disable=SC2086
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		fi
 	fi
 
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
@@ -1214,18 +1216,19 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		# This regular expression should match combinations like http[s]://mirror.example.com/raspbian[/] bullseye main
-		if ! grep -qR 'deb http.\?://.*/raspbian.\? bullseye main' /etc/apt/sources.list*; then
+		if [ -n "$(apt-cache policy wireguard | grep 'Candidate:' | awk '{print $2}')" ]; then
+			echo "::: WireGuard is already available in the repositories"
+		else
 			echo "::: Adding Raspbian repository... "
 			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye.list > /dev/null
+
+			# Do not upgrade packages from the bullseye repository except for wireguard
+			printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
+
+			echo "::: Updating package cache..."
+			# shellcheck disable=SC2086
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		fi
-
-		# Do not upgrade packages from the bullseye repository except for wireguard
-		printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
-
-		echo "::: Updating package cache..."
-		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
 		# qrencode is used to generate qrcodes from config file, for use with mobile clients
 		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms qrencode)
@@ -1234,30 +1237,39 @@ installWireGuard(){
 	elif [ "$PLAT" = "Debian" ]; then
 
 		echo "::: Installing WireGuard from Debian package... "
-		if ! grep -qR 'deb http.\?://.*/debian.\? bullseye main' /etc/apt/sources.list*; then
+
+		if [ -n "$(apt-cache policy wireguard | grep 'Candidate:' | awk '{print $2}')" ]; then
+			echo "::: WireGuard is already available in the repositories"
+		else
 			echo "::: Adding Debian repository... "
 			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye.list > /dev/null
+
+			printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
+
+			echo "::: Updating package cache..."
+			# shellcheck disable=SC2086
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		fi
-
-		printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
-
-		echo "::: Updating package cache..."
-		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
 		PIVPN_DEPS=(linux-headers-amd64 wireguard wireguard-tools wireguard-dkms qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$PLAT" = "Ubuntu" ]; then
 
-		echo "::: Installing WireGuard from PPA... "
-		PIVPN_DEPS=(software-properties-common)
-		installDependentPackages PIVPN_DEPS[@]
-		$SUDO add-apt-repository ppa:wireguard/wireguard -y
+		echo "::: Installing WireGuard... "
 
-		echo "::: Updating package cache..."
-		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		if [ -n "$(apt-cache policy wireguard | grep 'Candidate:' | awk '{print $2}')" ]; then
+			echo "::: WireGuard is already available in the repositories"
+		else
+			echo "::: Adding WireGuard PPA... "
+			PIVPN_DEPS=(software-properties-common)
+			installDependentPackages PIVPN_DEPS[@]
+			$SUDO add-apt-repository ppa:wireguard/wireguard -y
+
+			echo "::: Updating package cache..."
+			# shellcheck disable=SC2086
+			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		fi
 
 		PIVPN_DEPS=(linux-headers-generic wireguard wireguard-tools wireguard-dkms qrencode)
 		installDependentPackages PIVPN_DEPS[@]
@@ -2195,7 +2207,7 @@ confUnattendedUpgrades(){
 
 	# Enable automatic updates via the bullseye repository when installing from debian package
 	if [ "$VPN" = "wireguard" ]; then
-		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
+		if [ -f /etc/apt/sources.list.d/pivpn-bullseye.list ]; then
 			if ! grep -q "\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"; then
 				$SUDO sed -i "/Unattended-Upgrade::Origins-Pattern {/a\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"
 			fi
