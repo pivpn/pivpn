@@ -71,6 +71,9 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
+# Override localization settings so the output is in English language.
+export LC_ALL=C
+
 main(){
 
 	######## FIRST CHECK ########
@@ -452,7 +455,7 @@ preconfigurePackages(){
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
 	if $SUDO bash -c 'command -v ufw' > /dev/null; then
-		if LC_ALL=C $SUDO ufw status | grep -q inactive; then
+		if $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
 		else
 			USING_UFW=1
