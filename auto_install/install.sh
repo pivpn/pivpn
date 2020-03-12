@@ -1129,7 +1129,12 @@ installOpenVPN(){
 
 	# Use x86-only OpenVPN APT repo on x86 Debian/Ubuntu systems
 	if [ "$PLAT" != "Raspbian" ] && [ "$X86_SYSTEM" -eq 1 ]; then
-		if [ -n "$(apt-cache policy openvpn | grep 'Candidate:' | awk '{print $2}')" ]; then
+
+		AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep 'Candidate:' | awk '{print $2}')"
+
+		# If there is an available openvpn package and its version is at least 2.4
+		# (required for ECC support), do not add the repository
+		if [ -n "$AVAILABLE_OPENVPN" ] && dpkg --compare-versions "$AVAILABLE_OPENVPN" ge 2.4; then
 			echo "::: OpenVPN is already available in the repositories"
 		else
 			# gnupg is used by apt-key to import the openvpn GPG key into the
@@ -1137,9 +1142,8 @@ installOpenVPN(){
 			PIVPN_DEPS=(gnupg)
 			installDependentPackages PIVPN_DEPS[@]
 
-			# We will download the repository key regardless of whether the user
-			# has already enabled the openvpn repository or not, just to make sure
-			# we have the right key
+			# We will download the repository key for the official repository from a
+			# keyserver. If we fail, we will attempt to download the key via HTTPS
 			echo "::: Adding repository key..."
 			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
 				echo "::: Import via keyserver failed, now trying wget"
