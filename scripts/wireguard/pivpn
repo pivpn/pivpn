@@ -17,7 +17,8 @@ makeConf(){
 }
 
 listConnected(){
-    $SUDO /opt/pivpn/clientSTAT.sh
+    shift
+    $SUDO /opt/pivpn/clientSTAT.sh "$@"
     exit 0
 }
 
@@ -84,7 +85,7 @@ fi
 # Handle redirecting to specific functions based on arguments
 case "$1" in
 "-a"  | "add"                ) makeConf "$@";;
-"-c"  | "clients"            ) listConnected;;
+"-c"  | "clients"            ) listConnected "$@";;
 "-d"  | "debug"              ) debug;;
 "-l"  | "list"               ) listClients;;
 "-qr" | "qrcode"             ) showQrcode "$@";;

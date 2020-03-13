@@ -17,7 +17,8 @@ function makeOVPNFunc {
 }
 
 function listClientsFunc {
-    $SUDO /opt/pivpn/clientStat.sh
+    shift
+    $SUDO /opt/pivpn/clientStat.sh "$@"
     exit 0
 }
 
@@ -93,7 +94,7 @@ fi
 # Handle redirecting to specific functions based on arguments
 case "$1" in
 "-a" | "add"                ) makeOVPNFunc "$@";;
-"-c" | "clients"            ) listClientsFunc;;
+"-c" | "clients"            ) listClientsFunc "$@";;
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;
 "-r" | "revoke"             ) removeOVPNFunc "$@";;
