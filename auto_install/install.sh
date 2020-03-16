@@ -1130,7 +1130,7 @@ installOpenVPN(){
 	# Use x86-only OpenVPN APT repo on x86 Debian/Ubuntu systems
 	if [ "$PLAT" != "Raspbian" ] && [ "$X86_SYSTEM" -eq 1 ]; then
 
-		AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep 'Candidate:' | awk '{print $2}')"
+		AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
 
 		# If there is an available openvpn package and its version is at least 2.4
 		# (required for ECC support), do not add the repository
@@ -1184,8 +1184,8 @@ installWireGuard(){
 		# straight, so it's also a good suggestion in such case because they will have
 		# a lot of outdated packages.
 
-		INSTALLED_KERNEL="$(apt-cache policy raspberrypi-kernel | grep 'Installed:' | awk '{print $2}')"
-		CANDIDATE_KERNEL="$(apt-cache policy raspberrypi-kernel | grep 'Candidate:' | awk '{print $2}')"
+		INSTALLED_KERNEL="$(apt-cache policy raspberrypi-kernel | grep -m1 'Installed: ' | grep -v '(none)' | awk '{print $2}')"
+		CANDIDATE_KERNEL="$(apt-cache policy raspberrypi-kernel | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
 
 		if dpkg --compare-versions "${CANDIDATE_KERNEL}" gt "${INSTALLED_KERNEL}"; then
 			if [ "${runUnattended}" = 'true' ]; then
@@ -1220,7 +1220,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if [ -n "$(apt-cache policy wireguard | grep 'Candidate:' | awk '{print $2}')" ]; then
+		if apt-cache policy wireguard 2> /dev/null | grep -m1 'Candidate: ' | grep -vq '(none)'; then
 			echo "::: WireGuard is already available in the repositories"
 		else
 			echo "::: Adding Raspbian repository... "
@@ -1242,7 +1242,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if [ -n "$(apt-cache policy wireguard | grep 'Candidate:' | awk '{print $2}')" ]; then
+		if apt-cache policy wireguard 2> /dev/null | grep -m1 'Candidate: ' | grep -vq '(none)'; then
 			echo "::: WireGuard is already available in the repositories"
 		else
 			echo "::: Adding Debian repository... "
@@ -1262,7 +1262,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard... "
 
-		if [ -n "$(apt-cache policy wireguard | grep 'Candidate:' | awk '{print $2}')" ]; then
+		if apt-cache policy wireguard 2> /dev/null | grep -m1 'Candidate: ' | grep -vq '(none)'; then
 			echo "::: WireGuard is already available in the repositories"
 		else
 			echo "::: Adding WireGuard PPA... "
