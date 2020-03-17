@@ -5,6 +5,16 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Mar 17th 2020
+
+- Switch to Bullseye repository on Debian/Raspbian. The bullseye repository is less likely to offer broken packages and it's also supported by Raspbian, meaning there is no need to manually compile WireGuard on older Raspberry Pis.
+- Adding a PPA on Ubuntu requires 'software-properties-common' with may not be installed on servers.
+- Avoid IPv6 leak by routing IPv6 through WireGuard.
+- Download OpenVPN key via HTTPS if retrieving via keyserver fails.
+- Show connected clients data rates with dotted decimal notation using 'pivpn -c -b'. It's useful because the human readable format does not offer enough precision to tell if a client is sending very little data.
+- Use 'apt-cache policy' to decide whether we need a repository or not.
+- Use lowest APT pin priority that allows package upgrades (more information on pull request [#963](https://github.com/pivpn/pivpn/pull/963) and [#983](https://github.com/pivpn/pivpn/pull/983)).
+
 ## Feb 17th 2020
 
 - When offering to use Pi-hole, identify VPN clients via clientname.pivpn using a dedicated hosts file. Clients can now be resolved by their names and also show up in the Pi-hole dashboard.
