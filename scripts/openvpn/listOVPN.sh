@@ -30,4 +30,3 @@ while read -r line || [ -n "$line" ]; do
 done <${INDEX}
 printf "\\n"
 } | column -t -s $'\t'
-printf "\\n"
