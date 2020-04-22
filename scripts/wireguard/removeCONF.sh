@@ -91,6 +91,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
             rm "keys/${CLIENT_NAME}_priv"
             rm "keys/${CLIENT_NAME}_pub"
+            rm "keys/${CLIENT_NAME}_psk"
             echo "::: Client Keys for ${CLIENT_NAME} removed"
 
             # Find all .conf files in the home folder of the user matching the checksum of the

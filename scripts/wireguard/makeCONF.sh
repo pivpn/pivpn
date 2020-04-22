@@ -75,7 +75,7 @@ if [ -f "configs/${CLIENT_NAME}.conf" ]; then
 fi
 
 wg genkey | tee "keys/${CLIENT_NAME}_priv" | wg pubkey > "keys/${CLIENT_NAME}_pub"
-CLIENT_PRE_SHARED_KEY=$(wg genpsk)
+wg genpsk | tee "keys/${CLIENT_NAME}_psk" &> /dev/null
 echo "::: Client Keys generated"
 
 # Find an unused number for the last octet of the client IP
@@ -103,7 +103,7 @@ echo >> "configs/${CLIENT_NAME}.conf"
 
 echo "[Peer]
 PublicKey = $(cat keys/server_pub)
-PresharedKey = ${CLIENT_PRE_SHARED_KEY}
+PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 Endpoint = ${pivpnHOST}:${pivpnPORT}
 AllowedIPs = 0.0.0.0/0, ::0/0" >> "configs/${CLIENT_NAME}.conf"
 echo "::: Client config generated"
@@ -111,7 +111,7 @@ echo "::: Client config generated"
 echo "# begin ${CLIENT_NAME}
 [Peer]
 PublicKey = $(cat "keys/${CLIENT_NAME}_pub")
-PresharedKey = ${CLIENT_PRE_SHARED_KEY}
+PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 AllowedIPs = ${NET_REDUCED}.${COUNT}/32
 # end ${CLIENT_NAME}" >> wg0.conf
 echo "::: Updated server config"
