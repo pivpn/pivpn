@@ -2,7 +2,14 @@
 
 backupdir=pivpnbackup
 date=$(date +%Y%m%d-%H%M%S)
-setupVars="/etc/pivpn/setupVars.conf"
+
+# if the variable is set up, says where the config is
+if [ -z $PIVPNCONFIGLOC ]
+then
+  setupVars="/etc/pivpn/setupVars.conf"
+else
+  setupVars="${PIVPNCONFIGLOC}/setupVars.conf"
+fi
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"
@@ -28,7 +35,7 @@ backup_openvpn(){
     backupzip=$date-pivpnovpnbackup.tgz
     # shellcheck disable=SC2210
     tar czpf "$install_home"/"$backupdir"/"$backupzip" "$openvpndir" "$ovpnsdir" > /dev/null 2>&1
-    echo -e "Backup created in $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/FAQ#how-can-i-migrate-my-configs-to-another-pivpn-instance"
+    echo -e "Backup crated to $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/FAQ#how-can-i-migrate-my-configs-to-another-pivpn-instance"
 
 }
 
@@ -39,7 +46,7 @@ backup_wireguard(){
     checkbackupdir
     backupzip=$date-pivpnwgbackup.tgz
     tar czpf "$install_home"/"$backupdir"/"$backupzip" "$wireguarddir" "$configsdir" > /dev/null 2>&1
-    echo -e "Backup created in $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/FAQ#how-can-i-migrate-my-configs-to-another-pivpn-instance"
+    echo -e "Backup crated to $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/FAQ#how-can-i-migrate-my-configs-to-another-pivpn-instance"
 
 }
 

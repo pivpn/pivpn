@@ -1,5 +1,9 @@
 #!/bin/bash
 
+commandname="$(basename "$(test -L "$0" && readlink "$0" || echo "$0")")"
+PIVPNCONFIGLOC="/etc/${commandname}"
+export PIVPNCONFIGLOC   # will be used by subsequent commands to locate config
+
 # Must be root to use this tool
 if [ $EUID -ne 0 ];then
   	if dpkg-query -s sudo &> /dev/null; then
@@ -12,57 +16,57 @@ fi
 
 makeConf(){
     shift
-    $SUDO /opt/pivpn/makeCONF.sh "$@"
+    $SUDO -E /opt/${commandname}/makeCONF.sh "$@"
     exit 0
 }
 
 listConnected(){
     shift
-    $SUDO /opt/pivpn/clientSTAT.sh "$@"
+    $SUDO /opt/${commandname}/clientSTAT.sh "$@"
     exit 0
 }
 
 debug(){
-    $SUDO /opt/pivpn/pivpnDEBUG.sh
+    $SUDO -E /opt/${commandname}/pivpnDEBUG.sh
     exit 0
 }
 
 listClients(){
-    $SUDO /opt/pivpn/listCONF.sh
+    $SUDO /opt/${commandname}/listCONF.sh
     exit 0
 }
 
 showQrcode(){
     shift
-    $SUDO /opt/pivpn/qrcodeCONF.sh "$@"
+    $SUDO /opt/${commandname}/qrcodeCONF.sh "$@"
     exit 0
 }
 
 removeClient(){
     shift
-    $SUDO /opt/pivpn/removeCONF.sh "$@"
+    $SUDO -E /opt/${commandname}/removeCONF.sh "$@"
     exit 0
 }
 
 uninstallServer(){
-    $SUDO /opt/pivpn/uninstall.sh
+    $SUDO -E /opt/${commandname}/uninstall.sh
     exit 0
 }
 
 updateScripts(){
     shift
-    $SUDO /opt/pivpn/update.sh "$@"
+    $SUDO -E /opt/${commandname}/update.sh "$@"
     exit 0
 }
 
 backup(){
-  $SUDO /opt/pivpn/backup.sh
+  $SUDO -E /opt/${commandname}/backup.sh
 }
 
 showHelp(){
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
-    echo "::: Usage: pivpn <command> [option]"
+    echo "::: Usage: ${commandname} <command> [option]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  -a,  add              Create a client conf profile"

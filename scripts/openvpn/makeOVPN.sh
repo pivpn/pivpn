@@ -1,7 +1,15 @@
 #!/bin/bash
 # Create OVPN Client
 # Default Variable Declarations
-setupVars="/etc/pivpn/setupVars.conf"
+
+# if the variable is set up, says where the config is
+if [ -z $PIVPNCONFIGLOC ]
+then
+  setupVars="/etc/pivpn/setupVars.conf"
+else
+  setupVars="${PIVPNCONFIGLOC}/setupVars.conf"
+fi
+
 DEFAULT="Default.txt"
 FILEEXT=".ovpn"
 CRT=".crt"
@@ -20,7 +28,7 @@ source "${setupVars}"
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
     echo ":::"
-    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-h|--help]"
+    echo "::: Usage: ${newcommandname} <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-h|--help]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
@@ -188,7 +196,7 @@ function keyPASS() {
         if [[ -z "${PASSWD}" ]]; then
             echo "You left the password blank"
             echo "If you don't want a password, please run:"
-            echo "pivpn add nopass"
+            echo "${newcommandname} add nopass"
             exit 1
         fi
     fi
@@ -426,8 +434,8 @@ for i in {2..254}; do
     fi
 done
 
-if [ -f /etc/pivpn/hosts.openvpn ]; then
-    echo "${NET_REDUCED}.${COUNT} ${NAME}.pivpn" >> /etc/pivpn/hosts.openvpn
+if [ -f ${pivpnetcFilesDir}/hosts.openvpn ]; then
+    echo "${NET_REDUCED}.${COUNT} ${NAME}.pivpn" >> ${pivpnetcFilesDir}/hosts.openvpn
     if killall -SIGHUP pihole-FTL; then
         echo "::: Updated hosts file for Pi-hole"
     else

@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # This scripts runs as root
 
-setupVars="/etc/pivpn/setupVars.conf"
+# if the variable is set up, says where the config is
+if [ -z $PIVPNCONFIGLOC ]
+then
+  setupVars="/etc/pivpn/setupVars.conf"
+else
+  setupVars="${PIVPNCONFIGLOC}/setupVars.conf"
+fi
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"
@@ -13,10 +19,10 @@ source "${setupVars}"
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mLatest commit\e[0m\t\t ::::"
-git --git-dir /etc/.pivpn/.git log -n 1
+git --git-dir /etc/.${newcommandname}/.git log -n 1
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
-sed "s/$pivpnHOST/REDACTED/" < /etc/pivpn/setupVars.conf
+sed "s/$pivpnHOST/REDACTED/" < ${setupVars}
 printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
 cat /etc/openvpn/server.conf
@@ -28,7 +34,7 @@ echo -e ":::: \t\e[4mRecursive list of files in\e[0m\t ::::\n::: \e[4m/etc/openv
 ls -LR /etc/openvpn/easy-rsa/pki/ -Ireqs -Icerts_by_serial
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mSelf check\e[0m\t\t ::::"
-/opt/pivpn/self_check.sh
+${pivpnoptFilesDir}/self_check.sh
 printf "=============================================\n"
 echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
 echo -e ":::: \e[1mhttps://github.com/pivpn/pivpn/wiki/FAQ\e[0m"

@@ -1,6 +1,13 @@
 #!/bin/bash
 
-setupVars="/etc/pivpn/setupVars.conf"
+# if the variable is set up, says where the config is
+if [ -z $PIVPNCONFIGLOC ]
+then
+  setupVars="/etc/pivpn/setupVars.conf"
+else
+  setupVars="${PIVPNCONFIGLOC}/setupVars.conf"
+fi
+
 ERR=0
 
 if [ ! -f "${setupVars}" ]; then

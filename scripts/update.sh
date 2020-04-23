@@ -1,12 +1,13 @@
 #!/bin/bash
 
 ###Updates pivpn scripts (Not PiVPN)
-###Main Vars
-pivpnrepo="https://github.com/pivpn/pivpn.git"
-pivpnlocalpath="/etc/.pivpn"
-pivpnscripts="/opt/pivpn/"
-bashcompletiondir="/etc/bash_completion.d/"
-setupVars="/etc/pivpn/setupVars.conf"
+# if the variable is set up, says where the config is
+if [ -z $PIVPNCONFIGLOC ]
+then
+  setupVars="/etc/pivpn/setupVars.conf"
+else
+  setupVars="${PIVPNCONFIGLOC}/setupVars.conf"
+fi
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"
@@ -14,6 +15,13 @@ if [ ! -f "${setupVars}" ]; then
 fi
 
 source "${setupVars}"
+###Main Vars
+pivpnrepo="https://github.com/pivpn/pivpn.git"
+#pivpnrepo="/root/repos"## for internal testing 
+pivpnlocalpath="${pivpnetcFilesDir}"
+pivpnscripts="${pivpnoptFilesDir}"
+bashcompletiondir="/etc/bash_completion.d/"
+
 
 scriptusage(){
     echo "::: Updates PiVPN scripts"
@@ -27,6 +35,17 @@ scriptusage(){
 }
 
 ###Functions
+## updates the bash completion and edits if needed
+updatebashcompletion(){
+  if [ -z "${altcommandname}" ]
+  then
+    install -m 644 "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir"
+  else
+    install -m 644 "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir/pivpn${altcommandname}"
+    sed s/pivpn/pivpn${altcommandname}/g -i "/etc/bash_completion.d/pivpn${altcommandname}"
+  fi
+}
+
 ##Updates scripts
 updatepivpnscripts(){
     ##We don't know what sort of changes users have made.
@@ -34,7 +53,7 @@ updatepivpnscripts(){
     echo "going do update PiVPN Scripts"
     if [[ -d "$pivpnlocalpath" ]]; then
       if [[ -n "$pivpnlocalpath" ]]; then
-        rm -rf "${pivpnlocalpath}/../.pivpn"
+        rm -rf "${pivpnlocalpath}/../.pivpn${altcommandname}"
         cloneandupdate
 			fi
     else
@@ -50,7 +69,7 @@ updatefromtest(){
     echo "PiVPN Scripts updating from test branch"
     if [[ -d "$pivpnlocalpath" ]]; then
       if [[ -n "$pivpnlocalpath" ]]; then
-        rm -rf "${pivpnlocalpath}/../.pivpn"
+        rm -rf "${pivpnlocalpath}/../.pivpn${altcommandname}"
         cloneupdttest
       fi
     else
@@ -64,7 +83,7 @@ cloneandupdate(){
   git clone "$pivpnrepo" "$pivpnlocalpath"
   cp "${pivpnlocalpath}"/scripts/*.sh "$pivpnscripts"
   cp "${pivpnlocalpath}"/scripts/$VPN/*.sh "$pivpnscripts"
-  cp "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir"
+  updatebashcompletion
 }
 
 ##same as cloneandupdate() but from test branch
@@ -75,7 +94,7 @@ cloneupdttest(){
   git -C "$pivpnlocalpath" pull origin test
   cp "${pivpnlocalpath}"/scripts/*.sh "$pivpnscripts"
   cp "${pivpnlocalpath}"/scripts/$VPN/*.sh "$pivpnscripts"
-  cp "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir"
+  updatebashcompletion
   git -C "$pivpnlocalpath" checkout master
 }
 

@@ -7,7 +7,14 @@
 PKG_MANAGER="apt-get"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
-setupVars="/etc/pivpn/setupVars.conf"
+
+# if the variable is set up, says where the config is
+if [ -z $PIVPNCONFIGLOC ]
+then
+  setupVars="/etc/pivpn/setupVars.conf"
+else
+  setupVars="${PIVPNCONFIGLOC}/setupVars.conf"
+fi
 
 if [ ! -f "${setupVars}" ]; then
 	echo "::: Missing setup vars file!"
@@ -152,12 +159,12 @@ removeAll(){
 		pihole restartdns
 	fi
 
-	rm -rf /opt/pivpn
-	rm -rf /etc/.pivpn
-	rm -rf /etc/pivpn
+	rm -rf ${pivpnoptFilesDir}
+	rm -rf ${pivpnetcFilesDir}
+	rm -rf ${setupVars}  # remove only this pivpn setupVars
 	rm -f /var/log/*pivpn*
-	rm -f /usr/local/bin/pivpn
-	rm -f /etc/bash_completion.d/pivpn
+	rm -f ${pivpnlocalbinFilesDir}
+	rm -f /etc/bash_completion.d/${newcommandname}
 
 	echo ":::"
 	echo "::: Removing VPN configuration files..."

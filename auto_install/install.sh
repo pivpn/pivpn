@@ -12,8 +12,10 @@
 
 ######## VARIABLES #########
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
-setupVars="/etc/pivpn/setupVars.conf"
-pivpnFilesDir="/etc/.pivpn"
+setupVars="/etc/pivpn/setupVars.conf" #can be modified if --altcommand
+pivpnetcFilesDir="/etc/.pivpn"        #can be modified if --altcommand
+pivpnoptFilesDir="/opt/pivpn"         #can be modified if --altcommand
+pivpnlocalbinFilesDir="/usr/local/bin/pivpn" #can be modified if --altcommand
 
 piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
@@ -56,6 +58,7 @@ OPENVPN_KEY_URL="https://swupdate.openvpn.net/repos/repo-public.gpg"
 runUnattended=false
 skipSpaceCheck=false
 reconfigure=false
+altcommandname=""
 
 ######## SCRIPT ########
 
@@ -95,11 +98,15 @@ main(){
 	fi
 
 	# Check arguments for the undocumented flags
-	for var in "$@"; do
-		case "$var" in
+        args=$#
+	for (( i=0; i<=$args; i+=1 ))
+        do
+                argarray=("$@")
+		case "${argarray[$i]}" in
 			"--i_do_not_follow_recommendations"   ) skipSpaceCheck=false;;
 			"--unattended"     ) runUnattended=true;;
 			"--reconfigure"  ) reconfigure=true;;
+                        "--altcommand"   ) altcommandcheck "${argarray[$i+1]}";;
 		esac
 	done
 
@@ -289,6 +296,13 @@ distroCheck(){
 
 	echo "PLAT=${PLAT}" > /tmp/setupVars.conf
 	echo "OSCN=${OSCN}" >> /tmp/setupVars.conf
+        echo "setupVars=${setupVars}" >> /tmp/setupVars.conf
+        echo "pivpnetcFilesDir=${pivpnetcFilesDir}" >> /tmp/setupVars.conf
+        echo "pivpnoptFilesDir=${pivpnoptFilesDir}" >> /tmp/setupVars.conf
+        echo "pivpnlocalbinFilesDir=${pivpnlocalbinFilesDir}" >> /tmp/setupVars.conf
+        echo "altcommandname=${altcommandname}"  >> /tmp/setupVars.conf
+        echo "newcommandname=pivpn${altcommandname}"  >> /tmp/setupVars.conf
+
 }
 
 noOSSupport(){
@@ -322,6 +336,23 @@ Would you like to continue anyway?" ${r} ${c}) then
 		echo "::: Exiting due to untested OS"
 		exit 1
 	fi
+}
+
+altcommandcheck(){
+
+altcommandname="_${1}"
+setupVars="/etc/pivpn${altcommandname}/setupVars.conf"
+pivpnetcFilesDir="/etc/.pivpn${altcommandname}"
+pivpnoptFilesDir="/opt/pivpn${altcommandname}"
+pivpnlocalbinFilesDir="/usr/local/bin/pivpn${altcommandname}"
+
+echo "::: ${altcommandname} saved as ${altcommandname}"
+echo "::: ${altcommandname} so new commmand name will be pivpn${altcommandname}"
+echo "::: ${altcommandname} so will use ${setupVars}"
+echo "::: ${altcommandname} so will use ${pivpnetcFilesDir}"
+echo "::: ${altcommandname} so will use ${pivpnoptFilesDir}"
+echo "::: ${altcommandname} so will use ${pivpnlocalbinFilesDir}"
+
 }
 
 
@@ -940,7 +971,7 @@ updateRepo(){
 		### FIXME: Never call rm -rf with a plain variable. Never again as SU!
 		#$SUDO rm -rf "${1}"
 		if test -n "$1"; then
-			$SUDO rm -rf "$(dirname "$1")/.pivpn"
+			$SUDO rm -rf "$(dirname "$1")/.pivpn${altcommandname}"
 		fi
 		# Go back to /etc otherwise git will complain when the current working
 		# directory has just been deleted (/etc/.pivpn).
@@ -962,7 +993,7 @@ makeRepo(){
 	### FIXME: Never call rm -rf with a plain variable. Never again as SU!
 	#$SUDO rm -rf "${1}"
 	if test -n "$1"; then
-		$SUDO rm -rf "$(dirname "$1")/.pivpn"
+		$SUDO rm -rf "$(dirname "$1")/.pivpn${altcommandname}"
 	fi
 	# Go back to /etc otherwhise git will complain when the current working
 	# directory has just been deleted (/etc/.pivpn).
@@ -990,14 +1021,14 @@ getGitFiles(){
 
 cloneOrUpdateRepos(){
 	# Get Git files
-	getGitFiles ${pivpnFilesDir} ${pivpnGitUrl} || \
-	{ echo "!!! Unable to clone ${pivpnGitUrl} into ${pivpnFilesDir}, unable to continue."; \
+	getGitFiles ${pivpnetcFilesDir} ${pivpnGitUrl} || \
+	{ echo "!!! Unable to clone ${pivpnGitUrl} into ${pivpnetcFilesDir}, unable to continue."; \
 	exit 1; \
 }
 }
 
 installPiVPN(){
-	$SUDO mkdir -p /etc/pivpn/
+	$SUDO mkdir -p "/etc/pivpn${altcommandname}/"
 	askWhichVPN
 
 	if [ "$VPN" = "openvpn" ]; then
@@ -1076,7 +1107,7 @@ askWhichVPN(){
 		fi
 	else
 		if [ "$PLAT" = "Raspbian" ] || [ "$X86_SYSTEM" -eq 1 ]; then
-			chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-instantaneous connection speed, high performance, and modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (press space to select):" "${r}" "${c}" 2)
+			chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-istantaneous connection speed, high performance, modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol. Or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (press space to select):" "${r}" "${c}" 2)
 			VPNChooseOptions=(WireGuard "" on
 								OpenVPN "" off)
 
@@ -1854,7 +1885,7 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	if [ "$pivpnCERT" = "rsa" ]; then
 		if [ "${USE_PREDEFINED_DH_PARAM}" -eq 1 ]; then
 			# Use Diffie-Hellman parameters from RFC 7919 (FFDHE)
-			${SUDOE} install -m 644 "${pivpnFilesDir}"/files/etc/openvpn/easy-rsa/pki/ffdhe"${pivpnENCRYPT}".pem pki/dh"${pivpnENCRYPT}".pem
+			${SUDOE} install -m 644 "${pivpnetcFilesDir}"/files/etc/openvpn/easy-rsa/pki/ffdhe"${pivpnENCRYPT}".pem pki/dh"${pivpnENCRYPT}".pem
 		else
 			# Generate Diffie-Hellman key exchange
 			${SUDOE} ./easyrsa gen-dh
@@ -1874,7 +1905,7 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
-	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
+	$SUDO install -m 644 "$pivpnetcFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
 
 	# Apply client DNS settings
 	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${pivpnDNS1}'\"/' /etc/openvpn/server.conf
@@ -1931,7 +1962,7 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 }
 
 confOVPN(){
-	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/easy-rsa/pki/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
+	$SUDO install -m 644 "$pivpnetcFilesDir"/files/etc/openvpn/easy-rsa/pki/Default.txt /etc/openvpn/easy-rsa/pki/Default.txt
 
 	$SUDO sed -i 's/IPv4pub/'"$pivpnHOST"'/' /etc/openvpn/easy-rsa/pki/Default.txt
 
@@ -2222,27 +2253,29 @@ confUnattendedUpgrades(){
 installScripts(){
 	# Install the scripts from /etc/.pivpn to their various locations
 	echo ":::"
-	echo -n -e "::: Installing scripts to /opt/pivpn...\n"
-	if [ ! -d /opt/pivpn ]; then
-		$SUDO mkdir -p /opt/pivpn
-		$SUDO chown root:root /opt/pivpn
-		$SUDO chmod 0755 /opt/pivpn
+	echo -n -e "::: Installing scripts to ${pivpnoptFilesDir}...\n"
+	if [ ! -d ${pivpnoptFilesDir} ]; then
+		$SUDO mkdir -p        "${pivpnoptFilesDir}"
+		$SUDO chown root:root "${pivpnoptFilesDir}"
+		$SUDO chmod 0755      "${pivpnoptFilesDir}"
+
 	fi
 
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/*.sh -t /opt/pivpn
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/*.sh -t /opt/pivpn
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/pivpn /usr/local/bin/pivpn
-	$SUDO install -m 644 "$pivpnFilesDir"/scripts/"$VPN"/bash-completion /etc/bash_completion.d/pivpn
+	$SUDO install -m 755 "${pivpnetcFilesDir}"/scripts/*.sh -t "$pivpnoptFilesDir"
+	$SUDO install -m 755 "${pivpnetcFilesDir}"/scripts/"$VPN"/*.sh -t "$pivpnoptFilesDir"
+	$SUDO install -m 755 "${pivpnetcFilesDir}"/scripts/"$VPN"/pivpn "$pivpnlocalbinFilesDir"
+	$SUDO install -m 644 "${pivpnetcFilesDir}"/scripts/"$VPN"/bash-completion "/etc/bash_completion.d/pivpn${altcommandname}"
+        $SUDO sed s/pivpn/pivpn${altcommandname}/g -i "/etc/bash_completion.d/pivpn${altcommandname}"
 	# shellcheck disable=SC1091
-	. /etc/bash_completion.d/pivpn
+	. "/etc/bash_completion.d/pivpn${altcommandname}"
 	echo " done."
 }
 
 displayFinalMessage(){
 	if [ "${runUnattended}" = 'true' ]; then
 		echo "::: Installation Complete!"
-		echo "::: Now run 'pivpn add' to create the ovpn profiles."
-		echo "::: Run 'pivpn help' to see what else you can do!"
+		echo "::: Now run 'pivpn${altcommandname} add' to create the ovpn profiles."
+		echo "::: Run 'pivpn${altcommandname} help' to see what else you can do!"
 		echo
 		echo "::: If you run into any issue, please read all our documentation carefully."
 		echo "::: All incomplete posts or bug reports will be ignored or deleted."
@@ -2253,8 +2286,8 @@ displayFinalMessage(){
 	fi
 
 	# Final completion message to user
-	whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles.
-Run 'pivpn help' to see what else you can do!\\n\\nIf you run into any issue, please read all our documentation carefully.
+	whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn${altcommandname} add' to create the ovpn profiles.
+Run 'pivpn${altcommandname} help' to see what else you can do!\\n\\nIf you run into any issue, please read all our documentation carefully.
 All incomplete posts or bug reports will be ignored or deleted.\\n\\nThank you for using PiVPN." ${r} ${c}
 	if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" ${r} ${c}); then
 		whiptail --title "Rebooting" --msgbox "The system will now reboot." ${r} ${c}

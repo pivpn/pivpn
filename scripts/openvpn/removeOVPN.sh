@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # PiVPN: revoke client script
 
-setupVars="/etc/pivpn/setupVars.conf"
+# if the variable is set up, says where the config is
+if [ -z $PIVPNCONFIGLOC ]
+then
+  setupVars="/etc/pivpn/setupVars.conf"
+else
+  setupVars="${PIVPNCONFIGLOC}/setupVars.conf"
+fi
+
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 
 if [ ! -f "${setupVars}" ]; then
@@ -14,7 +21,7 @@ source "${setupVars}"
 helpFunc() {
     echo "::: Revoke a client ovpn profile"
     echo ":::"
-    echo "::: Usage: pivpn <-r|revoke> [-h|--help] [<client-1>] ... [<client-n>] ..."
+    echo "::: Usage: ${newcommandname} <-r|revoke> [-h|--help] [<client-1>] ... [<client-n>] ..."
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
