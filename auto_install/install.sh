@@ -1977,9 +1977,9 @@ confWireGuard(){
 	$SUDO chmod 700 /etc/wireguard
 
 	if [ "${runUnattended}" = 'true' ]; then
-		echo "::: The Server Keys and Pre-Shared key will now be generated."
+		echo "::: The Server Keys will now be generated."
 	else
-		whiptail --title "Server Information" --msgbox "The Server Keys and Pre-Shared key will now be generated." "${r}" "${c}"
+		whiptail --title "Server Information" --msgbox "The Server Keys will now be generated." "${r}" "${c}"
 	fi
 
 	# Remove configs and keys folders to make space for a new server when using 'Repair' or 'Reconfigure'
@@ -1993,10 +1993,9 @@ confWireGuard(){
 
 	# Generate private key and derive public key from it
 	wg genkey | $SUDO tee /etc/wireguard/keys/server_priv &> /dev/null
-	wg genpsk | $SUDO tee /etc/wireguard/keys/psk &> /dev/null
 	$SUDO cat /etc/wireguard/keys/server_priv | wg pubkey | $SUDO tee /etc/wireguard/keys/server_pub &> /dev/null
 
-	echo "::: Server Keys and Pre-Shared Key have been generated."
+	echo "::: Server Keys have been generated."
 
 	echo "[Interface]
 PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
