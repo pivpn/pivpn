@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # This scripts runs as root
 
-setupVars="/etc/pivpn/setupVars.conf"
+setupVars="/etc/pivpn/openvpn/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"
