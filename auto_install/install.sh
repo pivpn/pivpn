@@ -11,11 +11,13 @@
 # Make sure you have `curl` installed
 
 ######## VARIABLES #########
-pivpnGitUrl="https://github.com/pivpn/pivpn.git"
+#pivpnGitUrl="https://github.com/pivpn/pivpn.git"
+pivpnGitUrl="/root/repos/pivpn"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn" # will be /etc/pivpn/${VPN}/setupVars.conf
 tempsetupVarsFile="/tmp/setupVars.conf"
-pivpnFilesDir="/etc/.pivpn"
+pivpnFilesDir="/etc/.pivpn" # will be updated when $VPN known
+pivpnScriptDir="/opt/pivpn"
 
 piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
@@ -142,7 +144,7 @@ main(){
 	if [ -z "$UpdateCmd" ] || [ "$UpdateCmd" = "Reconfigure" ]; then
 		:
 	elif [ "$UpdateCmd" = "Update" ]; then
-		$SUDO /opt/pivpn/update.sh "$@"
+		$SUDO ${pivpnScriptDir}/update.sh "$@"
 		exit 0
 	elif [ "$UpdateCmd" = "Repair" ]; then
 		# shellcheck disable=SC1090
@@ -213,7 +215,8 @@ main(){
 
 	# Save installation setting to the final location
 	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
-        echo "::: Setupfiles copied to ${setupConfigDir}/{$VPN}/${setupVarsFile}"
+        echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
+        $SUDO mkdir "${setupConfigDir}/${VPN}/"
 	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}" 
 
 	installScripts
@@ -999,6 +1002,7 @@ getGitFiles(){
 }
 
 cloneOrUpdateRepos(){
+        pivpnFilesDir="${pivpnFilesDir}/${VPN}"
 	# Get Git files
 	getGitFiles ${pivpnFilesDir} ${pivpnGitUrl} || \
 	{ echo "!!! Unable to clone ${pivpnGitUrl} into ${pivpnFilesDir}, unable to continue."; \
@@ -2232,19 +2236,33 @@ confUnattendedUpgrades(){
 installScripts(){
 	# Install the scripts from /etc/.pivpn to their various locations
 	echo ":::"
-	echo -n -e "::: Installing scripts to /opt/pivpn...\n"
-	if [ ! -d /opt/pivpn ]; then
-		$SUDO mkdir -p /opt/pivpn
-		$SUDO chown root:root /opt/pivpn
-		$SUDO chmod 0755 /opt/pivpn
+        echo "::: line ${LINENO}"
+	echo -n -e "::: Installing scripts to ${pivpnScriptDir}...\n"
+        echo "::: line ${LINENO}"
+	if [ ! -d "${pivpnScriptDir}/${VPN}" ]; then
+		$SUDO mkdir -p ${pivpnScriptDir}/${VPN}
+		$SUDO chown -R root:root ${pivpnScriptDir}
+		$SUDO chmod -R 0755 ${pivpnScriptDir}
 	fi
 
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/*.sh -t /opt/pivpn
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/*.sh -t /opt/pivpn/${VPN}
-	$SUDO install -m 755 "$pivpnFilesDir"/scripts/"$VPN"/pivpn /usr/local/bin/pivpn/${VPN}
-	$SUDO install -m 644 "$pivpnFilesDir"/scripts/"$VPN"/bash-completion /etc/bash_completion.d/pivpn
+	$SUDO install -m 755 "${pivpnFilesDir}"/scripts/*.sh -t ${pivpnScriptDir}
+	$SUDO install -m 755 "${pivpnFilesDir}/scripts/${VPN}"/*.sh -t ${pivpnScriptDir}/${VPN}
+        echo "::: line ${LINENO}"
+        $SUDO mkdir -p /usr/local/bin/pivpn/${VPN}
+        echo "::: line ${LINENO}"
+	$SUDO install -v -m 755 "${pivpnFilesDir}/scripts/${VPN}"/pivpn -t /usr/local/bin/pivpn/${VPN}
+        echo "::: line ${LINENO}"
+        ls -l  ${pivpnFilesDir}/scripts/${VPN}/bash-completion
+        echo "::: line ${LINENO}"
+	$SUDO -E 'bash cat "${pivpnFilesDir}/scripts/${VPN}/bash-completion" >> /etc/bash_completion.d/pivpn'
+        echo "::: line ${LINENO}"
+        $SUDO chown root:root /etc/bash_completion.d/pivpn
+        echo "::: line ${LINENO}"
+        $SUDO chmod 755 /etc/bash_completion.d/pivpn
 	# shellcheck disable=SC1091
+        echo "::: line ${LINENO}"
 	. /etc/bash_completion.d/pivpn
+        echo "::: line ${LINENO}"
 	echo " done."
 }
 
