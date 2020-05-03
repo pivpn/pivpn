@@ -258,7 +258,7 @@ distroCheck(){
 		OSCN=${VER_MAP["${VER}"]}
 	fi
 
-	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ] || [ "$PLAT" = "LinuxMint" ]; then
 		DPKG_ARCH="$(dpkg --print-architecture)"
 		if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
 			X86_SYSTEM=1
@@ -268,9 +268,9 @@ distroCheck(){
 	fi
 
 	case ${PLAT} in
-		Debian|Raspbian|Ubuntu)
+		Debian|Raspbian|Ubuntu|LinuxMint)
 			case ${OSCN} in
-				buster|xenial|bionic|stretch)
+				buster|xenial|bionic|stretch|tricia)
 				:
 				;;
 				*)
@@ -1258,7 +1258,7 @@ installWireGuard(){
 		PIVPN_DEPS=(linux-headers-amd64 wireguard wireguard-tools wireguard-dkms qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
-	elif [ "$PLAT" = "Ubuntu" ]; then
+	elif [ "$PLAT" = "Ubuntu" ] || [ "$PLAT" = "LinuxMint" ]; then
 
 		echo "::: Installing WireGuard... "
 
@@ -2086,7 +2086,7 @@ confNetwork(){
 		fi
 
 		case ${PLAT} in
-			Debian|Raspbian|Ubuntu)
+			Debian|Raspbian|Ubuntu|LinuxMint)
 				$SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
 			;;
 		esac
@@ -2117,7 +2117,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 
 	# Restart the logging service
 	case ${PLAT} in
-		Debian|Raspbian|Ubuntu)
+		Debian|Raspbian|Ubuntu|LinuxMint)
 			$SUDO systemctl restart rsyslog.service || true
 		;;
 	esac
@@ -2127,7 +2127,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 restartServices(){
 	echo "::: Restarting services..."
 	case ${PLAT} in
-		Debian|Raspbian|Ubuntu)
+		Debian|Raspbian|Ubuntu|LinuxMint)
 			if [ "$VPN" = "openvpn" ]; then
 				$SUDO systemctl enable openvpn.service &> /dev/null
 				$SUDO systemctl restart openvpn.service
@@ -2176,7 +2176,7 @@ confUnattendedUpgrades(){
 	installDependentPackages PIVPN_DEPS[@]
   aptConfDir="/etc/apt/apt.conf.d"
 
-	if [ "$PLAT" = "Ubuntu" ]; then
+	if [ "$PLAT" = "Ubuntu" ] || [ "$PLAT" = "LinuxMint" ]; then
 
 		# Ubuntu 50unattended-upgrades should already just have security enabled
 		# so we just need to configure the 10periodic file

@@ -102,7 +102,7 @@ removeAll(){
 							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
 								rm -f /etc/apt/sources.list.d/pivpn-bullseye.list
 								rm -f /etc/apt/preferences.d/pivpn-limit-bullseye
-							elif [ "$PLAT" = "Ubuntu" ]; then
+							elif [ "$PLAT" = "Ubuntu" ] || [ "$PLAT" = "LinuxMint" ]; then
 								add-apt-repository ppa:wireguard/wireguard -r -y
 							fi
 							echo "::: Updating package cache..."
@@ -116,7 +116,7 @@ removeAll(){
 
 						elif [ "${i}" = "openvpn" ]; then
 
-							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ] || [ "$PLAT" = "LinuxMint" ]; then
 								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
 								echo "::: Updating package cache..."
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
