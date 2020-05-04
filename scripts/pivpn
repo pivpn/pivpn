@@ -29,8 +29,8 @@ fi
 
 # Handle redirecting to specific functions based on arguments
 case "$1" in
-     wg                      ) "${scriptDir}/wireguard/pivpn" "${@:2}";;
-     opv                     ) "${scriptDir}/openvpn/pivpn"   "${@:2}";;
+     wg                      ) "${scriptDir}/wireguard/pivpn.sh" "${@:2}";;
+     opv                     ) "${scriptDir}/openvpn/pivpn.sh"   "${@:2}";;
 "-h"  | "help"               ) showHelp;;
 *                            ) showHelp;;
 esac

@@ -16,7 +16,7 @@ pivpnGitUrl="/root/repos/pivpn"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn" # will be /etc/pivpn/${VPN}/setupVars.conf
 tempsetupVarsFile="/tmp/setupVars.conf"
-pivpnFilesDir="/etc/.pivpn" # will be updated when $VPN known
+pivpnFilesDir="/etc/.pivpn" 
 pivpnScriptDir="/opt/pivpn"
 
 piholeSetupVars="/etc/pihole/setupVars.conf"
@@ -1002,7 +1002,6 @@ getGitFiles(){
 }
 
 cloneOrUpdateRepos(){
-        pivpnFilesDir="${pivpnFilesDir}/${VPN}"
 	# Get Git files
 	getGitFiles ${pivpnFilesDir} ${pivpnGitUrl} || \
 	{ echo "!!! Unable to clone ${pivpnGitUrl} into ${pivpnFilesDir}, unable to continue."; \
@@ -2235,32 +2234,21 @@ confUnattendedUpgrades(){
 
 installScripts(){
 	# Install the scripts from /etc/.pivpn to their various locations
-	echo ":::"
-        echo "::: line ${LINENO}"
 	echo -n -e "::: Installing scripts to ${pivpnScriptDir}...\n"
         echo "::: line ${LINENO}"
 	if [ ! -d "${pivpnScriptDir}/${VPN}" ]; then
-		$SUDO mkdir -p ${pivpnScriptDir}/${VPN}
-		$SUDO chown -R root:root ${pivpnScriptDir}
-		$SUDO chmod -R 0755 ${pivpnScriptDir}
+		$SUDO install -m 0755 -o root -d ${pivpnScriptDir}/${VPN}
+#		$SUDO mkdir -p ${pivpnScriptDir}/${VPN}
+#		$SUDO chown -R root:root ${pivpnScriptDir}
+#		$SUDO chmod -R 0755 ${pivpnScriptDir}
 	fi
-
-	$SUDO install -m 755 "${pivpnFilesDir}"/scripts/*.sh -t ${pivpnScriptDir}
-	$SUDO install -m 755 "${pivpnFilesDir}/scripts/${VPN}"/*.sh -t ${pivpnScriptDir}/${VPN}
-        echo "::: line ${LINENO}"
-        $SUDO mkdir -p /usr/local/bin/pivpn/${VPN}
-        echo "::: line ${LINENO}"
-	$SUDO install -v -m 755 "${pivpnFilesDir}/scripts/${VPN}"/pivpn -t /usr/local/bin/pivpn/${VPN}
-        echo "::: line ${LINENO}"
-        ls -l  ${pivpnFilesDir}/scripts/${VPN}/bash-completion
-        echo "::: line ${LINENO}"
-	$SUDO -E 'bash cat "${pivpnFilesDir}/scripts/${VPN}/bash-completion" >> /etc/bash_completion.d/pivpn'
-        echo "::: line ${LINENO}"
+	$SUDO install -v -m 755 -t ${pivpnScriptDir} ${pivpnFilesDir}/scripts/*.sh  
+	$SUDO install -v -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh  
+	$SUDO install -v -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
+	$SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
         $SUDO chown root:root /etc/bash_completion.d/pivpn
-        echo "::: line ${LINENO}"
         $SUDO chmod 755 /etc/bash_completion.d/pivpn
 	# shellcheck disable=SC1091
-        echo "::: line ${LINENO}"
 	. /etc/bash_completion.d/pivpn
         echo "::: line ${LINENO}"
 	echo " done."
@@ -2269,7 +2257,7 @@ installScripts(){
 displayFinalMessage(){
 	if [ "${runUnattended}" = 'true' ]; then
 		echo "::: Installation Complete!"
-		echo "::: Now run 'pivpn add' to create the ovpn profiles."
+		echo "::: Now run 'pivpn add' to create the client profiles."
 		echo "::: Run 'pivpn help' to see what else you can do!"
 		echo
 		echo "::: If you run into any issue, please read all our documentation carefully."
@@ -2281,7 +2269,7 @@ displayFinalMessage(){
 	fi
 
 	# Final completion message to user
-	whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the ovpn profiles.
+	whiptail --msgbox --backtitle "Make it so." --title "Installation Complete!" "Now run 'pivpn add' to create the client profiles.
 Run 'pivpn help' to see what else you can do!\\n\\nIf you run into any issue, please read all our documentation carefully.
 All incomplete posts or bug reports will be ignored or deleted.\\n\\nThank you for using PiVPN." ${r} ${c}
 	if (whiptail --title "Reboot" --yesno --defaultno "It is strongly recommended you reboot after installation.  Would you like to reboot now?" ${r} ${c}); then
