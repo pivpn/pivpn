@@ -2243,9 +2243,20 @@ installScripts(){
 #		$SUDO chmod -R 0755 ${pivpnScriptDir}
 	fi
 	$SUDO install -v -m 755 -t ${pivpnScriptDir} ${pivpnFilesDir}/scripts/*.sh  
-	$SUDO install -v -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh  
-	$SUDO install -v -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
-	$SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
+	$SUDO install -v -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh 
+        # line for the single command being installed
+        $SUDO ln -s -T ${pivpnFilesDir}/scripts/${VPN}/pivpn pivpn
+        # if the other protocol file exists
+        if [ ${VPN} -eq 'wireguard' ]; then
+           othervpn='openvpn'
+        else
+           othervpn='wireguard'
+        fi
+        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile} ] then;
+           # dont need a link, copy the common script to the location instead
+	   $SUDO install -v -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
+	fi
+        $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
         $SUDO chown root:root /etc/bash_completion.d/pivpn
         $SUDO chmod 755 /etc/bash_completion.d/pivpn
 	# shellcheck disable=SC1091
