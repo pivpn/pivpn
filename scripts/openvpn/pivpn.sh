@@ -10,29 +10,29 @@ if [[ ! $EUID -eq 0 ]];then
   fi
 fi
 
-scriptdir="/opt/pivpn"
+scriptDir="/opt/pivpn"
 vpn="openvpn"
 
 function makeOVPNFunc {
     shift
-    $SUDO ${scripdir}/${vpn}/makeOVPN.sh "$@"
+    $SUDO ${scriptDir}/${vpn}/makeOVPN.sh "$@"
     exit 0
 }
 
 function listClientsFunc {
     shift
-    $SUDO ${scripdir}/${vpn}/clientStat.sh "$@"
+    $SUDO ${scriptDir}/${vpn}/clientStat.sh "$@"
     exit 0
 }
 
 function listOVPNFunc {
-    $SUDO ${scripdir}/${vpn}/listOVPN.sh
+    $SUDO ${scriptDir}/${vpn}/listOVPN.sh
     exit 0
 }
 
 function debugFunc {
     echo "::: Generating Debug Output"
-    $SUDO ${scripdir}/${vpn}/pivpnDebug.sh | tee /tmp/debug.txt
+    $SUDO ${scriptDir}/${vpn}/pivpnDebug.sh | tee /tmp/debug.txt
     echo "::: "
     echo "::: Debug output completed above."
     echo "::: Copy saved to /tmp/debug.txt"
@@ -42,12 +42,12 @@ function debugFunc {
 
 function removeOVPNFunc {
     shift
-    $SUDO ${scripdir}/${vpn}/removeOVPN.sh "$@"
+    $SUDO ${scriptDir}/${vpn}/removeOVPN.sh "$@"
     exit 0
 }
 
 function uninstallFunc {
-    $SUDO ${scripdir}/uninstall.sh
+    $SUDO ${scriptDir}/uninstall.sh
     exit 0
 }
 
@@ -58,7 +58,7 @@ function versionFunc {
 function update {
 
     shift
-    $SUDO ${scripdir}/update.sh "$@"
+    $SUDO ${scriptDir}/update.sh "$@"
     exit 0
 
 
@@ -66,7 +66,7 @@ function update {
 
 function backup {
 
-    $SUDO ${scripdir}/backup.sh
+    $SUDO ${scriptDir}/backup.sh
     exit 0
 
 }
