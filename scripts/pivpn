@@ -10,7 +10,7 @@ if [ $EUID -ne 0 ];then
   fi
 fi
 
-scriptdir="/opt/pivpn"
+scriptDir="/opt/pivpn"
 vpn="wireguard"
 
 showHelp(){
