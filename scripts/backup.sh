@@ -15,7 +15,7 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
-                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "Choose a VPN to update (press space to select):" "${r}" "${c}" 2)
+                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "Choose a VPN configuration to backup (press space to select):" "${r}" "${c}" 2)
                         VPNChooseOptions=(WireGuard "" on
                                                                 OpenVPN "" off)
 
