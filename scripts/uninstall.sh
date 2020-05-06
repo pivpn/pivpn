@@ -37,9 +37,25 @@ if [ ! -f "${setupVars}" ]; then
 	echo "::: Missing setup vars file!"
 	exit 1
 fi
-
+ 
 # shellcheck disable=SC1090
 source "${setupVars}"
+
+# if the other protocol file exists it has been installed
+if [[ ${VPN} == 'wireguard' ]]; then
+   othervpn='openvpn'
+else
+   othervpn='wireguard'
+fi
+vpnStillExists=no
+if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
+        $SUDO rm -f /usr/local/bin/pivpn
+        $SUDO ln -s -T ${pivpnScriptDir}/${othervpn}/pivpn.sh /usr/local/bin/pivpn
+	vpnStillExists=yes
+        echo ":::"
+        echo "::: Two VPN protocols exist, you should remove the other one too"
+        echo ":::"
+fi
 
 ### FIXME: introduce global lib
 spinner(){
@@ -98,8 +114,10 @@ removeAll(){
 	fi
 
 	# Disable IPv4 forwarding
-	sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
-	sysctl -p
+        if [ ${vpnStillExists} != 'yes'  ]; then
+	   sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
+	   sysctl -p
+        fi
 
 	# Purge dependencies
 	echo "::: Purge dependencies..."
@@ -172,9 +190,10 @@ removeAll(){
 	rm -rf /etc/pivpn/${VPN}
         rmdir  /etc/pivpn
 	rm -f /var/log/*pivpn*
-	rm -f /usr/local/bin/pivpn/${VPN}
-        # TODO fix bash_completion removal
-	rm -f /etc/bash_completion.d/pivpn
+	rm -rf /usr/local/bin/pivpn/${VPN}
+        if [ ${vpnStillExists} != 'yes'  ]; then
+	    rm -f /etc/bash_completion.d/pivpn
+        fi
 
 	echo ":::"
 	echo "::: Removing VPN configuration files..."
