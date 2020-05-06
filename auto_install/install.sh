@@ -2244,16 +2244,17 @@ installScripts(){
 	fi
 	$SUDO install -v -m 755 -t ${pivpnScriptDir} ${pivpnFilesDir}/scripts/*.sh  
 	$SUDO install -v -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh 
-        # line for the single command being installed
-        $SUDO ln -s -T ${pivpnFilesDir}/scripts/${VPN}/pivpn pivpn
-        # if the other protocol file exists
-        if [ ${VPN} -eq 'wireguard' ]; then
+        # make a link for a single command being installed
+        $SUDO ln -s -T ${pivpnScriptDir}/${VPN}/pivpn.sh /usr/local/bin/pivpn
+        # if the other protocol file exists it has been installed
+        if [[ ${VPN} == 'wireguard' ]]; then
            othervpn='openvpn'
         else
            othervpn='wireguard'
         fi
-        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile} ] then;
+        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
            # dont need a link, copy the common script to the location instead
+           $SUDO rm -f /usr/local/bin/pivpn
 	   $SUDO install -v -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
 	fi
         $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
