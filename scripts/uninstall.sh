@@ -105,8 +105,22 @@ removeAll(){
 
 	fi
 
+        vpnStillExists='no'
+
+        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
+	vpnStillExists='yes'
+        $SUDO rm -f /usr/local/bin/pivpn
+        $SUDO ln -s -T ${pivpnScriptDir}/${othervpn}/pivpn.sh /usr/local/bin/pivpn
+        echo ":::"
+        echo "::: Two VPN protocols exist, you should remove the other one too"
+        echo ":::"
+        
+        else
+	    rm -f /etc/bash_completion.d/pivpn
+        fi
+
 	# Disable IPv4 forwarding
-        if [ ${vpnStillExists} != 'yes'  ]; then
+        if [ ${vpnStillExists} == 'no'  ]; then
 	   sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
 	   sysctl -p
         fi
@@ -182,20 +196,6 @@ removeAll(){
 	rm -rf /etc/pivpn/${VPN}
         rmdir  /etc/pivpn
 	rm -f /var/log/*pivpn*
-
-        vpnStillExists='no'
-
-        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-        $SUDO rm -f /usr/local/bin/pivpn
-        $SUDO ln -s -T ${pivpnScriptDir}/${othervpn}/pivpn.sh /usr/local/bin/pivpn
-	vpnStillExists='yes'
-        echo ":::"
-        echo "::: Two VPN protocols exist, you should remove the other one too"
-        echo ":::"
-        
-        else
-	    rm -f /etc/bash_completion.d/pivpn
-        fi
 
 	echo ":::"
 	echo "::: Removing VPN configuration files..."
