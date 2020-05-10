@@ -12,9 +12,9 @@
 
 ######## VARIABLES #########
 #pivpnGitUrl="https://github.com/pivpn/pivpn.git"
-pivpnGitUrl="/root/repos/pivpn"
+pivpnGitUrl="/home/ubuntu/repos/pivpn"
 setupVarsFile="setupVars.conf"
-setupConfigDir="/etc/pivpn" # will be /etc/pivpn/${VPN}/setupVars.conf
+setupConfigDir="/etc/pivpn" 
 tempsetupVarsFile="/tmp/setupVars.conf"
 pivpnFilesDir="/etc/.pivpn" 
 pivpnScriptDir="/opt/pivpn"
@@ -123,13 +123,13 @@ main(){
 	fi
 
         # see which setup already exists
-        if [ -r "${setupVarsDir}/wireguard/${setupVarsFile}" ]; then
-             setupVars="${setupVarsDir}/wireguard/${setupVarsFile}"
-        elif [ -f "${setupVarsDir}/openvpn/${setupVarsFile}" ]; then
-             setupVars="${setupVarsDir}/openvpn/${setupVarsFile}"
+        if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]; then
+             setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
+        elif [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
+             setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
         fi 
 
-	if [ -r "$setupVars" ]; then #qqq
+	if [ -r "$setupVars" ]; then 
 		if [[ "${reconfigure}" == true ]]; then
 			echo "::: --reconfigure passed to install script, will reinstall PiVPN overwriting existing settings"
 			UpdateCmd="Reconfigure"
@@ -137,7 +137,7 @@ main(){
 			### What should the script do when passing --unattended to an existing installation?
 			UpdateCmd="Reconfigure"
 		else
-			askAboutExistingInstall
+			askAboutExistingInstall ${setupVars}
 		fi
 	fi
 
@@ -148,7 +148,7 @@ main(){
 		exit 0
 	elif [ "$UpdateCmd" = "Repair" ]; then
 		# shellcheck disable=SC1090
-		source "$setupVars" #qqq
+		source "$setupVars" 
 		runUnattended=true
 	fi
 
@@ -242,7 +242,7 @@ askAboutExistingInstall(){
 	opt3a="Reconfigure"
 	opt3b="Reinstall PiVPN with new settings"
 
-	UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\nWe have detected an existing install.\n\nPlease choose from the following options:" ${r} ${c} 3 \
+	UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\nWe have detected an existing install.\n$1\n\nPlease choose from the following options:" ${r} ${c} 3 \
 	"${opt1a}"  "${opt1b}" \
 	"${opt2a}"  "${opt2b}" \
 	"${opt3a}"  "${opt3b}" 3>&2 2>&1 1>&3) || \
@@ -2235,15 +2235,11 @@ confUnattendedUpgrades(){
 installScripts(){
 	# Install the scripts from /etc/.pivpn to their various locations
 	echo -n -e "::: Installing scripts to ${pivpnScriptDir}...\n"
-        echo "::: line ${LINENO}"
 	if [ ! -d "${pivpnScriptDir}/${VPN}" ]; then
 		$SUDO install -m 0755 -o root -d ${pivpnScriptDir}/${VPN}
-#		$SUDO mkdir -p ${pivpnScriptDir}/${VPN}
-#		$SUDO chown -R root:root ${pivpnScriptDir}
-#		$SUDO chmod -R 0755 ${pivpnScriptDir}
 	fi
-	$SUDO install -v -m 755 -t ${pivpnScriptDir} ${pivpnFilesDir}/scripts/*.sh  
-	$SUDO install -v -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh 
+	$SUDO install -m 755 -t ${pivpnScriptDir} ${pivpnFilesDir}/scripts/*.sh  
+	$SUDO install -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh 
         # make a link for a single command being installed
         $SUDO ln -s -T ${pivpnScriptDir}/${VPN}/pivpn.sh /usr/local/bin/pivpn
         # if the other protocol file exists it has been installed
@@ -2255,14 +2251,13 @@ installScripts(){
         if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
            # dont need a link, copy the common script to the location instead
            $SUDO rm -f /usr/local/bin/pivpn
-	   $SUDO install -v -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
+	   $SUDO install -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
 	fi
         $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
         $SUDO chown root:root /etc/bash_completion.d/pivpn
         $SUDO chmod 755 /etc/bash_completion.d/pivpn
 	# shellcheck disable=SC1091
 	. /etc/bash_completion.d/pivpn
-        echo "::: line ${LINENO}"
 	echo " done."
 }
 
