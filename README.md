@@ -5,7 +5,7 @@
 About
 -----
 
-Branch test is a modification that allows installing both openvpn and wireguard on the same machine.  To do this, run the installer twice locally, makeing sure you are going to pull branch test.  
+Modification that allows installing both openvpn and wireguard on the same machine.  To do this, run the installer twice locally, makeing sure you are going to pull branch test.  
 
 
 Visit the [PiVPN](https://pivpn.io) site for more information.
