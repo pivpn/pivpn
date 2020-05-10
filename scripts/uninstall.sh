@@ -31,7 +31,9 @@ c=$(( c < 70 ? 70 : c ))
 PKG_MANAGER="apt-get"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
-setupVars="/etc/pivpn/${VPN}/setupVars.conf"
+setupConfigDir="/etc/pivpn"
+setupVarsFile="setupVars.conf"
+setupVars="${setupConfigDir}/${VPN}/${setupVarsFile}"
 
 if [ ! -f "${setupVars}" ]; then
 	echo "::: Missing setup vars file!"
@@ -41,20 +43,10 @@ fi
 # shellcheck disable=SC1090
 source "${setupVars}"
 
-# if the other protocol file exists it has been installed
 if [[ ${VPN} == 'wireguard' ]]; then
    othervpn='openvpn'
 else
    othervpn='wireguard'
-fi
-vpnStillExists=no
-if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-        $SUDO rm -f /usr/local/bin/pivpn
-        $SUDO ln -s -T ${pivpnScriptDir}/${othervpn}/pivpn.sh /usr/local/bin/pivpn
-	vpnStillExists=yes
-        echo ":::"
-        echo "::: Two VPN protocols exist, you should remove the other one too"
-        echo ":::"
 fi
 
 ### FIXME: introduce global lib
@@ -190,8 +182,18 @@ removeAll(){
 	rm -rf /etc/pivpn/${VPN}
         rmdir  /etc/pivpn
 	rm -f /var/log/*pivpn*
-	rm -rf /usr/local/bin/pivpn/${VPN}
-        if [ ${vpnStillExists} != 'yes'  ]; then
+
+        vpnStillExists='no'
+
+        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
+        $SUDO rm -f /usr/local/bin/pivpn
+        $SUDO ln -s -T ${pivpnScriptDir}/${othervpn}/pivpn.sh /usr/local/bin/pivpn
+	vpnStillExists='yes'
+        echo ":::"
+        echo "::: Two VPN protocols exist, you should remove the other one too"
+        echo ":::"
+        
+        else
 	    rm -f /etc/bash_completion.d/pivpn
         fi
 
