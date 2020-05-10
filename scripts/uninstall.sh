@@ -110,7 +110,7 @@ removeAll(){
         if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
 	vpnStillExists='yes'
         $SUDO rm -f /usr/local/bin/pivpn
-        $SUDO ln -s -T ${pivpnScriptDir}/${othervpn}/pivpn.sh /usr/local/bin/pivpn
+        $SUDO ln -s -T /opt/pivpn/${othervpn}/pivpn.sh /usr/local/bin/pivpn
         echo ":::"
         echo "::: Two VPN protocols exist, you should remove the other one too"
         echo ":::"
