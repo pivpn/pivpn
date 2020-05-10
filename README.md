@@ -5,6 +5,9 @@
 About
 -----
 
+Branch test is a modification that allows installing both openvpn and wireguard on the same machine.  To do this, run the installer twice locally, makeing sure you are going to pull branch test.  
+
+
 Visit the [PiVPN](https://pivpn.io) site for more information.
 This is a set of shell scripts initially developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
 into a VPN server using two free, open-source protocols:
