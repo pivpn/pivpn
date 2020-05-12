@@ -108,12 +108,12 @@ removeAll(){
         vpnStillExists='no'
 
         if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-	vpnStillExists='yes'
-        $SUDO rm -f /usr/local/bin/pivpn
-        $SUDO ln -s -T /opt/pivpn/${othervpn}/pivpn.sh /usr/local/bin/pivpn
-        echo ":::"
-        echo "::: Two VPN protocols exist, you should remove the other one too"
-        echo ":::"
+	  vpnStillExists='yes'
+          $SUDO rm -f /usr/local/bin/pivpn
+          $SUDO ln -s -T /opt/pivpn/${othervpn}/pivpn.sh /usr/local/bin/pivpn
+          echo ":::"
+          echo "::: Two VPN protocols exist, you should remove ${othervpn} too"
+          echo ":::"
         
         else
 	    rm -f /etc/bash_completion.d/pivpn
@@ -179,23 +179,11 @@ removeAll(){
 	printf "::: Auto cleaning remaining dependencies..."
 	$PKG_MANAGER -y autoclean &> /dev/null & spinner $!; printf "done!\\n";
 
-	echo ":::"
-	# Removing pivpn files
-	echo "::: Removing pivpn system files..."
 
 	if [ -f "$dnsmasqConfig" ]; then
 		rm -f "$dnsmasqConfig"
 		pihole restartdns
 	fi
-
-	rm -rf /opt/pivpn/${VPN}
-        # if dual installation, other installation will cause next line to fail
-        rmdir /opt/pivpn
-	rm -rf /etc/.pivpn/${VPN}
-        rmdir /etc/.pivpn
-	rm -rf /etc/pivpn/${VPN}
-        rmdir  /etc/pivpn
-	rm -f /var/log/*pivpn*
 
 	echo ":::"
 	echo "::: Removing VPN configuration files..."
@@ -214,6 +202,21 @@ removeAll(){
 		rm -rf /etc/openvpn/ccd
 		rm -rf "$install_home/ovpns"
 	fi
+
+        if [ ${vpnStillExists} == 'no'  ]; then
+	   echo ":::"
+	   echo "::: Removing pivpn system files..."
+           rm -rf /etc/.pivpn
+	   rm  -rf /etc/pivpn
+	   rm -f /var/log/*pivpn*
+           rm -rf /opt/pivpn
+           rm -f /usr/local/bin/pivpn
+        else
+	   echo ":::"
+	   echo "::: Other protocol still present, so not"
+           echo "::: removing pivpn system files"
+           rm -f "${setupConfigDir}/${VPN}/${setupVarsFile}"
+        fi
 
 	echo ":::"
 	printf "::: Finished removing PiVPN from your system.\\n"
