@@ -13,7 +13,7 @@
 
 ######## VARIABLES #########
 #pivpnGitUrl="https://github.com/pivpn/pivpn.git"
-pivpnGitUrl="/home/pi/repos/pivpn"
+pivpnGitUrl="/home/ubuntu/repos/pivpn"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn" 
 tempsetupVarsFile="/tmp/setupVars.conf"
@@ -2249,16 +2249,25 @@ installScripts(){
         else
            othervpn='wireguard'
         fi
+
         if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
+           # both are installed
            # dont need a link, copy the common script to the location instead
            $SUDO rm -f /usr/local/bin/pivpn
 	   $SUDO install -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
 	fi
-        $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
-        $SUDO chown root:root /etc/bash_completion.d/pivpn
-        $SUDO chmod 755 /etc/bash_completion.d/pivpn
-	# shellcheck disable=SC1091
-	. /etc/bash_completion.d/pivpn
+  
+        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
+           # both are installed, no bash completion, delete if already there
+           $SUDO rm -f /etc/bash_completion.d/pivpn
+	else
+           # only one protocol is installed, put bash completion in place
+           $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
+           $SUDO chown root:root /etc/bash_completion.d/pivpn
+           $SUDO chmod 755 /etc/bash_completion.d/pivpn
+	   # shellcheck disable=SC1091
+	   . /etc/bash_completion.d/pivpn
+        fi
 	echo " done."
 }
 
