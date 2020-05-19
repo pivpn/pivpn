@@ -4,19 +4,6 @@
 ### FIXME: global: config storage, refactor all scripts to adhere to the storage
 ### FIXME: use variables where appropriate, reduce magic numbers by 99.9%, at least.
 
-PKG_MANAGER="apt-get"
-UPDATE_PKG_CACHE="${PKG_MANAGER} update"
-dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
-setupVars="/etc/pivpn/setupVars.conf"
-
-if [ ! -f "${setupVars}" ]; then
-	echo "::: Missing setup vars file!"
-	exit 1
-fi
-
-# shellcheck disable=SC1090
-source "${setupVars}"
-
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo "$screen_size" | awk '{print $1}')
@@ -28,6 +15,39 @@ c=$(( columns / 2 ))
 # Unless the screen is tiny
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
+
+                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-instantaneous connection speed, high performance, and modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol or if you need features like TCP and custom search domain.\\n\\nChoose a VPN to uninstall (press space to select):" "${r}" "${c}" 2)
+                        VPNChooseOptions=(WireGuard "" on
+                                                                OpenVPN "" off)
+
+                        if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
+                                echo "::: Using VPN: $VPN"
+                                VPN="${VPN,,}"
+                        else
+                                echo "::: Cancel selected, exiting...."
+                                exit 1
+                        fi
+
+PKG_MANAGER="apt-get"
+UPDATE_PKG_CACHE="${PKG_MANAGER} update"
+dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
+setupConfigDir="/etc/pivpn"
+setupVarsFile="setupVars.conf"
+setupVars="${setupConfigDir}/${VPN}/${setupVarsFile}"
+
+if [ ! -f "${setupVars}" ]; then
+	echo "::: Missing setup vars file!"
+	exit 1
+fi
+ 
+# shellcheck disable=SC1090
+source "${setupVars}"
+
+if [[ ${VPN} == 'wireguard' ]]; then
+   othervpn='openvpn'
+else
+   othervpn='wireguard'
+fi
 
 ### FIXME: introduce global lib
 spinner(){
@@ -85,9 +105,25 @@ removeAll(){
 
 	fi
 
+        vpnStillExists='no'
+
+        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
+	  vpnStillExists='yes'
+          $SUDO rm -f /usr/local/bin/pivpn
+          $SUDO ln -s -T /opt/pivpn/${othervpn}/pivpn.sh /usr/local/bin/pivpn
+          echo ":::"
+          echo "::: Two VPN protocols exist, you should remove ${othervpn} too"
+          echo ":::"
+        
+        else
+	    rm -f /etc/bash_completion.d/pivpn
+        fi
+
 	# Disable IPv4 forwarding
-	sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
-	sysctl -p
+        if [ ${vpnStillExists} == 'no'  ]; then
+	   sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
+	   sysctl -p
+        fi
 
 	# Purge dependencies
 	echo "::: Purge dependencies..."
@@ -143,21 +179,11 @@ removeAll(){
 	printf "::: Auto cleaning remaining dependencies..."
 	$PKG_MANAGER -y autoclean &> /dev/null & spinner $!; printf "done!\\n";
 
-	echo ":::"
-	# Removing pivpn files
-	echo "::: Removing pivpn system files..."
 
 	if [ -f "$dnsmasqConfig" ]; then
 		rm -f "$dnsmasqConfig"
 		pihole restartdns
 	fi
-
-	rm -rf /opt/pivpn
-	rm -rf /etc/.pivpn
-	rm -rf /etc/pivpn
-	rm -f /var/log/*pivpn*
-	rm -f /usr/local/bin/pivpn
-	rm -f /etc/bash_completion.d/pivpn
 
 	echo ":::"
 	echo "::: Removing VPN configuration files..."
@@ -176,6 +202,21 @@ removeAll(){
 		rm -rf /etc/openvpn/ccd
 		rm -rf "$install_home/ovpns"
 	fi
+
+        if [ ${vpnStillExists} == 'no'  ]; then
+	   echo ":::"
+	   echo "::: Removing pivpn system files..."
+           rm -rf /etc/.pivpn
+	   rm  -rf /etc/pivpn
+	   rm -f /var/log/*pivpn*
+           rm -rf /opt/pivpn
+           rm -f /usr/local/bin/pivpn
+        else
+	   echo ":::"
+	   echo "::: Other protocol still present, so not"
+           echo "::: removing pivpn system files"
+           rm -f "${setupConfigDir}/${VPN}/${setupVarsFile}"
+        fi
 
 	echo ":::"
 	printf "::: Finished removing PiVPN from your system.\\n"

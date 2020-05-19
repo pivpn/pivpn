@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Must be root to use this tool
+if [ $EUID -ne 0 ];then
+  	if dpkg-query -s sudo &> /dev/null; then
+        export SUDO="sudo"
+  	else
+    	echo "::: Please install sudo or run this as root."
+    	exit 1
+  fi
+fi
+
+scriptDir="/opt/pivpn"
+vpn="wireguard"
+
+showHelp(){
+    echo "::: To pass off to the pivpn command for each protocol"
+    echo ":::"
+    echo "::: Usage: pivpn wg  <command> [option]"
+    echo "::: Usage: pivpn opv <command> [option]"
+    echo ":::"
+    echo ":::  -h,  help             Show this help dialog"
+    exit 0
+}
+
+if [ $# = 0 ]; then
+    showHelp
+fi
+
+# Handle redirecting to specific functions based on arguments
+case "$1" in
+     wg                      ) "${scriptDir}/wireguard/pivpn.sh" "${@:2}";;
+     opv                     ) "${scriptDir}/openvpn/pivpn.sh"   "${@:2}";;
+"-h"  | "help"               ) showHelp;;
+*                            ) showHelp;;
+esac

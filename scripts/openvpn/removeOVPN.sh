@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PiVPN: revoke client script
 
-setupVars="/etc/pivpn/setupVars.conf"
+setupVars="/etc/pivpn/openvpn/setupVars.conf"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 
 if [ ! -f "${setupVars}" ]; then

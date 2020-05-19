@@ -2,7 +2,32 @@
 
 backupdir=pivpnbackup
 date=$(date +%Y%m%d-%H%M%S)
-setupVars="/etc/pivpn/setupVars.conf"
+
+# Find the rows and columns. Will default to 80x24 if it can not be detected.
+screen_size=$(stty size 2>/dev/null || echo 24 80)
+rows=$(echo "$screen_size" | awk '{print $1}')
+columns=$(echo "$screen_size" | awk '{print $2}')
+
+# Divide by two so the dialogs take up half of the screen, which looks nice.
+r=$(( rows / 2 ))
+c=$(( columns / 2 ))
+# Unless the screen is tiny
+r=$(( r < 20 ? 20 : r ))
+c=$(( c < 70 ? 70 : c ))
+
+                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "Choose a VPN configuration to backup (press space to select):" "${r}" "${c}" 2)
+                        VPNChooseOptions=(WireGuard "" on
+                                                                OpenVPN "" off)
+
+                        if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
+                                echo "::: Using VPN: $VPN"
+                                VPN="${VPN,,}"
+                        else
+                                echo "::: Cancel selected, exiting...."
+                                exit 1
+                        fi
+
+setupVars="/etc/pivpn/${VPN}/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"

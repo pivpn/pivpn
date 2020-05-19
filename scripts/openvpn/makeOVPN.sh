@@ -1,7 +1,7 @@
 #!/bin/bash
 # Create OVPN Client
 # Default Variable Declarations
-setupVars="/etc/pivpn/setupVars.conf"
+setupVars="/etc/pivpn/openvpn/setupVars.conf"
 DEFAULT="Default.txt"
 FILEEXT=".ovpn"
 CRT=".crt"

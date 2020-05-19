@@ -10,53 +10,56 @@ if [ $EUID -ne 0 ];then
   fi
 fi
 
+scriptdir="/opt/pivpn"
+vpn="wireguard"
+
 makeConf(){
     shift
-    $SUDO /opt/pivpn/makeCONF.sh "$@"
+    $SUDO ${scriptdir}/${vpn}/makeCONF.sh "$@"
     exit 0
 }
 
 listConnected(){
     shift
-    $SUDO /opt/pivpn/clientSTAT.sh "$@"
+    $SUDO ${scriptdir}/${vpn}/clientSTAT.sh "$@"
     exit 0
 }
 
 debug(){
-    $SUDO /opt/pivpn/pivpnDEBUG.sh
+    $SUDO ${scriptdir}/${vpn}/pivpnDEBUG.sh
     exit 0
 }
 
 listClients(){
-    $SUDO /opt/pivpn/listCONF.sh
+    $SUDO ${scriptdir}/${vpn}/listCONF.sh
     exit 0
 }
 
 showQrcode(){
     shift
-    $SUDO /opt/pivpn/qrcodeCONF.sh "$@"
+    $SUDO ${scriptdir}/${vpn}/qrcodeCONF.sh "$@"
     exit 0
 }
 
 removeClient(){
     shift
-    $SUDO /opt/pivpn/removeCONF.sh "$@"
+    $SUDO ${scriptdir}/${vpn}/removeCONF.sh "$@"
     exit 0
 }
 
 uninstallServer(){
-    $SUDO /opt/pivpn/uninstall.sh
+    $SUDO ${scriptdir}/uninstall.sh
     exit 0
 }
 
 updateScripts(){
     shift
-    $SUDO /opt/pivpn/update.sh "$@"
+    $SUDO ${scriptdir}/update.sh "$@"
     exit 0
 }
 
 backup(){
-  $SUDO /opt/pivpn/backup.sh
+  $SUDO ${scriptdir}/backup.sh
 }
 
 showHelp(){
