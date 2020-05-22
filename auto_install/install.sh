@@ -10,11 +10,11 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
-# timestamp 2020/5/22 12:30BST
+# timestamp 2020/5/22 17:44BST
 
 ######## VARIABLES #########
-#pivpnGitUrl="https://github.com/pivpn/pivpn.git"
-pivpnGitUrl="/home/pi/repos/pivpn"
+pivpnGitUrl="https://github.com/pivpn/pivpn.git"
+#pivpnGitUrl="/home/pi/repos/pivpn"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn" 
 tempsetupVarsFile="/tmp/setupVars.conf"
