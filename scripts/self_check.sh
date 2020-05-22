@@ -166,9 +166,9 @@ setupVars="/etc/pivpn/wireguard/setupVars.conf"
 ERR=0
 
 if [ ! -f "${setupVars}" ]; then
-	echo "::: Missing ${setupVars}i, wireguard not installed"
+	echo ":::     Missing ${setupVars}i, wireguard not installed"
 else
-        echo "::: Selfcheck for wireguard, config from ${setupVars}"
+        echo ":: [OK] Selfcheck for wireguard, config from ${setupVars}"
         runselfcheck
         dualprot='yes'
 fi
@@ -177,9 +177,9 @@ setupVars="/etc/pivpn/openvpn/setupVars.conf"
 ERR=0
 
 if [ ! -f "${setupVars}" ]; then
-	echo "::: Missing ${setupVars}, openvpn not installed"
+	echo "::      Missing ${setupVars}, openvpn not installed"
 else
-        echo "::: Selfcheck for openvpn, config from ${setupVars}"
+        echo ":: [OK] Selfcheck for openvpn, config from ${setupVars}"
         runselfcheck
         dualprot='yes'
 fi
@@ -187,9 +187,9 @@ fi
 # add check for a mixed up installation
 setupVars="/etc/pivpn/setupVars.conf"
 
-if [ ${dualprot} == 'yes' &&  -f "${setupVars}" ]; then
-	echo "::: Older ${setupVars} exists, should not be there,
-        echo "::: two versions have been installed which are not compatible"
+if [[ ${dualprot} == 'yes' &&  -f "${setupVars}" ]]; then
+	echo ":: [ERR] Older ${setupVars} exists, should not be there,"
+        echo ":: [ERR] two incompatible versions have been installed"
 fi
 
 
