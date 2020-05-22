@@ -4,6 +4,24 @@
 ### FIXME: global: config storage, refactor all scripts to adhere to the storage
 ### FIXME: use variables where appropriate, reduce magic numbers by 99.9%, at least.
 
+# what is already installed?
+setupVars="/etc/pivpn/openvpn/setupVars.conf"
+foundins=''
+if [ -f "${setupVars}" ]; then
+        foundins="openvpn"
+fi
+
+setupVars="/etc/pivpn/wireguard/setupVars.conf"
+if [ -f "${setupVars}" ]; then
+        foundins="${foundins} wireguard"
+fi
+
+if [ -z ${foundins} ]; then
+  foundins="nothing found"
+fi
+
+
+
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo "$screen_size" | awk '{print $1}')
@@ -16,7 +34,7 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
-                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-instantaneous connection speed, high performance, and modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol or if you need features like TCP and custom search domain.\\n\\nChoose a VPN to uninstall (press space to select):" "${r}" "${c}" 2)
+                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-instantaneous connection speed, high performance, and modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (${foundins}) to uninstall (press space to select):" "${r}" "${c}" 2)
                         VPNChooseOptions=(WireGuard "" on
                                                                 OpenVPN "" off)
 
@@ -108,21 +126,21 @@ removeAll(){
         vpnStillExists='no'
 
         if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-	  vpnStillExists='yes'
-          $SUDO rm -f /usr/local/bin/pivpn
-          $SUDO ln -s -T /opt/pivpn/${othervpn}/pivpn.sh /usr/local/bin/pivpn
-          echo ":::"
-          echo "::: Two VPN protocols exist, you should remove ${othervpn} too"
-          echo ":::"
+	      vpnStillExists='yes'
+              $SUDO rm -f /usr/local/bin/pivpn
+              $SUDO ln -s -T /opt/pivpn/${othervpn}/pivpn.sh /usr/local/bin/pivpn
+              echo ":::"
+              echo "::: Two VPN protocols exist, you should remove ${othervpn} too"
+              echo ":::"
         
         else
-	    rm -f /etc/bash_completion.d/pivpn
+	      rm -f /etc/bash_completion.d/pivpn
         fi
 
 	# Disable IPv4 forwarding
         if [ ${vpnStillExists} == 'no'  ]; then
-	   sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
-	   sysctl -p
+	        sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
+	        sysctl -p
         fi
 
 	# Purge dependencies
@@ -204,18 +222,18 @@ removeAll(){
 	fi
 
         if [ ${vpnStillExists} == 'no'  ]; then
-	   echo ":::"
-	   echo "::: Removing pivpn system files..."
-           rm -rf /etc/.pivpn
-	   rm  -rf /etc/pivpn
-	   rm -f /var/log/*pivpn*
-           rm -rf /opt/pivpn
-           rm -f /usr/local/bin/pivpn
+	        echo ":::"
+	        echo "::: Removing pivpn system files..."
+                rm -rf /etc/.pivpn
+	        rm -rf /etc/pivpn
+	        rm -f /var/log/*pivpn*
+                rm -rf /opt/pivpn
+                rm -f /usr/local/bin/pivpn
         else
-	   echo ":::"
-	   echo "::: Other protocol still present, so not"
-           echo "::: removing pivpn system files"
-           rm -f "${setupConfigDir}/${VPN}/${setupVarsFile}"
+	        echo ":::"
+	        echo "::: Other protocol still present, so not"
+                echo "::: removing pivpn system files"
+                rm -f "${setupConfigDir}/${VPN}/${setupVarsFile}"
         fi
 
 	echo ":::"

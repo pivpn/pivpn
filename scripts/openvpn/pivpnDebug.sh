@@ -16,7 +16,7 @@ echo -e "::::\t\t\e[4mLatest commit\e[0m\t\t ::::"
 git --git-dir /etc/.pivpn/.git log -n 1
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
-sed "s/$pivpnHOST/REDACTED/" < /etc/pivpn/setupVars.conf
+sed "s/$pivpnHOST/REDACTED/" < ${setupVars}
 printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
 cat /etc/openvpn/server.conf
