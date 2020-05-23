@@ -208,8 +208,8 @@ function keyPASS() {
     set timeout -1
     set env(EASYRSA_CERT_EXPIRE) "${DAYS}"
     spawn ./easyrsa build-client-full "${NAME}"
-    expect "Enter PEM pass phrase" { send -- "${PASSWD}\r" }
-    expect "Verifying - Enter PEM pass phrase" { send -- "${PASSWD}\r" }
+    expect "Enter PEM pass phrase" { sleep 0.1; send -- "${PASSWD}\r" }
+    expect "Verifying - Enter PEM pass phrase" { sleep 0.1; send -- "${PASSWD}\r" }
     expect eof
 EOF
     cd pki || exit
