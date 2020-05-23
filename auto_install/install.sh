@@ -462,11 +462,6 @@ preconfigurePackages(){
 		fi
 	fi
 
-	if [[ ${OSCN} == "buster" ]]; then
-		$SUDO update-alternatives --set iptables /usr/sbin/iptables-legacy
-		$SUDO update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
-	fi
-
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
 	if $SUDO bash -c 'command -v ufw' > /dev/null; then
