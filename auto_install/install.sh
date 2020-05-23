@@ -1552,13 +1552,8 @@ askClientDNS(){
 
 #Call this function to use a regex to check user input for a valid custom domain
 validDomain(){
-  local domain=$1
-  local stat=1
-
-  if [[ $domain =~ ^(([a-zA-Z0-9]{1,63}|([a-zA-Z0-9]{1,60}[-a-zA-Z0-9()]{0,2}[a-zA-Z0-9]{1,60}))\.){1,6}([a-zA-Z]{2,})$ ]]; then
-	stat=$?
-  fi
-  return $stat
+    local domain="$1"
+	grep -qP '(?=^.{4,253}$)(^(?:[a-zA-Z0-9](?:(?:[a-zA-Z0-9\-]){0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$)' <<< "$domain"
 }
 
 #This procedure allows a user to specify a custom search domain if they have one.
