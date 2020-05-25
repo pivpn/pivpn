@@ -422,6 +422,10 @@ for i in {2..254}; do
     if [ -z "$(ls -A /etc/openvpn/ccd)" ] || ! find /etc/openvpn/ccd -type f -exec grep -q "${NET_REDUCED}.${i}" {} +; then
         COUNT="${i}"
         echo "ifconfig-push ${NET_REDUCED}.${i} $(cidrToMask "$subnetClass")" >> /etc/openvpn/ccd/"${NAME}"
+        # Add extra ccd options to static host configuration file
+        if [ -f /etc/pivpn/ccdExtraOptions.conf ]; then
+            cat /etc/pivpn/ccdExtraOptions.conf >> /etc/openvpn/ccd/"${NAME}"
+        fi
         break
     fi
 done
