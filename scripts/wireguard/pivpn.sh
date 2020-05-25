@@ -54,7 +54,9 @@ uninstallServer(){
 
 updateScripts(){
     shift
-    $SUDO ${scriptdir}/update.sh "$@"
+    # $SUDO ${scriptdir}/update.sh "$@"
+    echo "::: The updating functionality for PiVPN scripts is temporarily disabled"
+    echo "::: To keep the VPN (and the system) up to date, use 'apt update' and 'apt upgrade'"
     exit 0
 }
 

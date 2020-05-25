@@ -58,7 +58,9 @@ function versionFunc {
 function update {
 
     shift
-    $SUDO ${scriptDir}/update.sh "$@"
+    # $SUDO ${scriptDir}/update.sh "$@"
+    echo "::: The updating functionality for PiVPN scripts is temporarily disabled"
+    echo "::: To keep the VPN (and the system) up to date, use 'apt update' and 'apt upgrade'"
     exit 0
 
 
