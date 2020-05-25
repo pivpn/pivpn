@@ -28,7 +28,7 @@ echo -e ":::: \t\e[4mRecursive list of files in\e[0m\t ::::\n::: \e[4m/etc/openv
 ls -LR /etc/openvpn/easy-rsa/pki/ -Ireqs -Icerts_by_serial
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mSelf check\e[0m\t\t ::::"
-/opt/pivpn/self_check.sh
+/opt/pivpn/self_check.sh ${VPN}
 printf "=============================================\n"
 echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
 echo -e ":::: \e[1mhttps://github.com/pivpn/pivpn/wiki/FAQ\e[0m"

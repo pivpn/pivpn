@@ -1,7 +1,15 @@
 #!/bin/bash
 
-runselfcheck()
-{
+# dual protocol, VPN type supplied as $1
+
+setupVars="/etc/pivpn/${VPN}/setupVars.conf"
+ERR=0
+
+if [ ! -f "${setupVars}" ]; then
+	echo "::: Missing setup vars file!"
+	exit 1
+fi
+
 source "${setupVars}"
 
 if [ "$VPN" = "wireguard" ]; then
@@ -156,40 +164,3 @@ fi
 if [ "$ERR" -eq 1 ]; then
 	echo -e "[INFO] Run \e[1mpivpn -d\e[0m again to see if we detect issues"
 fi
-
-} # end function
-
-# now there are two places setupVars.conf can be, so check each one
-
-dualprot='no'
-setupVars="/etc/pivpn/wireguard/setupVars.conf"
-ERR=0
-
-if [ ! -f "${setupVars}" ]; then
-	echo ":::     Missing ${setupVars}i, wireguard not installed"
-else
-        echo ":: [OK] Selfcheck for wireguard, config from ${setupVars}"
-        runselfcheck
-        dualprot='yes'
-fi
-
-setupVars="/etc/pivpn/openvpn/setupVars.conf"
-ERR=0
-
-if [ ! -f "${setupVars}" ]; then
-	echo "::      Missing ${setupVars}, openvpn not installed"
-else
-        echo ":: [OK] Selfcheck for openvpn, config from ${setupVars}"
-        runselfcheck
-        dualprot='yes'
-fi
-
-# add check for a mixed up installation
-setupVars="/etc/pivpn/setupVars.conf"
-
-if [[ ${dualprot} == 'yes' &&  -f "${setupVars}" ]]; then
-	echo ":: [ERR] Older ${setupVars} exists, should not be there,"
-        echo ":: [ERR] two incompatible versions have been installed"
-fi
-
-
