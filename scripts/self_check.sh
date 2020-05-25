@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # dual protocol, VPN type supplied as $1
-
+VPN=$1
 setupVars="/etc/pivpn/${VPN}/setupVars.conf"
 ERR=0
 
