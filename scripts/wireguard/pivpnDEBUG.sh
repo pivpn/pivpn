@@ -16,7 +16,7 @@ echo -e "::::\t\t\e[4mLatest commit\e[0m\t\t ::::"
 git --git-dir /etc/.pivpn/.git log -n 1
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
-sed "s/$pivpnHOST/REDACTED/" < /etc/pivpn/setupVars.conf
+sed "s/$pivpnHOST/REDACTED/" < ${setupVars}
 printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
 cd /etc/wireguard/keys
@@ -46,7 +46,7 @@ echo -e ":::: \t\e[4mRecursive list of files in\e[0m\t ::::\n::::\e\t[4m/etc/wir
 ls -LR /etc/wireguard
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mSelf check\e[0m\t\t ::::"
-/opt/pivpn/self_check.sh
+/opt/pivpn/self_check.sh ${VPN}
 printf "=============================================\n"
 echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
 echo -e ":::: \e[1mhttps://github.com/pivpn/pivpn/wiki/FAQ\e[0m"

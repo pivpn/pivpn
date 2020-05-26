@@ -1,6 +1,8 @@
 #!/bin/bash
 
-setupVars="/etc/pivpn/setupVars.conf"
+# dual protocol, VPN type supplied as $1
+VPN=$1
+setupVars="/etc/pivpn/${VPN}/setupVars.conf"
 ERR=0
 
 if [ ! -f "${setupVars}" ]; then

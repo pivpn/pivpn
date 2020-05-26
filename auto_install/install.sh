@@ -10,11 +10,11 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
-# timestamp 2020/5/14 15:29BST
+# timestamp 2020/5/24 15:53BST
 
 ######## VARIABLES #########
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
-#pivpnGitUrl="/home/ubuntu/repos/pivpn"
+#pivpnGitUrl="/home/pi/repos/pivpn"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn" 
 tempsetupVarsFile="/tmp/setupVars.conf"
@@ -126,9 +126,9 @@ main(){
 
         # see which setup already exists
         if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]; then
-             setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
+                setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
         elif [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
-             setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
+                setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
         fi 
 
 	if [ -r "$setupVars" ]; then 
@@ -244,7 +244,7 @@ askAboutExistingInstall(){
 	opt3a="Reconfigure"
 	opt3b="Reinstall PiVPN with new settings"
 
-	UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\nWe have detected an existing install.\n$1\n\nPlease choose from the following options:" ${r} ${c} 3 \
+	UpdateCmd=$(whiptail --title "Existing Install Detected!" --menu "\nWe have detected an existing install.\n$1\n\nPlease choose from the following options (Reconfigure can be used to add a second VPN type):" ${r} ${c} 3 \
 	"${opt1a}"  "${opt1b}" \
 	"${opt2a}"  "${opt2b}" \
 	"${opt3a}"  "${opt3b}" 3>&2 2>&1 1>&3) || \
@@ -2232,31 +2232,34 @@ installScripts(){
 	$SUDO install -m 755 -t ${pivpnScriptDir} ${pivpnFilesDir}/scripts/*.sh  
 	$SUDO install -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh 
         # make a link for a single command being installed
-        $SUDO ln -s -T ${pivpnScriptDir}/${VPN}/pivpn.sh /usr/local/bin/pivpn
+        # may already exist if installing the second protocol
+        if [ ! -e "/usr/local/bin/pivpn" ]; then
+               $SUDO ln -s -T ${pivpnScriptDir}/${VPN}/pivpn.sh /usr/local/bin/pivpn
+        fi
         # if the other protocol file exists it has been installed
         if [[ ${VPN} == 'wireguard' ]]; then
-           othervpn='openvpn'
+               othervpn='openvpn'
         else
-           othervpn='wireguard'
+               othervpn='wireguard'
         fi
 
         if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-           # both are installed
-           # dont need a link, copy the common script to the location instead
-           $SUDO rm -f /usr/local/bin/pivpn
-	   $SUDO install -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
+               # both are installed
+               # dont need a link, copy the common script to the location instead
+               $SUDO rm -f /usr/local/bin/pivpn
+	       $SUDO install -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
 	fi
   
         if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-           # both are installed, no bash completion, delete if already there
-           $SUDO rm -f /etc/bash_completion.d/pivpn
+               # both are installed, no bash completion, delete if already there
+               $SUDO rm -f /etc/bash_completion.d/pivpn
 	else
-           # only one protocol is installed, put bash completion in place
-           $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
-           $SUDO chown root:root /etc/bash_completion.d/pivpn
-           $SUDO chmod 755 /etc/bash_completion.d/pivpn
-	   # shellcheck disable=SC1091
-	   . /etc/bash_completion.d/pivpn
+               # only one protocol is installed, put bash completion in place
+               $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
+               $SUDO chown root:root /etc/bash_completion.d/pivpn
+               $SUDO chmod 755 /etc/bash_completion.d/pivpn
+	       # shellcheck disable=SC1091
+	       . /etc/bash_completion.d/pivpn
         fi
 	echo " done."
 }
