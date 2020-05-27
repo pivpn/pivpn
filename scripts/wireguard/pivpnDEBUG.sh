@@ -13,7 +13,7 @@ source "${setupVars}"
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mLatest commit\e[0m\t\t ::::"
-git --git-dir /etc/.pivpn/.git log -n 1
+git --git-dir /usr/local/src/pivpn/.git log -n 1
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
 sed "s/$pivpnHOST/REDACTED/" < ${setupVars}

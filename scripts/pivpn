@@ -11,7 +11,11 @@ if [ $EUID -ne 0 ];then
 fi
 
 scriptDir="/opt/pivpn"
-vpn="wireguard"
+
+uninstallServer(){
+    $SUDO ${scriptDir}/uninstall.sh
+    exit 0
+}
 
 showHelp(){
     echo "::: To pass off to the pivpn command for each protocol"
@@ -20,6 +24,7 @@ showHelp(){
     echo "::: Usage: pivpn ovpn <command> [option]"
     echo ":::"
     echo ":::  -h,  help             Show this help dialog"
+    echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
     exit 0
 }
 
@@ -32,5 +37,6 @@ case "$1" in
      wg                      ) "${scriptDir}/wireguard/pivpn.sh" "${@:2}";;
      ovpn                    ) "${scriptDir}/openvpn/pivpn.sh"   "${@:2}";;
 "-h"  | "help"               ) showHelp;;
+"-u"  | "uninstall"          ) uninstallServer;;
 *                            ) showHelp;;
 esac

@@ -19,6 +19,10 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
+echo "::: The updating functionality for PiVPN scripts is temporarily disabled"
+echo "::: To keep the VPN (and the system) up to date, use 'apt update' and 'apt upgrade'"
+exit 0
+
                        chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "Choose a VPN to update (press space to select):" "${r}" "${c}" 2)
                         VPNChooseOptions=(WireGuard "" on
                                                                 OpenVPN "" off)

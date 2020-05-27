@@ -18,7 +18,7 @@ pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn" 
 tempsetupVarsFile="/tmp/setupVars.conf"
-pivpnFilesDir="/etc/.pivpn" 
+pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
 
 piholeSetupVars="/etc/pihole/setupVars.conf"
@@ -950,11 +950,11 @@ updateRepo(){
 		### FIXME: Never call rm -rf with a plain variable. Never again as SU!
 		#$SUDO rm -rf "${1}"
 		if test -n "$1"; then
-			$SUDO rm -rf "$(dirname "$1")/.pivpn"
+			$SUDO rm -rf "$(dirname "$1")/pivpn"
 		fi
-		# Go back to /etc otherwise git will complain when the current working
-		# directory has just been deleted (/etc/.pivpn).
-		cd /etc && \
+		# Go back to /usr/local/src otherwise git will complain when the current working
+		# directory has just been deleted (/usr/local/src/pivpn).
+		cd /usr/local/src && \
 		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 		cd "${1}" || exit 1
 		if [ -z "${TESTING+x}" ]; then
@@ -972,11 +972,11 @@ makeRepo(){
 	### FIXME: Never call rm -rf with a plain variable. Never again as SU!
 	#$SUDO rm -rf "${1}"
 	if test -n "$1"; then
-		$SUDO rm -rf "$(dirname "$1")/.pivpn"
+		$SUDO rm -rf "$(dirname "$1")/pivpn"
 	fi
-	# Go back to /etc otherwhise git will complain when the current working
-	# directory has just been deleted (/etc/.pivpn).
-	cd /etc && \
+	# Go back to /usr/local/src otherwhise git will complain when the current working
+	# directory has just been deleted (/usr/local/src/pivpn).
+	cd /usr/local/src && \
 	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 	cd "${1}" || exit 1
 	if [ -z "${TESTING+x}" ]; then
@@ -2224,43 +2224,34 @@ confUnattendedUpgrades(){
 }
 
 installScripts(){
-	# Install the scripts from /etc/.pivpn to their various locations
-	echo -n -e "::: Installing scripts to ${pivpnScriptDir}...\n"
-	if [ ! -d "${pivpnScriptDir}/${VPN}" ]; then
-		$SUDO install -m 0755 -o root -d ${pivpnScriptDir}/${VPN}
-	fi
-	$SUDO install -m 755 -t ${pivpnScriptDir} ${pivpnFilesDir}/scripts/*.sh  
-	$SUDO install -m 755 -t ${pivpnScriptDir}/${VPN} ${pivpnFilesDir}/scripts/${VPN}/*.sh 
-        # make a link for a single command being installed
-        # may already exist if installing the second protocol
-        if [ ! -e "/usr/local/bin/pivpn" ]; then
-               $SUDO ln -s -T ${pivpnScriptDir}/${VPN}/pivpn.sh /usr/local/bin/pivpn
-        fi
-        # if the other protocol file exists it has been installed
-        if [[ ${VPN} == 'wireguard' ]]; then
-               othervpn='openvpn'
-        else
-               othervpn='wireguard'
-        fi
-
-        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-               # both are installed
-               # dont need a link, copy the common script to the location instead
-               $SUDO rm -f /usr/local/bin/pivpn
-	       $SUDO install -m 755 -t /usr/local/bin /${pivpnFilesDir}/scripts/pivpn 
-	fi
-  
-        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-               # both are installed, no bash completion, delete if already there
-               $SUDO rm -f /etc/bash_completion.d/pivpn
+	if [[ ${VPN} == 'wireguard' ]]; then
+		othervpn='openvpn'
 	else
-               # only one protocol is installed, put bash completion in place
-               $SUDO cp "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
-               $SUDO chown root:root /etc/bash_completion.d/pivpn
-               $SUDO chmod 755 /etc/bash_completion.d/pivpn
-	       # shellcheck disable=SC1091
-	       . /etc/bash_completion.d/pivpn
-        fi
+		othervpn='wireguard'
+	fi
+
+	# Symlink scripts from /usr/local/src/pivpn to their various locations
+	echo -n -e "::: Installing scripts to ${pivpnScriptDir}...\n"
+
+	# if the other protocol file exists it has been installed
+	if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
+		# Both are installed, no bash completion, unlink if already there
+		$SUDO unlink /etc/bash_completion.d/pivpn
+
+		# Unlink the protocol specific pivpn script and symlink the common
+		# script to the location instead
+		$SUDO unlink /usr/local/bin/pivpn
+		$SUDO ln -s -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
+	else
+		# Only one protocol is installed, symlink bash completion, the pivpn script
+		# and the script directory
+		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
+		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" /usr/local/bin/pivpn
+		$SUDO ln -s "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"
+		# shellcheck disable=SC1091
+		. /etc/bash_completion.d/pivpn
+	fi
+
 	echo " done."
 }
 

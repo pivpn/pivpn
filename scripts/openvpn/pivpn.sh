@@ -47,30 +47,19 @@ function removeOVPNFunc {
 }
 
 function uninstallFunc {
-    $SUDO ${scriptDir}/uninstall.sh
+    $SUDO ${scriptDir}/uninstall.sh "${vpn}"
     exit 0
-}
-
-function versionFunc {
-    printf "\e[1mVersion 1.9\e[0m\n"
 }
 
 function update {
-
     shift
-    # $SUDO ${scriptDir}/update.sh "$@"
-    echo "::: The updating functionality for PiVPN scripts is temporarily disabled"
-    echo "::: To keep the VPN (and the system) up to date, use 'apt update' and 'apt upgrade'"
+    $SUDO ${scriptDir}/update.sh "$@"
     exit 0
-
-
 }
 
 function backup {
-
     $SUDO ${scriptDir}/backup.sh
     exit 0
-
 }
 
 
@@ -105,7 +94,6 @@ case "$1" in
 "-r" | "revoke"             ) removeOVPNFunc "$@";;
 "-h" | "help"               ) helpFunc;;
 "-u" | "uninstall"          ) uninstallFunc;;
-"-v"                        ) versionFunc;;
 "-up"| "update"             ) update "$@" ;;
 "-bk"| "backup"             ) backup;;
 *                           ) helpFunc;;

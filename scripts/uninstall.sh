@@ -4,24 +4,6 @@
 ### FIXME: global: config storage, refactor all scripts to adhere to the storage
 ### FIXME: use variables where appropriate, reduce magic numbers by 99.9%, at least.
 
-# what is already installed?
-setupVars="/etc/pivpn/openvpn/setupVars.conf"
-foundins=''
-if [ -f "${setupVars}" ]; then
-        foundins="openvpn"
-fi
-
-setupVars="/etc/pivpn/wireguard/setupVars.conf"
-if [ -f "${setupVars}" ]; then
-        foundins="${foundins} wireguard"
-fi
-
-if [ -z ${foundins} ]; then
-  foundins="nothing found"
-fi
-
-
-
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size=$(stty size 2>/dev/null || echo 24 80)
 rows=$(echo "$screen_size" | awk '{print $1}')
@@ -34,24 +16,46 @@ c=$(( columns / 2 ))
 r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
-                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-instantaneous connection speed, high performance, and modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (${foundins}) to uninstall (press space to select):" "${r}" "${c}" 2)
-                        VPNChooseOptions=(WireGuard "" on
-                                                                OpenVPN "" off)
-
-                        if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
-                                echo "::: Using VPN: $VPN"
-                                VPN="${VPN,,}"
-                        else
-                                echo "::: Cancel selected, exiting...."
-                                exit 1
-                        fi
-
 PKG_MANAGER="apt-get"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
-setupConfigDir="/etc/pivpn"
 setupVarsFile="setupVars.conf"
-setupVars="${setupConfigDir}/${VPN}/${setupVarsFile}"
+setupConfigDir="/etc/pivpn"
+pivpnFilesDir="/usr/local/src/pivpn"
+pivpnScriptDir="/opt/pivpn"
+
+if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ] && [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
+	vpnStillExists=1
+
+	# Two protocols have been installed, check if the script has passed
+	# an argument, otherwise ask the user which one he wants to remove
+	if [ $# -ge 1 ]; then
+		VPN="$1"
+		echo "::: Uninstalling VPN: $VPN"
+	else
+		chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Uninstall" --separate-output --radiolist "Both OpenVPN and WireGuard are installed, choose a VPN to uninstall (press space to select):" "${r}" "${c}" 2)
+		VPNChooseOptions=(WireGuard "" on
+							OpenVPN "" off)
+
+		if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
+			echo "::: Uninstalling VPN: $VPN"
+			VPN="${VPN,,}"
+		else
+			echo "::: Cancel selected, exiting...."
+			exit 1
+		fi
+	fi
+
+	setupVars="${setupConfigDir}/${VPN}/${setupVarsFile}"
+else
+	vpnStillExists=0
+
+	if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]; then
+		setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
+	elif [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
+		setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
+	fi
+fi
 
 if [ ! -f "${setupVars}" ]; then
 	echo "::: Missing setup vars file!"
@@ -60,12 +64,6 @@ fi
  
 # shellcheck disable=SC1090
 source "${setupVars}"
-
-if [[ ${VPN} == 'wireguard' ]]; then
-   othervpn='openvpn'
-else
-   othervpn='wireguard'
-fi
 
 ### FIXME: introduce global lib
 spinner(){
@@ -123,25 +121,11 @@ removeAll(){
 
 	fi
 
-        vpnStillExists='no'
-
-        if [ -r "${setupConfigDir}/${othervpn}/${setupVarsFile}" ]; then
-	      vpnStillExists='yes'
-              $SUDO rm -f /usr/local/bin/pivpn
-              $SUDO ln -s -T /opt/pivpn/${othervpn}/pivpn.sh /usr/local/bin/pivpn
-              echo ":::"
-              echo "::: Two VPN protocols exist, you should remove ${othervpn} too"
-              echo ":::"
-        
-        else
-	      rm -f /etc/bash_completion.d/pivpn
-        fi
-
 	# Disable IPv4 forwarding
-        if [ ${vpnStillExists} == 'no'  ]; then
-	        sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
-	        sysctl -p
-        fi
+	if [ "${vpnStillExists}" -eq 0 ]; then
+		sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
+		sysctl -p
+	fi
 
 	# Purge dependencies
 	echo "::: Purge dependencies..."
@@ -221,20 +205,34 @@ removeAll(){
 		rm -rf "$install_home/ovpns"
 	fi
 
-        if [ ${vpnStillExists} == 'no'  ]; then
-	        echo ":::"
-	        echo "::: Removing pivpn system files..."
-                rm -rf /etc/.pivpn
-	        rm -rf /etc/pivpn
-	        rm -f /var/log/*pivpn*
-                rm -rf /opt/pivpn
-                rm -f /usr/local/bin/pivpn
-        else
-	        echo ":::"
-	        echo "::: Other protocol still present, so not"
-                echo "::: removing pivpn system files"
-                rm -f "${setupConfigDir}/${VPN}/${setupVarsFile}"
-        fi
+	if [ "${vpnStillExists}" -eq 0 ]; then
+		echo ":::"
+		echo "::: Removing pivpn system files..."
+		rm -rf "${setupConfigDir}"
+		rm -rf "${pivpnFilesDir}"
+		rm -f /var/log/*pivpn*
+		rm -f /etc/bash_completion.d/pivpn
+		unlink "${pivpnScriptDir}"
+		unlink /usr/local/bin/pivpn
+	else
+		if [[ ${VPN} == 'wireguard' ]]; then
+			othervpn='openvpn'
+		else
+			othervpn='wireguard'
+		fi
+
+		echo ":::"
+		echo "::: Other VPN ${othervpn} still present, so not"
+		echo "::: removing pivpn system files"
+		rm -f "${setupConfigDir}/${VPN}/${setupVarsFile}"
+
+		# Restore single pivpn script and bash completion for the remaining VPN
+		$SUDO unlink /usr/local/bin/pivpn
+		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${othervpn}/pivpn.sh" /usr/local/bin/pivpn
+		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${othervpn}/bash-completion" /etc/bash_completion.d/pivpn
+		# shellcheck disable=SC1091
+		. /etc/bash_completion.d/pivpn
+	fi
 
 	echo ":::"
 	printf "::: Finished removing PiVPN from your system.\\n"
