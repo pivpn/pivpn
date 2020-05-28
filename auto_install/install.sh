@@ -102,25 +102,27 @@ main(){
 	fi
 
 	# Check arguments for the undocumented flags
-	for var in "$@"; do
-		case "$var" in
-			"--i_do_not_follow_recommendations"   ) skipSpaceCheck=false;;
-			"--unattended"     ) runUnattended=true;;
-			"--reconfigure"  ) reconfigure=true;;
+	for ((i=1; i <= "$#"; i++)); do
+		j="$((i+1))"
+		case "${!i}" in
+			"--skip-space-check"        ) skipSpaceCheck=true;;
+			"--unattended"              ) runUnattended=true; unattendedConfig="${!j}";;
+			"--reconfigure"             ) reconfigure=true;;
 			"--show-unsupported-nics"   ) showUnsupportedNICs=true;;
 		esac
 	done
 
 	if [[ "${runUnattended}" == true ]]; then
 		echo "::: --unattended passed to install script, no whiptail dialogs will be displayed"
-		if [ -z "$2" ]; then
-			echo "::: No configuration file passed, using default settings..."
+		if [ -z "$unattendedConfig" ]; then
+			echo "::: No configuration file passed"
+			exit 1
 		else
-			if [ -r "$2" ]; then
-		# shellcheck disable=SC1090
-				source "$2"
+			if [ -r "$unattendedConfig" ]; then
+				# shellcheck disable=SC1090
+				source "$unattendedConfig"
 			else
-				echo "::: Can't open $2"
+				echo "::: Can't open $unattendedConfig"
 				exit 1
 			fi
 		fi
@@ -165,7 +167,7 @@ main(){
 	# Start the installer
 	# Verify there is enough disk space for the install
 	if [[ "${skipSpaceCheck}" == true ]]; then
-		echo "::: --i_do_not_follow_recommendations passed to script, skipping free disk space verification!"
+		echo "::: --skip-space-check passed to script, skipping free disk space verification!"
 	else
 		verifyFreeDiskSpace
 	fi
