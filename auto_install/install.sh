@@ -62,6 +62,7 @@ OPENVPN_KEY_URL="https://swupdate.openvpn.net/repos/repo-public.gpg"
 runUnattended=false
 skipSpaceCheck=false
 reconfigure=false
+showUnsupportedNICs=false
 
 ######## SCRIPT ########
 
@@ -106,6 +107,7 @@ main(){
 			"--i_do_not_follow_recommendations"   ) skipSpaceCheck=false;;
 			"--unattended"     ) runUnattended=true;;
 			"--reconfigure"  ) reconfigure=true;;
+			"--show-unsupported-nics"   ) showUnsupportedNICs=true;;
 		esac
 	done
 
@@ -556,8 +558,14 @@ local chooseInterfaceOptions
 # Loop sentinel variable
 local firstloop=1
 
-# Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
-availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
+if [[ "${showUnsupportedNICs}" == true ]]; then
+	# Show every network interface, could be useful for those who install PiVPN inside virtual machines
+	# or on Raspberry Pis with USB adapters (the loopback interfaces is still skipped)
+	availableInterfaces=$(ip -o link | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1 | grep -v -w 'lo')
+else
+	# Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
+	availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
+fi
 
 if [ -z "$availableInterfaces" ]; then
     echo "::: Could not find any active network interface, exiting"
