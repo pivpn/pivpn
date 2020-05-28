@@ -999,6 +999,9 @@ getGitFiles(){
 }
 
 cloneOrUpdateRepos(){
+	# /usr/local should always exist, not sure about the src subfolder though
+	$SUDO mkdir -p /usr/local/src
+
 	# Get Git files
 	getGitFiles ${pivpnFilesDir} ${pivpnGitUrl} || \
 	{ echo "!!! Unable to clone ${pivpnGitUrl} into ${pivpnFilesDir}, unable to continue."; \
@@ -2224,6 +2227,9 @@ confUnattendedUpgrades(){
 }
 
 installScripts(){
+	# Ensure /opt exists (issue #607)
+	$SUDO mkdir -p /opt
+
 	if [[ ${VPN} == 'wireguard' ]]; then
 		othervpn='openvpn'
 	else
