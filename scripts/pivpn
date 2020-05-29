@@ -17,6 +17,11 @@ uninstallServer(){
     exit 0
 }
 
+backup(){
+    $SUDO ${scriptDir}/backup.sh
+    exit 0
+}
+
 showHelp(){
     echo "::: To pass off to the pivpn command for each protocol"
     echo ":::"
@@ -25,6 +30,7 @@ showHelp(){
     echo ":::"
     echo ":::  -h,  help             Show this help dialog"
     echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
+    echo ":::  -bk, backup           Backup VPN configs and user profiles"
     exit 0
 }
 
@@ -38,5 +44,6 @@ case "$1" in
      ovpn                    ) "${scriptDir}/openvpn/pivpn.sh"   "${@:2}";;
 "-h"  | "help"               ) showHelp;;
 "-u"  | "uninstall"          ) uninstallServer;;
+"-bk" | "backup"             ) backup ;;
 *                            ) showHelp;;
 esac

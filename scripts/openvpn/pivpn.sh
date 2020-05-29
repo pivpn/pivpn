@@ -58,7 +58,7 @@ function update {
 }
 
 function backup {
-    $SUDO ${scriptDir}/backup.sh
+    $SUDO ${scriptDir}/backup.sh "${vpn}"
     exit 0
 }
 

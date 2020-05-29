@@ -59,7 +59,8 @@ updateScripts(){
 }
 
 backup(){
-  $SUDO ${scriptdir}/backup.sh
+    $SUDO ${scriptdir}/backup.sh "${vpn}"
+    exit 0
 }
 
 showHelp(){
