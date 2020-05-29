@@ -302,10 +302,6 @@ distroCheck(){
 		;;
 	esac
 
-	if [ "$PLAT" = "Raspbian" ]; then
-		BASE_DEPS+=(dhcpcd5)
-	fi
-
 	echo "PLAT=${PLAT}" > ${tempsetupVarsFile}
 	echo "OSCN=${OSCN}" >> ${tempsetupVarsFile}
 }
@@ -465,6 +461,11 @@ preconfigurePackages(){
 		if dpkg --compare-versions "$INSTALLED_APT" lt 1.5; then
 			BASE_DEPS+=("apt-transport-https")
 		fi
+	fi
+
+	# We set static IP only on Raspbian
+	if [ "$PLAT" = "Raspbian" ]; then
+		BASE_DEPS+=(dhcpcd5)
 	fi
 
 	# if ufw is enabled, configure that.
