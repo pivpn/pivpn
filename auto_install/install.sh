@@ -458,10 +458,11 @@ notifyPackageUpdatesAvailable(){
 }
 
 preconfigurePackages(){
-	# Add support for https repositories that will be used later on
+	# If apt is older than 1.5 we need to install an additional package to add
+	# support for https repositories that will be used later on
 	if [[ -f /etc/apt/sources.list ]]; then
-		# buster and bionic have apt >= 1.5 which has https support built in
-		if [[ ${OSCN} != "buster" ]] && [[ ${OSCN} != "bionic" ]]; then
+		INSTALLED_APT="$(apt-cache policy apt | grep -m1 'Installed: ' | grep -v '(none)' | awk '{print $2}')"
+		if dpkg --compare-versions "$INSTALLED_APT" lt 1.5; then
 			BASE_DEPS+=("apt-transport-https")
 		fi
 	fi
