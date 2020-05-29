@@ -48,15 +48,13 @@ removeClient(){
 }
 
 uninstallServer(){
-    $SUDO ${scriptdir}/uninstall.sh
+    $SUDO ${scriptdir}/uninstall.sh "${vpn}"
     exit 0
 }
 
 updateScripts(){
     shift
-    # $SUDO ${scriptdir}/update.sh "$@"
-    echo "::: The updating functionality for PiVPN scripts is temporarily disabled"
-    echo "::: To keep the VPN (and the system) up to date, use 'apt update' and 'apt upgrade'"
+    $SUDO ${scriptdir}/update.sh "$@"
     exit 0
 }
 
@@ -98,7 +96,6 @@ case "$1" in
 "-h"  | "help"               ) showHelp;;
 "-u"  | "uninstall"          ) uninstallServer;;
 "-up" | "update"             ) updateScripts "$@" ;;
-"-wg" | "wgupdate"           ) updateWireGuard ;;
 "-bk" | "backup"             ) backup ;;
 *                            ) showHelp;;
 esac
