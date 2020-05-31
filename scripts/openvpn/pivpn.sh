@@ -73,6 +73,7 @@ function helpFunc {
     echo ":::  -c, clients          List any connected clients to the server"
     echo ":::  -d, debug            Start a debugging session if having trouble"
     echo ":::  -l, list             List all valid and revoked certificates"
+    echo ":::  -o, ovpn             Generate a .ovpn config file for an existing client"
     echo ":::  -r, revoke           Revoke a client ovpn profile"
     echo ":::  -h, help             Show this help dialog"
     echo ":::  -u, uninstall        Uninstall PiVPN from your system!"
@@ -91,6 +92,7 @@ case "$1" in
 "-c" | "clients"            ) listClientsFunc "$@";;
 "-d" | "debug"              ) debugFunc;;
 "-l" | "list"               ) listOVPNFunc;;
+"-o" | "ovpn"               ) makeOVPNFunc "$@" -c;;
 "-r" | "revoke"             ) removeOVPNFunc "$@";;
 "-h" | "help"               ) helpFunc;;
 "-u" | "uninstall"          ) uninstallFunc;;
