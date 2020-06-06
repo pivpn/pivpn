@@ -48,11 +48,11 @@ BASE_DEPS=(git tar wget curl grep dnsutils whiptail net-tools bsdmainutils)
 INSTALLED_PACKAGES=()
 
 ######## URLs ########
-easyrsaVer="3.0.6"
-easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-unix-v${easyrsaVer}.tgz"
+easyrsaVer="3.0.7"
+easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
 # Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
-UNATTUPG_RELEASE="1.16"
+UNATTUPG_RELEASE="2.4"
 UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
 
 # Fallback url for the OpenVPN key
@@ -1811,8 +1811,12 @@ confOpenVPN(){
 	fi
 
 	# Get easy-rsa
-	wget -qO- "${easyrsaRel}" | $SUDO tar xz --directory /etc/openvpn
-	$SUDO mv /etc/openvpn/EasyRSA-v${easyrsaVer} /etc/openvpn/easy-rsa
+	wget -qO- "${easyrsaRel}" | $SUDO tar xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
+	if ! test -s /etc/openvpn/easy-rsa/easyrsa; then
+		echo "$0: ERR: Failed to download EasyRSA."
+		exit 1
+	fi
+
 	# fix ownership
 	$SUDO chown -R root:root /etc/openvpn/easy-rsa
 	$SUDO mkdir /etc/openvpn/easy-rsa/pki
