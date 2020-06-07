@@ -20,7 +20,7 @@ source "${setupVars}"
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
     echo ":::"
-    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-c|--config-file] [-h|--help]"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-o|--ovpn] [-h|--help]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
@@ -30,7 +30,7 @@ helpFunc() {
     echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
     echo ":::  -i,--iOS             Generate a certificate that leverages iOS keychain"
-    echo ":::  -c,--config-file     Generate .ovpn configuration file for an existing client"
+    echo ":::  -o,--ovpn            Regenerate a .ovpn config file for an existing client"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -100,7 +100,7 @@ do
             fi
 
             ;;
-        -c|--config-file)
+        -o|--ovpn)
             GENOVPNONLY=1
             ;;
         *)
