@@ -1031,6 +1031,7 @@ installPiVPN(){
 		pivpnNET="10.8.0.0"
 		vpnGw="${pivpnNET/.0.0/.0.1}"
 
+		askAboutCustomizing
 		installOpenVPN
 		askCustomProto
 		askCustomPort
@@ -1051,6 +1052,7 @@ installPiVPN(){
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0"
 		vpnGw="${pivpnNET/.0.0/.0.1}"
+		CUSTOMIZE=0
 
 		installWireGuard
 		askCustomPort
@@ -1119,6 +1121,14 @@ askWhichVPN(){
 	fi
 
 	echo "VPN=${VPN}" >> ${tempsetupVarsFile}
+}
+
+askAboutCustomizing(){
+	if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno --defaultno "PiVPN uses some settings that we believe are good defaults for most users.\n\n- UDP or TCP protocol: UDP\n- Custom search domain for the DNS field: None\n- Modern features or best compatibility: Modern features (256 bit certificate + additional TLS encryption)\n\nHowever, we still want to keep flexibility, so if you need to customize them, choose Yes." ${r} ${c}); then
+		CUSTOMIZE=1
+	else
+		CUSTOMIZE=0
+	fi
 }
 
 downloadVerifyKey(){
@@ -1322,6 +1332,14 @@ askCustomProto(){
 		fi
 		echo "pivpnPROTO=${pivpnPROTO}" >> ${tempsetupVarsFile}
 		return
+	fi
+
+	if [ "$CUSTOMIZE" -eq 0 ]; then
+		if [ "$VPN" = "openvpn" ]; then
+			pivpnPROTO="udp"
+			echo "pivpnPROTO=${pivpnPROTO}" >> ${tempsetupVarsFile}
+			return
+		fi
 	fi
 
 	# Set the available protocols into an array so it can be used with a whiptail dialog
@@ -1588,6 +1606,13 @@ askCustomDomain(){
 		return
 	fi
 
+	if [ "$CUSTOMIZE" -eq 0 ]; then
+		if [ "$VPN" = "openvpn" ]; then
+			echo "pivpnSEARCHDOMAIN=${pivpnSEARCHDOMAIN}" >> ${tempsetupVarsFile}
+			return
+		fi
+	fi
+
 	DomainSettingsCorrect=False
 
 	if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno --defaultno "Would you like to add a custom search domain? \\n (This is only for advanced users who have their own domain)\\n" ${r} ${c}); then
@@ -1736,6 +1761,17 @@ askEncryption(){
 		echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
 		echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
 		return
+	fi
+
+	if [ "$CUSTOMIZE" -eq 0 ]; then
+		if [ "$VPN" = "openvpn" ]; then
+			TWO_POINT_FOUR=1
+			pivpnENCRYPT=256
+			echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> ${tempsetupVarsFile}
+			echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
+			echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
+			return
+		fi
 	fi
 
 	if (whiptail --backtitle "Setup OpenVPN" --title "Installation mode" --yesno "OpenVPN 2.4 can take advantage of Elliptic Curves to provide higher connection speed and improved security over RSA, while keeping smaller certificates.\\n\\nMoreover, the 'tls-crypt' directive encrypts the certificates being used while authenticating, increasing privacy.\\n\\nIf your clients do run OpenVPN 2.4 or later you can enable these features, otherwise choose 'No' for best compatibility." "${r}" "${c}"); then
