@@ -1499,11 +1499,7 @@ askClientDNS(){
 		fi
 	fi
 
-	DNSChoseCmd=(whiptail --separate-output --radiolist "Select the DNS Provider
-  for your VPN Clients (press space to select). To use your own, select
-	Custom.\\n\\nIn case you have a local resolver running, i.e. unbound, select
-	\"PiVPN-is-local-DNS\" and make sure your resolver is listening on
-	\"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." "${r}" "${c}" 6)
+	DNSChoseCmd=(whiptail --backtitle "Setup PiVPN" --title "DNS Provider" --separate-output --radiolist "Select the DNS Provider for your VPN Clients (press space to select).\nTo use your own, select Custom.\n\nIn case you have a local resolver running, i.e. unbound, select \"PiVPN-is-local-DNS\" and make sure your resolver is listening on \"$vpnGw\", allowing requests from \"${pivpnNET}/${subnetClass}\"." "${r}" "${c}" 6)
 	DNSChooseOptions=(Quad9 "" on
 			OpenDNS "" off
 			Level3 "" off
