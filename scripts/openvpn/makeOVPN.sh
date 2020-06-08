@@ -20,7 +20,7 @@ source "${setupVars}"
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
     echo ":::"
-    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-h|--help]"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-o|--ovpn] [-h|--help]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
@@ -30,6 +30,7 @@ helpFunc() {
     echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
     echo ":::  -i,--iOS             Generate a certificate that leverages iOS keychain"
+    echo ":::  -o,--ovpn            Regenerate a .ovpn config file for an existing client"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -97,6 +98,10 @@ do
                echo "Bitwarden not found, please install bitwarden"
                exit 1
             fi
+
+            ;;
+        -o|--ovpn)
+            GENOVPNONLY=1
             ;;
         *)
             echo "Error: Got an unexpected argument '$1'"
@@ -248,54 +253,58 @@ if [[ -z "${NAME}" ]]; then
     exit 1
 fi
 
-# Check if name is already in use
-while read -r line || [ -n "${line}" ]; do
-    STATUS=$(echo "$line" | awk '{print $1}')
-
-    if [ "${STATUS}" == "V" ]; then
-        CERT=$(echo "$line" | sed -e 's:.*/CN=::')
-        if [ "${CERT}" == "${NAME}" ]; then
-            INUSE="1"
-            break
-        fi
-    fi
-done <${INDEX}
-
-if [ "${INUSE}" == "1" ]; then
-    printf "\n!! This name is already in use by a Valid Certificate."
-    printf "\nPlease choose another name or revoke this certificate first.\n"
-    exit 1
-fi
-
-# Check if name is reserved
-if [ "${NAME}" == "ta" ] || [ "${NAME}" == "server" ] || [ "${NAME}" == "ca" ]; then
-    echo "Sorry, this is in use by the server and cannot be used by clients."
-    exit 1
-fi
-
-#As of EasyRSA 3.0.6, by default certificates last 1080 days, see https://github.com/OpenVPN/easy-rsa/blob/6b7b6bf1f0d3c9362b5618ad18c66677351cacd1/easyrsa3/vars.example
-if [ -z "${DAYS}" ]; then
-    read -r -e -p "How many days should the certificate last?  " -i 1080 DAYS
-fi
-
-if [[ ! "$DAYS" =~ ^[0-9]+$ ]] || [ "$DAYS" -lt 1 ] || [ "$DAYS" -gt 3650 ]; then
-    #The CRL lasts 3650 days so it doesn't make much sense that certificates would last longer
-    echo "Please input a valid number of days, between 1 and 3650 inclusive."
-    exit 1
-
-fi
-
-cd /etc/openvpn/easy-rsa || exit
-
-if [[ "${NO_PASS}" =~ "1" ]]; then
-    if [[ -n "${PASSWD}" ]]; then
-        echo "Both nopass and password arguments passed to the script. Please use either one."
-        exit 1
-    else
-        keynoPASS
-    fi
+if [ "${GENOVPNONLY}" == "1" ]; then
+    # Generate .ovpn configuration file
+    cd /etc/openvpn/easy-rsa/pki || exit
 else
-    keyPASS
+    # Check if name is already in use
+    while read -r line || [ -n "${line}" ]; do
+        STATUS=$(echo "$line" | awk '{print $1}')
+
+        if [ "${STATUS}" == "V" ]; then
+            CERT=$(echo "$line" | sed -e 's:.*/CN=::')
+            if [ "${CERT}" == "${NAME}" ]; then
+                INUSE="1"
+                break
+            fi
+        fi
+    done <${INDEX}
+
+    if [ "${INUSE}" == "1" ]; then
+        printf "\n!! This name is already in use by a Valid Certificate."
+        printf "\nPlease choose another name or revoke this certificate first.\n"
+        exit 1
+    fi
+
+    # Check if name is reserved
+    if [ "${NAME}" == "ta" ] || [ "${NAME}" == "server" ] || [ "${NAME}" == "ca" ]; then
+        echo "Sorry, this is in use by the server and cannot be used by clients."
+        exit 1
+    fi
+
+    #As of EasyRSA 3.0.6, by default certificates last 1080 days, see https://github.com/OpenVPN/easy-rsa/blob/6b7b6bf1f0d3c9362b5618ad18c66677351cacd1/easyrsa3/vars.example
+    if [ -z "${DAYS}" ]; then
+        read -r -e -p "How many days should the certificate last?  " -i 1080 DAYS
+    fi
+
+    if [[ ! "$DAYS" =~ ^[0-9]+$ ]] || [ "$DAYS" -lt 1 ] || [ "$DAYS" -gt 3650 ]; then
+        #The CRL lasts 3650 days so it doesn't make much sense that certificates would last longer
+        echo "Please input a valid number of days, between 1 and 3650 inclusive."
+        exit 1
+    fi
+
+    cd /etc/openvpn/easy-rsa || exit
+
+    if [[ "${NO_PASS}" =~ "1" ]]; then
+        if [[ -n "${PASSWD}" ]]; then
+            echo "Both nopass and password arguments passed to the script. Please use either one."
+            exit 1
+        else
+            keynoPASS
+        fi
+    else
+        keyPASS
+    fi
 fi
 
 #1st Verify that clients Public Key Exists
