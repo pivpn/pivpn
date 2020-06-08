@@ -1124,10 +1124,12 @@ askWhichVPN(){
 }
 
 askAboutCustomizing(){
-	if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno --defaultno "PiVPN uses some settings that we believe are good defaults for most users.\n\n- UDP or TCP protocol: UDP\n- Custom search domain for the DNS field: None\n- Modern features or best compatibility: Modern features (256 bit certificate + additional TLS encryption)\n\nHowever, we still want to keep flexibility, so if you need to customize them, choose Yes." ${r} ${c}); then
-		CUSTOMIZE=1
-	else
-		CUSTOMIZE=0
+	if [ "${runUnattended}" = 'false' ]; then
+		if (whiptail --backtitle "Setup PiVPN" --title "Installation mode" --yesno --defaultno "PiVPN uses the following settings that we believe are good defaults for most users. However, we still want to keep flexibility, so if you need to customize them, choose Yes.\n\n* UDP or TCP protocol: UDP\n* Custom search domain for the DNS field: None\n* Modern features or best compatibility: Modern features (256 bit certificate + additional TLS encryption)" ${r} ${c}); then
+			CUSTOMIZE=1
+		else
+			CUSTOMIZE=0
+		fi
 	fi
 }
 
