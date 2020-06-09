@@ -64,7 +64,7 @@ DELETED_COUNT=0
 
 for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
-    if ! grep -qw "${CLIENT_NAME}" configs/clients.txt; then
+    if ! grep -q "^${CLIENT_NAME} " configs/clients.txt; then
         echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
     else
         REQUESTED="$(sha256sum "configs/${CLIENT_NAME}.conf" | cut -c 1-64)"
@@ -73,17 +73,17 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
         if [[ $REPLY =~ ^[Yy]$ ]]; then
 
             # Grab the least significant octed of the client IP address
-            COUNT=$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $4}')
+            COUNT=$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $4}')
             # The creation date of the client
-            CREATION_DATE="$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $3}')"
+            CREATION_DATE="$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $3}')"
             # And its public key
-            PUBLIC_KEY="$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $2}')"
+            PUBLIC_KEY="$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $2}')"
 
             # Then remove the client matching the variables above
             sed "\#${CLIENT_NAME} ${PUBLIC_KEY} ${CREATION_DATE} ${COUNT}#d" -i configs/clients.txt
 
             # Remove the peer section from the server config
-            sed "/# begin ${CLIENT_NAME}/,/# end ${CLIENT_NAME}/d" -i wg0.conf
+            sed "/### begin ${CLIENT_NAME} ###/,/### end ${CLIENT_NAME} ###/d" -i wg0.conf
             echo "::: Updated server config"
 
             rm "configs/${CLIENT_NAME}.conf"

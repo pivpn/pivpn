@@ -108,12 +108,12 @@ Endpoint = ${pivpnHOST}:${pivpnPORT}
 AllowedIPs = 0.0.0.0/0, ::0/0" >> "configs/${CLIENT_NAME}.conf"
 echo "::: Client config generated"
 
-echo "# begin ${CLIENT_NAME}
+echo "### begin ${CLIENT_NAME} ###
 [Peer]
 PublicKey = $(cat "keys/${CLIENT_NAME}_pub")
 PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 AllowedIPs = ${NET_REDUCED}.${COUNT}/32
-# end ${CLIENT_NAME}" >> wg0.conf
+### end ${CLIENT_NAME} ###" >> wg0.conf
 echo "::: Updated server config"
 
 if [ -f /etc/pivpn/hosts.wireguard ]; then
