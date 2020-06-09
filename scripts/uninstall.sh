@@ -101,7 +101,7 @@ removeAll(){
 		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
     ### FIXME: SC2154
 		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any > /dev/null
-		sed -z "s/*nat\\n:POSTROUTING ACCEPT \\[0:0\\]\\n-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\\nCOMMIT\\n\\n//" -i /etc/ufw/before.rules
+		sed "/-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/d" -i /etc/ufw/before.rules
 		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
 		ufw reload &> /dev/null
 
