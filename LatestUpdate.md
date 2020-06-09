@@ -5,6 +5,16 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jun 9th 2020
+
+- Dual VPN mode, use both WireGuard and OpenVPN by running the installer script over an existing installation.
+- Generate a unique pre-shared key for each client as per the WireGuard protocol to improve post-quantum resistance.
+- Added the ability to regenerate the .ovpn config when the client template changes (issue #281). Use 'pivpn -a -o'.
+- Added the '--show-unsupported-nics' argument to the install script for those who need PiVPN on virtual servers where the available network interfaces may not be detected reliably (issue #994).
+- Clone the git repo to '/usr/local/src/pivpn' and replace all other locations with symlinks (issue #695).
+- Simplified the OpenVPN installation flow by moving some settings behind a "customize" dialog.
+-  Temporarily disable 'pivpn -up' until a proper update strategy is defined. See [this commit](https://github.com/pivpn/pivpn/commit/f06f6d79203c29ebd785f860a81a15e9caac4fc9) for more information.
+
 ## Mar 17th 2020
 
 - Switch to Bullseye repository on Debian/Raspbian. The bullseye repository is less likely to offer broken packages and it's also supported by Raspbian, meaning there is no need to manually compile WireGuard on older Raspberry Pis.
