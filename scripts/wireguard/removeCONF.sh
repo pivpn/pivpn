@@ -48,7 +48,7 @@ if [ "${#CLIENTS_TO_REMOVE[@]}" -eq 0 ]; then
     len=${#LIST[@]}
     COUNTER=1
     while [ $COUNTER -le ${len} ]; do
-        printf "• [%0${#len}s] %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
+        printf "[%0${#len}s] %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
         ((COUNTER++))
     done
 
