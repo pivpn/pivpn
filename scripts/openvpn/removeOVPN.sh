@@ -76,6 +76,7 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
         exit 1
     fi
 
+    re='^[0-9]+$'
     if [[ ${NAME} =~ $re ]] ; then
         NAME=${CERTS[$(($NAME))]}
     fi
