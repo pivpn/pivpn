@@ -63,7 +63,7 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
     i=1
     len=${#CERTS[@]}
     while [ $i -le ${len} ]; do
-        printf "[%0${#len}s] %s\r\n" ${i} ${CERTS[(($i))]}
+        printf "%0${#len}s) %s\r\n" ${i} ${CERTS[(($i))]}
         ((i++))
     done    
     printf "\n"
