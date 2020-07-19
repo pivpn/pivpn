@@ -30,7 +30,7 @@ do
             helpFunc
             exit 0
             ;;
-        -yes|--yes)
+        -y|--yes)
             CONFIRM=true
             ;;
         *)
