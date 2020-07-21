@@ -14,11 +14,12 @@ source "${setupVars}"
 helpFunc() {
     echo "::: Revoke a client ovpn profile"
     echo ":::"
-    echo "::: Usage: pivpn <-r|revoke> [-h|--help] [<client-1>] ... [<client-n>] ..."
+    echo "::: Usage: pivpn <-r|revoke> [-y|--yes] [-h|--help] [<client-1>] ... [<client-n>] ..."
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  <client>             Client(s) to to revoke"
+    echo ":::  -y,--yes             Remove Client(s) without confirmation"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -30,6 +31,9 @@ do
         -h|--help)
             helpFunc
             exit 0
+            ;;
+        -y|--yes)
+            CONFIRM=true
             ;;
         *)
             CERTS_TO_REVOKE+=("$1")
@@ -111,31 +115,38 @@ fi
 cd /etc/openvpn/easy-rsa || exit
 
 for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
-    printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
-    ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
-    ./easyrsa gen-crl
-    printf "\n::: Certificate revoked, and CRL file updated.\n"
-    printf "::: Removing certs and client configuration for this profile.\n"
-    rm -rf "pki/reqs/${CERTS_TO_REVOKE[ii]}.req"
-    rm -rf "pki/private/${CERTS_TO_REVOKE[ii]}.key"
-    rm -rf "pki/issued/${CERTS_TO_REVOKE[ii]}.crt"
+    if [ -n "$CONFIRM" ]; then
+        REPLY="y"
+    else
+        read -r -p "Do you really want to revoke ${CERTS_TO_REVOKE[ii]}? [Y/n] "
+    fi
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
+        ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
+        ./easyrsa gen-crl
+        printf "\n::: Certificate revoked, and CRL file updated.\n"
+        printf "::: Removing certs and client configuration for this profile.\n"
+        rm -rf "pki/reqs/${CERTS_TO_REVOKE[ii]}.req"
+        rm -rf "pki/private/${CERTS_TO_REVOKE[ii]}.key"
+        rm -rf "pki/issued/${CERTS_TO_REVOKE[ii]}.crt"
 
-    # Grab the client IP address
-    NET_REDUCED="${pivpnNET::-2}"
-    STATIC_IP=$(grep -v "^#" /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}" | grep -w ifconfig-push | grep -oE "${NET_REDUCED}\.[0-9]{1,3}")
-    rm -rf /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}"
+        # Grab the client IP address
+        NET_REDUCED="${pivpnNET::-2}"
+        STATIC_IP=$(grep -v "^#" /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}" | grep -w ifconfig-push | grep -oE "${NET_REDUCED}\.[0-9]{1,3}")
+        rm -rf /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}"
 
-    rm -rf "${install_home}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
-    rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
-    cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
+        rm -rf "${install_home}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
+        rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
+        cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
 
-    # If using Pi-hole, remove the client from the hosts file
-    if [ -f /etc/pivpn/hosts.openvpn ]; then
-        sed "\#${STATIC_IP} ${CERTS_TO_REVOKE[ii]}.pivpn#d" -i /etc/pivpn/hosts.openvpn
-        if killall -SIGHUP pihole-FTL; then
-            echo "::: Updated hosts file for Pi-hole"
-        else
-            echo "::: Failed to reload pihole-FTL configuration"
+        # If using Pi-hole, remove the client from the hosts file
+        if [ -f /etc/pivpn/hosts.openvpn ]; then
+            sed "\#${STATIC_IP} ${CERTS_TO_REVOKE[ii]}.pivpn#d" -i /etc/pivpn/hosts.openvpn
+            if killall -SIGHUP pihole-FTL; then
+                echo "::: Updated hosts file for Pi-hole"
+            else
+                echo "::: Failed to reload pihole-FTL configuration"
+            fi
         fi
     fi
 done

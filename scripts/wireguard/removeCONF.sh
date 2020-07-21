@@ -12,11 +12,12 @@ source "${setupVars}"
 helpFunc(){
     echo "::: Remove a client conf profile"
     echo ":::"
-    echo "::: Usage: pivpn <-r|remove> [-h|--help] [<client-1>] ... [<client-n>] ..."
+    echo "::: Usage: pivpn <-r|remove> [-y|--yes] [-h|--help] [<client-1>] ... [<client-n>] ..."
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  <client>             Client(s) to remove"
+    echo ":::  -y,--yes             Remove Client(s) without confirmation"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -28,6 +29,9 @@ do
         -h|--help)
             helpFunc
             exit 0
+            ;;
+        -y|--yes)
+            CONFIRM=true
             ;;
         *)
             CLIENTS_TO_REMOVE+=("$1")
@@ -68,7 +72,11 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
         echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
     else
         REQUESTED="$(sha256sum "configs/${CLIENT_NAME}.conf" | cut -c 1-64)"
-        read -r -p "Do you really want to delete $CLIENT_NAME? [Y/n] "
+        if [ -n "$CONFIRM" ]; then
+            REPLY="y"
+        else
+            read -r -p "Do you really want to delete $CLIENT_NAME? [Y/n] "
+        fi
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
 
