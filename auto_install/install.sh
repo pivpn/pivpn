@@ -1475,18 +1475,10 @@ askClientDNS(){
 			# Then create an empty hosts file or clear if it exists.
 			$SUDO bash -c "> /etc/pivpn/hosts.$VPN"
 
-			# If the listening behavior is "Listen only on interface whatever", which is the
-			# default, tell dnsmasq to listen on the VPN interface as well. Other listening
-			# behaviors are permissive enough.
-
-			# Source in a subshell to prevent overwriting script's variables
-			DNSMASQ_LISTENING="$(source "$piholeSetupVars" && echo "${DNSMASQ_LISTENING}")"
-
-			# $DNSMASQ_LISTENING is not set if you never edit/save settings in the DNS page,
-			# so if the variable is empty, we still add the 'interface=' directive.
-			if [ -z "${DNSMASQ_LISTENING}" ] || [ "${DNSMASQ_LISTENING}" = "single" ]; then
-				echo "interface=$pivpnDEV" | $SUDO tee -a "$dnsmasqConfig" > /dev/null
-			fi
+			# Set Pi-hole to "Listen on all interfaces, permit all origins" to allow dnsmasq
+			# to listen on the VPN interface as well. This setting matches what's suggested
+			# in the official guide: https://docs.pi-hole.net/guides/vpn/dual-operation
+			$SUDO pihole -a -i all
 
 			# Use the Raspberry Pi VPN IP as DNS server.
 			pivpnDNS1="$vpnGw"
@@ -2191,10 +2183,6 @@ restartServices(){
 			fi
 		;;
 	esac
-
-	if [ -f "$dnsmasqConfig" ]; then
-		$SUDO pihole restartdns
-	fi
 }
 
 askUnattendedUpgrades(){
