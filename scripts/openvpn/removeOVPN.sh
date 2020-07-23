@@ -56,22 +56,33 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
         STATUS=$(echo "$line" | awk '{print $1}')
         if [[ "${STATUS}" = "V" ]]; then
             NAME=$(echo "$line" | sed -e 's:.*/CN=::')
-            CERTS[$i]=${NAME}
             if [ "$i" != 0 ]; then
                 # Prevent printing "server" certificate
-                printf "  %s\n" "$NAME"
+                CERTS[$i]=${NAME}
             fi
             let i=i+1
         fi
     done <${INDEX}
+    
+    i=1
+    len=${#CERTS[@]}
+    while [ $i -le ${len} ]; do
+        printf "%0${#len}s) %s\r\n" ${i} ${CERTS[(($i))]}
+        ((i++))
+    done    
     printf "\n"
 
-    echo -n "::: Please enter the Name of the client to be revoked from the list above: "
+    echo -n "::: Please enter the Index/Name of the client to be revoked from the list above: "
     read -r NAME
 
     if [[ -z "${NAME}" ]]; then
         echo "You can not leave this blank!"
         exit 1
+    fi
+
+    re='^[0-9]+$'
+    if [[ ${NAME} =~ $re ]] ; then
+        NAME=${CERTS[$(($NAME))]}
     fi
 
     for((x=1;x<=i;++x)); do
