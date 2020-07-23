@@ -58,7 +58,7 @@ curl -L https://install.pivpn.io | bash
 
 **Method 2 (direct link)**
 ```Shell
-curl -L https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh | bash
+curl https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh | bash
 ```
 
 **Method 3 (clone repo)**
