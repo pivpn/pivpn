@@ -1229,7 +1229,7 @@ installWireGuard(){
 				echo ":::    curl -L https://install.pivpn.io | bash"
 				exit 1
 			else
-				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel $(uname -r), which is not the latest.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
+				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel package ${INSTALLED_KERNEL}, however the latest version is ${CANDIDATE_KERNEL}.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
 					if command -v debconf-apt-progress &> /dev/null; then
 						# shellcheck disable=SC2086
 						$SUDO debconf-apt-progress -- ${PKG_MANAGER} upgrade -y
