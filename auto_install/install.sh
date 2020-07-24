@@ -1475,10 +1475,10 @@ askClientDNS(){
 			# Then create an empty hosts file or clear if it exists.
 			$SUDO bash -c "> /etc/pivpn/hosts.$VPN"
 
-			# Set Pi-hole to "Listen on all interfaces, permit all origins" to allow dnsmasq
-			# to listen on the VPN interface as well. This setting matches what's suggested
-			# in the official guide: https://docs.pi-hole.net/guides/vpn/dual-operation
-			$SUDO pihole -a -i all
+			# Setting Pi-hole to "Listen on all interfaces" allows dnsmasq to listen on the
+			# VPN interface while permitting queries only from hosts whose address is on
+			# the LAN and VPN subnets.
+			$SUDO pihole -a -i local
 
 			# Use the Raspberry Pi VPN IP as DNS server.
 			pivpnDNS1="$vpnGw"
