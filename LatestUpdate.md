@@ -5,6 +5,12 @@ patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jul 24th 2020
+
+- Added ability to remove client by index. For example, when the user is presented with '2) phone' he can remove the client by typing either '2' or 'phone'.
+- Added ability to remove a client non-interactively with 'pivpn -r phone -y'.
+- When choosing to use Pi-hole, do not whitelist the specific VPN interface. Instead, use Pi-hole's built-in command 'pihole -a -i local' to allow listening from on the VPN interface. DNS resolution on the LAN shouldn't break anymore in some circumstances if the user changes Pi-hole's listening behavior after installing PiVPN.
+
 ## Jun 9th 2020
 
 - Dual VPN mode, use both WireGuard and OpenVPN by running the installer script over an existing installation.
