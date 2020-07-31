@@ -34,6 +34,20 @@ helpFunc() {
     echo ":::  -h,--help            Show this help dialog"
 }
 
+safeDelete() {
+    if [ -z "$1" ]; then
+        exit
+    fi
+    if [ ! -f "$1" ]; then
+        exit
+    fi
+    if command -v debconf-apt-progress > /dev/null; then
+        shred -zu -n 35 "$1"
+    else
+        rm "$1"
+    fi
+}
+
 if [ -z "$HELP_SHOWN" ]; then
     helpFunc
     echo
@@ -449,6 +463,11 @@ cp "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT" "$install_home/ovpns/$NAME$FILEEXT"
 chown "$install_user":"$install_user" "$install_home/ovpns/$NAME$FILEEXT"
 chmod 640 "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
 chmod 640 "$install_home/ovpns/$NAME$FILEEXT"
+
+#cleanup files
+safeDelete "/etc/openvpn/easy-rsa/pki/private/${NAME}${KEY}"
+safeDelete "/etc/openvpn/easy-rsa/pki/${NAME}${FILEEXT}"
+
 printf "\n\n"
 printf "========================================================\n"
 printf "\e[1mDone! %s successfully created!\e[0m \n" "$NAME$FILEEXT"
