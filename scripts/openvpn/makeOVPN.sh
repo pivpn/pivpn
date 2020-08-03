@@ -20,7 +20,7 @@ source "${setupVars}"
 helpFunc() {
     echo "::: Create a client ovpn profile, optional nopass"
     echo ":::"
-    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-o|--ovpn] [-h|--help]"
+    echo "::: Usage: pivpn <-a|add> [-n|--name <arg>] [-p|--password <arg>]|[nopass] [-d|--days <number>] [-b|--bitwarden] [-i|--iOS] [-o|--ovpn] [-r|--remove] [-h|--help]"
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
@@ -31,21 +31,15 @@ helpFunc() {
     echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
     echo ":::  -i,--iOS             Generate a certificate that leverages iOS keychain"
     echo ":::  -o,--ovpn            Regenerate a .ovpn config file for an existing client"
+    echo ":::  -c,--remove          Remove private key after profile generation (--ovpn will not possible after)"
     echo ":::  -h,--help            Show this help dialog"
 }
 
 safeDelete() {
-    if [ -z "$1" ]; then
+    if [ -z "$1" ] || [ ! -f "$1" ]; then
         exit
     fi
-    if [ ! -f "$1" ]; then
-        exit
-    fi
-    if command -v debconf-apt-progress > /dev/null; then
-        shred -zu -n 35 "$1"
-    else
-        rm "$1"
-    fi
+    rm "$1"
 }
 
 if [ -z "$HELP_SHOWN" ]; then
@@ -116,6 +110,9 @@ do
             ;;
         -o|--ovpn)
             GENOVPNONLY=1
+            ;;
+        -r|--remove)
+            REMOVEPRIVATEKEY=1
             ;;
         *)
             echo "Error: Got an unexpected argument '$1'"
@@ -470,8 +467,11 @@ chmod 640 "/etc/openvpn/easy-rsa/pki/$NAME$FILEEXT"
 chmod 640 "$install_home/ovpns/$NAME$FILEEXT"
 
 #cleanup files
-safeDelete "/etc/openvpn/easy-rsa/pki/private/${NAME}${KEY}"
 safeDelete "/etc/openvpn/easy-rsa/pki/${NAME}${FILEEXT}"
+
+if [ "${REMOVEPRIVATEKEY}" == "1" ]; then
+    safeDelete "/etc/openvpn/easy-rsa/pki/private/${NAME}${KEY}"
+fi
 
 printf "\n\n"
 printf "========================================================\n"
