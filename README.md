@@ -56,21 +56,16 @@ Installation
 curl -L https://install.pivpn.io | bash
 ```
 
-**Method 2**
+**Method 2 (direct link)**
 ```Shell
-curl -L https://install.pivpn.io > pivpn.sh
-sudo bash pivpn.sh
+curl https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh | bash
 ```
 
-**Method 3**
+**Method 3 (clone repo)**
 ```Shell
 git clone https://github.com/pivpn/pivpn.git
-sudo bash pivpn/auto_install/install.sh
+bash pivpn/auto_install/install.sh
 ```
-
-**OBS:**  
-In alternative to install.pivpn.io you can use the raw github link:   
-https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh
 
 **To install from Test/Development branch**
 
@@ -80,7 +75,9 @@ Check our [Wiki Page](https://github.com/pivpn/pivpn/wiki#testing)
 
 The script will first update your APT repositories, upgrade packages, and install WireGuard (default) or OpenVPN, which will take some time.
 
-It will ask which authentication method you wish the guts of your server to use. If you go for WireGuard, you don't get to choose: you will use a Curve25519 public key, which provides 128-bit security. On the other end, if you prefer OpenVPN, you can choose between a 2048-bit, 3072-bit, or 4096-bit RSA certificate. If you're unsure or don't have a convincing reason one way or the other I'd use 2048 today (provides 112-bit security).
+It will ask which authentication method you wish the guts of your server to use. If you go for WireGuard, you don't get to choose: you will use a Curve25519 public key, which provides 128-bit security. On the other end, if you prefer OpenVPN, default settings will generate ECDSA certificates, which are based on Elliptic Curves, allowing much smaller keys while providing an equivalent security level to traditional RSA (256 bit long, equivalent to 3072 bit RSA). You can also use 384-bit and 521-bit, even though they are quite overkill.
+
+If you decide to customize settings, you will still be able to use RSA certificates if you need backward compatibility with older gear. You can choose between a 2048-bit, 3072-bit, or 4096-bit certificate. If you're unsure or don't have a convincing reason one way or the other I'd use 2048 today (provides 112-bit security).
 
 From the OpenVPN site:
 
@@ -88,11 +85,12 @@ From the OpenVPN site:
 
 > Up to 4096-bit is accepted by nearly all RSA systems (including OpenVPN), but use of keys this large will dramatically increase generation time, TLS handshake delays, and CPU usage for TLS operations; the benefit beyond 2048-bit keys is small enough not to be of great use at the current time. It is often a larger benefit to consider lower validity times than more bits past 2048, but that is for you to decide.
 
+
 After this, the script will go back to the command line as it builds the server's own certificate authority (OpenVPN only). The script will ask you if you'd like to change the default port, protocol, client's DNS server, etc. If you know you want to change these things, feel free, and the script will put all the information where it needs to go in the various config files.
 
 If you aren't sure, it has been designed that you can simply hit 'Enter' through all the questions and have a working configuration at the end.
 
-Finally, the script will take some time to build the server's Diffie-Hellman key exchange (OpenVPN only). If you chose 2048-bit encryption, it will take about 40 minutes on a Model B+, and several hours if you choose a larger size.
+Finally, if you are using RSA, the script will take some time to build the server's Diffie-Hellman key exchange (OpenVPN only). If you chose 2048-bit encryption, it will take about 40 minutes on a Model B+, and several hours if you choose a larger size.
 
 The script will also make some changes to your system to allow it to forward internet traffic and allow VPN connections through the Pi's firewall. When the script informs you that it has finished configuring PiVPN, it will ask if you want to reboot. I have it where you do not need to reboot when done but it also can't hurt.
 

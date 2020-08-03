@@ -64,6 +64,11 @@ if [[ "${CLIENT_NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
     exit 1
 fi
 
+if [[ "${CLIENT_NAME}" =~ ^[0-9]+$ ]]; then
+    echo "Names cannot be integers."
+    exit 1
+fi
+
 if [ -z "${CLIENT_NAME}" ]; then
     echo "::: You cannot leave the name blank."
     exit 1

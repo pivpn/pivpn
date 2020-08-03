@@ -51,10 +51,6 @@ INSTALLED_PACKAGES=()
 easyrsaVer="3.0.7"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
-# Raspbian's unattended-upgrades package downloads Debian's config, so this is the link for the proper config
-UNATTUPG_RELEASE="2.4"
-UNATTUPG_CONFIG="https://github.com/mvo5/unattended-upgrades/archive/${UNATTUPG_RELEASE}.tar.gz"
-
 # Fallback url for the OpenVPN key
 OPENVPN_KEY_URL="https://swupdate.openvpn.net/repos/repo-public.gpg"
 
@@ -1233,7 +1229,7 @@ installWireGuard(){
 				echo ":::    curl -L https://install.pivpn.io | bash"
 				exit 1
 			else
-				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel $(uname -r), which is not the latest.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
+				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel package ${INSTALLED_KERNEL}, however the latest version is ${CANDIDATE_KERNEL}.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
 					if command -v debconf-apt-progress &> /dev/null; then
 						# shellcheck disable=SC2086
 						$SUDO debconf-apt-progress -- ${PKG_MANAGER} upgrade -y
@@ -1479,18 +1475,10 @@ askClientDNS(){
 			# Then create an empty hosts file or clear if it exists.
 			$SUDO bash -c "> /etc/pivpn/hosts.$VPN"
 
-			# If the listening behavior is "Listen only on interface whatever", which is the
-			# default, tell dnsmasq to listen on the VPN interface as well. Other listening
-			# behaviors are permissive enough.
-
-			# Source in a subshell to prevent overwriting script's variables
-			DNSMASQ_LISTENING="$(source "$piholeSetupVars" && echo "${DNSMASQ_LISTENING}")"
-
-			# $DNSMASQ_LISTENING is not set if you never edit/save settings in the DNS page,
-			# so if the variable is empty, we still add the 'interface=' directive.
-			if [ -z "${DNSMASQ_LISTENING}" ] || [ "${DNSMASQ_LISTENING}" = "single" ]; then
-				echo "interface=$pivpnDEV" | $SUDO tee -a "$dnsmasqConfig" > /dev/null
-			fi
+			# Setting Pi-hole to "Listen on all interfaces" allows dnsmasq to listen on the
+			# VPN interface while permitting queries only from hosts whose address is on
+			# the LAN and VPN subnets.
+			$SUDO pihole -a -i local
 
 			# Use the Raspberry Pi VPN IP as DNS server.
 			pivpnDNS1="$vpnGw"
@@ -2195,10 +2183,6 @@ restartServices(){
 			fi
 		;;
 	esac
-
-	if [ -f "$dnsmasqConfig" ]; then
-		$SUDO pihole restartdns
-	fi
 }
 
 askUnattendedUpgrades(){
@@ -2232,7 +2216,7 @@ confUnattendedUpgrades(){
 	local PIVPN_DEPS
 	PIVPN_DEPS=(unattended-upgrades)
 	installDependentPackages PIVPN_DEPS[@]
-  aptConfDir="/etc/apt/apt.conf.d"
+	aptConfDir="/etc/apt/apt.conf.d"
 
 	if [ "$PLAT" = "Ubuntu" ]; then
 
@@ -2245,15 +2229,10 @@ confUnattendedUpgrades(){
 
 	else
 
-		# Fix Raspbian config
+		# Raspbian's unattended-upgrades package downloads Debian's config, so we copy over the proper config
+		# Source: https://github.com/mvo5/unattended-upgrades/blob/master/data/50unattended-upgrades.Raspbian
 		if [ "$PLAT" = "Raspbian" ]; then
-			wget -qO- "$UNATTUPG_CONFIG" | $SUDO tar xz --directory "${aptConfDir}" "unattended-upgrades-$UNATTUPG_RELEASE/data/50unattended-upgrades.Raspbian" --strip-components 2
-			if test -s "${aptConfDir}/50unattended-upgrades.Raspbian"; then
-				$SUDO mv "${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
-			else
-				echo "$0: ERR: Failed to download \"50unattended-upgrades.Raspbian\"."
-				exit 1
-			fi
+			$SUDO install -m 644 "${pivpnFilesDir}/files${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
 		fi
 
 		# Add the remaining settings for all other distributions

@@ -12,11 +12,12 @@ source "${setupVars}"
 helpFunc(){
     echo "::: Remove a client conf profile"
     echo ":::"
-    echo "::: Usage: pivpn <-r|remove> [-h|--help] [<client-1>] ... [<client-n>] ..."
+    echo "::: Usage: pivpn <-r|remove> [-y|--yes] [-h|--help] [<client-1>] ... [<client-n>] ..."
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  <client>             Client(s) to remove"
+    echo ":::  -y,--yes             Remove Client(s) without confirmation"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -28,6 +29,9 @@ do
         -h|--help)
             helpFunc
             exit 0
+            ;;
+        -y|--yes)
+            CONFIRM=true
             ;;
         *)
             CLIENTS_TO_REMOVE+=("$1")
@@ -42,17 +46,17 @@ if [ ! -s configs/clients.txt ]; then
     exit 1
 fi
 
+LIST=($(awk '{print $1}' configs/clients.txt))
 if [ "${#CLIENTS_TO_REMOVE[@]}" -eq 0 ]; then
-
     echo -e "::\e[4m  Client list  \e[0m::"
-    LIST=($(awk '{print $1}' configs/clients.txt))
+    len=${#LIST[@]}
     COUNTER=1
-    while [ $COUNTER -le ${#LIST[@]} ]; do
-        echo "• ${LIST[(($COUNTER-1))]}"
+    while [ $COUNTER -le ${len} ]; do
+        printf "%0${#len}s) %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
         ((COUNTER++))
     done
 
-    read -r -p "Please enter the Name of the Client to be removed from the list above: " CLIENTS_TO_REMOVE
+    read -r -p "Please enter the Index/Name of the Client to be removed from the list above: " CLIENTS_TO_REMOVE
 
     if [ -z "${CLIENTS_TO_REMOVE}" ]; then
         echo "::: You can not leave this blank!"
@@ -64,11 +68,20 @@ DELETED_COUNT=0
 
 for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
+    re='^[0-9]+$'
+    if [[ ${CLIENT_NAME} =~ $re ]] ; then
+        CLIENT_NAME=${LIST[$(($CLIENT_NAME -1))]}
+    fi
+
     if ! grep -q "^${CLIENT_NAME} " configs/clients.txt; then
         echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
     else
         REQUESTED="$(sha256sum "configs/${CLIENT_NAME}.conf" | cut -c 1-64)"
-        read -r -p "Do you really want to delete $CLIENT_NAME? [Y/n] "
+        if [ -n "$CONFIRM" ]; then
+            REPLY="y"
+        else
+            read -r -p "Do you really want to delete $CLIENT_NAME? [Y/n] "
+        fi
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
 
