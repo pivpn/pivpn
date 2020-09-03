@@ -16,7 +16,7 @@
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 #pivpnGitUrl="/home/pi/repos/pivpn"
 setupVarsFile="setupVars.conf"
-setupConfigDir="/etc/pivpn" 
+setupConfigDir="/etc/pivpn"
 tempsetupVarsFile="/tmp/setupVars.conf"
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
@@ -129,9 +129,9 @@ main(){
                 setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
         elif [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
                 setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
-        fi 
+        fi
 
-	if [ -r "$setupVars" ]; then 
+	if [ -r "$setupVars" ]; then
 		if [[ "${reconfigure}" == true ]]; then
 			echo "::: --reconfigure passed to install script, will reinstall PiVPN overwriting existing settings"
 			UpdateCmd="Reconfigure"
@@ -150,7 +150,7 @@ main(){
 		exit 0
 	elif [ "$UpdateCmd" = "Repair" ]; then
 		# shellcheck disable=SC1090
-		source "$setupVars" 
+		source "$setupVars"
 		runUnattended=true
 	fi
 
@@ -219,7 +219,7 @@ main(){
 	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
         echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
         $SUDO mkdir "${setupConfigDir}/${VPN}/"
-	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}" 
+	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}"
 
 	installScripts
 
@@ -1068,7 +1068,8 @@ installPiVPN(){
 
 askWhichVPN(){
 	if [ "${runUnattended}" = 'true' ]; then
-		if [ "$PLAT" = "Raspbian" ] || [ "$X86_SYSTEM" -eq 1 ]; then
+		# [ "$OSCN" = "focal" ] > WireGuard is supported in Ubuntu 20.04 on all architectures
+		if [ "$PLAT" = "Raspbian" ] || [ "$OSCN" = "focal" ] || [ "$X86_SYSTEM" -eq 1 ]; then
 			if [ -z "$VPN" ]; then
 				echo ":: No VPN protocol specified, using WireGuard"
 				VPN="wireguard"
@@ -1098,7 +1099,8 @@ askWhichVPN(){
 			fi
 		fi
 	else
-		if [ "$PLAT" = "Raspbian" ] || [ "$X86_SYSTEM" -eq 1 ]; then
+		# [ "$OSCN" = "focal" ] > WireGuard is supported in Ubuntu 20.04 on all architectures
+		if [ "$PLAT" = "Raspbian" ] || [ "$OSCN" = "focal" ] || [ "$X86_SYSTEM" -eq 1 ]; then
 			chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-instantaneous connection speed, high performance, and modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (press space to select):" "${r}" "${c}" 2)
 			VPNChooseOptions=(WireGuard "" on
 								OpenVPN "" off)
