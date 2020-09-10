@@ -8,6 +8,8 @@ if [ ! -f "${INDEX}" ]; then
         exit 1
 fi
 
+/etc/openvpn/easy-rsa/easyrsa update-db >> /var/log/easyrsa_update-db.log 2>1
+
 printf ": NOTE : The first entry should always be your valid server!\n"
 printf "\\n"
 printf "\\e[1m::: Certificate Status List :::\\e[0m\\n"
@@ -23,6 +25,8 @@ while read -r line || [ -n "$line" ]; do
         printf "Valid  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
     elif [ "${STATUS}" == "R" ]; then
         printf "Revoked  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
+    elif [ "${STATUS}" == "E" ]; then
+        printf "     Expired ::   %s\n" "$NAME"
     else
         printf "Unknown  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
     fi
