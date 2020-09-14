@@ -134,17 +134,17 @@ removeAll(){
 		while true; do
 			read -rp "::: Do you wish to remove $i from your system? [Y/n]: " yn
 			case $yn in
-				[Yy]* ) if [ "${i}" = "wireguard" ]; then
+				[Yy]* ) if [ "${i}" = "wireguard-tools" ]; then
 
-							# On Debian and Raspbian, remove the bullseye repo. On Ubuntu, remove the PPA.
-							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
-								rm -f /etc/apt/sources.list.d/pivpn-bullseye.list
+							# The bullseye repo may not exist if wireguard was available at the
+							# time of installation.
+							if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]; then
+								echo "::: Removing Debian Bullseye repo..."
+								rm -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list
 								rm -f /etc/apt/preferences.d/pivpn-limit-bullseye
-							elif [ "$PLAT" = "Ubuntu" ]; then
-								add-apt-repository ppa:wireguard/wireguard -r -y
+								echo "::: Updating package cache..."
+								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
-							echo "::: Updating package cache..."
-							${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 
 						elif [ "${i}" = "unattended-upgrades" ]; then
 
@@ -154,7 +154,8 @@ removeAll(){
 
 						elif [ "${i}" = "openvpn" ]; then
 
-							if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+							if [ -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list ]; then
+								echo "::: Removing OpenVPN software repo..."
 								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
 								echo "::: Updating package cache..."
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!

@@ -273,19 +273,10 @@ distroCheck(){
 		OSCN=${VER_MAP["${VER}"]}
 	fi
 
-	if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-		DPKG_ARCH="$(dpkg --print-architecture)"
-		if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
-			X86_SYSTEM=1
-		else
-			X86_SYSTEM=0
-		fi
-	fi
-
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
 			case ${OSCN} in
-				buster|xenial|bionic|stretch|focal)
+				stretch|buster|xenial|bionic|focal)
 				:
 				;;
 				*)
@@ -462,6 +453,61 @@ preconfigurePackages(){
 	# We set static IP only on Raspbian
 	if [ "$PLAT" = "Raspbian" ]; then
 		BASE_DEPS+=(dhcpcd5)
+	fi
+
+	AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	DPKG_ARCH="$(dpkg --print-architecture)"
+	NEED_OPENVPN_REPO=0
+
+	# We require OpenVPN 2.4 or later for ECC support. If not available in the
+	# repositories but we are running x86 Debian or Ubuntu, add the official repo
+	# which provides the updated package.
+	if [ -n "$AVAILABLE_OPENVPN" ] && dpkg --compare-versions "$AVAILABLE_OPENVPN" ge 2.4; then
+		OPENVPN_SUPPORT=1
+	else
+		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+			if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
+				NEED_OPENVPN_REPO=1
+				OPENVPN_SUPPORT=1
+			else
+				OPENVPN_SUPPORT=0
+			fi
+		else
+			OPENVPN_SUPPORT=0
+		fi
+	fi
+
+	AVAILABLE_WIREGUARD="$(apt-cache policy wireguard | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	WIREGUARD_BUILTIN=0
+	NEED_WIREGUARD_REPO=0
+
+	if [ -n "$AVAILABLE_WIREGUARD" ]; then
+		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+			# If a wireguard kernel object is found and is part of any installed package, then
+			# it has not been build via DKMS or manually (installing via wireguard-dkms does not
+			# make the module part of the package since the module itself is built at install time
+			# and not part of the .deb).
+			# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
+			for i in /lib/modules/*/kernel/net/wireguard/wireguard.ko; do
+				[[ -f $i ]] || continue
+				dpkg-query -S "$i" &> /dev/null || continue
+				WIREGUARD_BUILTIN=1
+				break
+			done
+		fi
+		WIREGUARD_SUPPORT=1
+	else
+		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
+			NEED_WIREGUARD_REPO=1
+			WIREGUARD_SUPPORT=1
+		else
+			WIREGUARD_SUPPORT=0
+		fi
+	fi
+
+	if [ "$OPENVPN_SUPPORT" -eq 0 ] && [ "$WIREGUARD_SUPPORT" -eq 0 ]; then
+		echo "::: Neither OpenVPN nor WireGuard are available to install by PiVPN, exiting..."
+		exit 1
 	fi
 
 	# if ufw is enabled, configure that.
@@ -1068,8 +1114,7 @@ installPiVPN(){
 
 askWhichVPN(){
 	if [ "${runUnattended}" = 'true' ]; then
-		# [ "$OSCN" = "focal" ] > WireGuard is supported in Ubuntu 20.04 on all architectures
-		if [ "$PLAT" = "Raspbian" ] || [ "$OSCN" = "focal" ] || [ "$X86_SYSTEM" -eq 1 ]; then
+		if [ "$WIREGUARD_SUPPORT" -eq 1 ]; then
 			if [ -z "$VPN" ]; then
 				echo ":: No VPN protocol specified, using WireGuard"
 				VPN="wireguard"
@@ -1084,7 +1129,7 @@ askWhichVPN(){
 					exit 1
 				fi
 			fi
-		elif [ "$X86_SYSTEM" -eq 0 ]; then
+		else
 			if [ -z "$VPN" ]; then
 				echo ":: No VPN protocol specified, using OpenVPN"
 				VPN="openvpn"
@@ -1099,8 +1144,7 @@ askWhichVPN(){
 			fi
 		fi
 	else
-		# [ "$OSCN" = "focal" ] > WireGuard is supported in Ubuntu 20.04 on all architectures
-		if [ "$PLAT" = "Raspbian" ] || [ "$OSCN" = "focal" ] || [ "$X86_SYSTEM" -eq 1 ]; then
+		if [ "$WIREGUARD_SUPPORT" -eq 1 ] && [ "$OPENVPN_SUPPORT" -eq 1 ]; then
 			chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "WireGuard is a new kind of VPN that provides near-instantaneous connection speed, high performance, and modern cryptography.\\n\\nIt's the recommended choice especially if you use mobile devices where WireGuard is easier on battery than OpenVPN.\\n\\nOpenVPN is still available if you need the traditional, flexible, trusted VPN protocol or if you need features like TCP and custom search domain.\\n\\nChoose a VPN (press space to select):" "${r}" "${c}" 2)
 			VPNChooseOptions=(WireGuard "" on
 								OpenVPN "" off)
@@ -1112,9 +1156,12 @@ askWhichVPN(){
 				echo "::: Cancel selected, exiting...."
 				exit 1
 			fi
-		elif [ "$X86_SYSTEM" -eq 0 ]; then
+		elif [ "$OPENVPN_SUPPORT" -eq 1 ] && [ "$WIREGUARD_SUPPORT" -eq 0 ]; then
 			echo "::: Using VPN: OpenVPN"
 			VPN="openvpn"
+		elif [ "$OPENVPN_SUPPORT" -eq 0 ] && [ "$WIREGUARD_SUPPORT" -eq 1 ]; then
+			echo "::: Using VPN: WireGuard"
+			VPN="wireguard"
 		fi
 	fi
 
@@ -1162,41 +1209,31 @@ installOpenVPN(){
 
 	echo "::: Installing OpenVPN from Debian package... "
 
-	# Use x86-only OpenVPN APT repo on x86 Debian/Ubuntu systems
-	if [ "$PLAT" != "Raspbian" ] && [ "$X86_SYSTEM" -eq 1 ]; then
+	if [ "$NEED_OPENVPN_REPO" -eq 1 ]; then
+		# gnupg is used by apt-key to import the openvpn GPG key into the
+		# APT keyring
+		PIVPN_DEPS=(gnupg)
+		installDependentPackages PIVPN_DEPS[@]
 
-		AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
-
-		# If there is an available openvpn package and its version is at least 2.4
-		# (required for ECC support), do not add the repository
-		if [ -n "$AVAILABLE_OPENVPN" ] && dpkg --compare-versions "$AVAILABLE_OPENVPN" ge 2.4; then
-			echo "::: OpenVPN is already available in the repositories"
-		else
-			# gnupg is used by apt-key to import the openvpn GPG key into the
-			# APT keyring
-			PIVPN_DEPS=(gnupg)
-			installDependentPackages PIVPN_DEPS[@]
-
-			# We will download the repository key for the official repository from a
-			# keyserver. If we fail, we will attempt to download the key via HTTPS
-			echo "::: Adding repository key..."
-			if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
-				echo "::: Import via keyserver failed, now trying wget"
-				if ! downloadVerifyKey "$OPENVPN_KEY_URL" "$OPENVPN_KEY_ID" | $SUDO apt-key add -; then
-					echo "::: Can't import OpenVPN GPG key"
-					exit 1
-				else
-					echo "::: Acquired key $OPENVPN_KEY_ID"
-				fi
+		# We will download the repository key for the official repository from a
+		# keyserver. If we fail, we will attempt to download the key via HTTPS
+		echo "::: Adding repository key..."
+		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
+			echo "::: Import via keyserver failed, now trying wget"
+			if ! downloadVerifyKey "$OPENVPN_KEY_URL" "$OPENVPN_KEY_ID" | $SUDO apt-key add -; then
+				echo "::: Can't import OpenVPN GPG key"
+				exit 1
+			else
+				echo "::: Acquired key $OPENVPN_KEY_ID"
 			fi
-
-			echo "::: Adding OpenVPN repository... "
-			echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
-
-			echo "::: Updating package cache..."
-			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		fi
+
+		echo "::: Adding OpenVPN repository... "
+		echo "deb https://build.openvpn.net/debian/openvpn/stable $OSCN main" | $SUDO tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
+
+		echo "::: Updating package cache..."
+		# shellcheck disable=SC2086
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 	fi
 
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
@@ -1255,11 +1292,9 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if apt-cache policy wireguard 2> /dev/null | grep -m1 'Candidate: ' | grep -vq '(none)'; then
-			echo "::: WireGuard is already available in the repositories"
-		else
+		if [ "$NEED_WIREGUARD_REPO" -eq 1 ]; then
 			echo "::: Adding Raspbian repository... "
-			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye.list > /dev/null
+			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
 			# Do not upgrade packages from the bullseye repository except for wireguard
 			printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
@@ -1270,18 +1305,16 @@ installWireGuard(){
 		fi
 
 		# qrencode is used to generate qrcodes from config file, for use with mobile clients
-		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard wireguard-tools wireguard-dkms qrencode)
+		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard-tools wireguard-dkms qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$PLAT" = "Debian" ]; then
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if apt-cache policy wireguard 2> /dev/null | grep -m1 'Candidate: ' | grep -vq '(none)'; then
-			echo "::: WireGuard is already available in the repositories"
-		else
+		if [ "$NEED_WIREGUARD_REPO" -eq 1 ]; then
 			echo "::: Adding Debian repository... "
-			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye.list > /dev/null
+			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
 			printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
 
@@ -1290,27 +1323,24 @@ installWireGuard(){
 			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		fi
 
-		PIVPN_DEPS=(linux-headers-amd64 wireguard wireguard-tools wireguard-dkms qrencode)
+		PIVPN_DEPS=(wireguard-tools qrencode)
+
+		if [ "$WIREGUARD_BUILTIN" -eq 0 ]; then
+			# Explicitly install the module if not built-in
+			PIVPN_DEPS+=(linux-headers-amd64 wireguard-dkms)
+		fi
+
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$PLAT" = "Ubuntu" ]; then
 
 		echo "::: Installing WireGuard... "
 
-		if apt-cache policy wireguard 2> /dev/null | grep -m1 'Candidate: ' | grep -vq '(none)'; then
-			echo "::: WireGuard is already available in the repositories"
-		else
-			echo "::: Adding WireGuard PPA... "
-			PIVPN_DEPS=(software-properties-common)
-			installDependentPackages PIVPN_DEPS[@]
-			$SUDO add-apt-repository ppa:wireguard/wireguard -y
-
-			echo "::: Updating package cache..."
-			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		if [ "$WIREGUARD_BUILTIN" -eq 0 ]; then
+			PIVPN_DEPS+=(linux-headers-generic wireguard-dkms)
 		fi
 
-		PIVPN_DEPS=(linux-headers-generic wireguard wireguard-tools wireguard-dkms qrencode)
+		PIVPN_DEPS=(wireguard-tools qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
@@ -2249,7 +2279,7 @@ confUnattendedUpgrades(){
 
 	# Enable automatic updates via the bullseye repository when installing from debian package
 	if [ "$VPN" = "wireguard" ]; then
-		if [ -f /etc/apt/sources.list.d/pivpn-bullseye.list ]; then
+		if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]; then
 			if ! grep -q "\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"; then
 				$SUDO sed -i "/Unattended-Upgrade::Origins-Pattern {/a\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"
 			fi
