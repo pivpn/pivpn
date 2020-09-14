@@ -1336,11 +1336,12 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard... "
 
+		PIVPN_DEPS=(wireguard-tools qrencode)
+
 		if [ "$WIREGUARD_BUILTIN" -eq 0 ]; then
 			PIVPN_DEPS+=(linux-headers-generic wireguard-dkms)
 		fi
 
-		PIVPN_DEPS=(wireguard-tools qrencode)
 		installDependentPackages PIVPN_DEPS[@]
 
 	fi
