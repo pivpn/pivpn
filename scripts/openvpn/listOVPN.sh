@@ -32,7 +32,7 @@ while read -r line || [ -n "$line" ]; do
     elif [ "${STATUS}" == "R" ]; then
         printf "Revoked  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
     elif [ "${STATUS}" == "E" ]; then
-        printf "     Expired ::   %s\n" "$NAME"
+        printf "Expired ::   %s\n" "$NAME"
     else
         printf "Unknown  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
     fi
