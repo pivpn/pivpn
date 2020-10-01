@@ -8,7 +8,13 @@ if [ ! -f "${INDEX}" ]; then
         exit 1
 fi
 
-/etc/openvpn/easy-rsa/easyrsa update-db >> /var/log/easyrsa_update-db.log 2>1
+EASYRSA="/etc/openvpn/easy-rsa/easyrsa"
+if [ ! -f "${EASYRSA}" ]; then
+        echo "The file: $EASYRSA was not found!"
+        exit 1
+fi
+
+$EASYRSA update-db >> /dev/null 2>1
 
 printf ": NOTE : The first entry should always be your valid server!\n"
 printf "\\n"
