@@ -130,7 +130,7 @@ if [ -f /etc/pivpn/hosts.wireguard ]; then
     fi
 fi
 
-if systemctl restart wg-quick@wg0; then
+if wg synnconf wg0 <(wg-quick strip wg0); then
     echo "::: WireGuard restarted"
 else
     echo "::: Failed to restart WireGuard"
