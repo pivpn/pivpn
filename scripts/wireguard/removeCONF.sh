@@ -136,9 +136,9 @@ done
 
 # Restart WireGuard only if some clients were actually deleted
 if [ "${DELETED_COUNT}" -gt 0 ]; then
-    if systemctl restart wg-quick@wg0; then
-        echo "::: WireGuard restarted"
+    if wg syncconf wg0 <(wg-quick strip wg0); then
+        echo "::: WireGuard reloaded"
     else
-        echo "::: Failed to restart WireGuard"
+        echo "::: Failed to reload WireGuard"
     fi
 fi
