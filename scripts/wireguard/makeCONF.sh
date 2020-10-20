@@ -131,9 +131,9 @@ if [ -f /etc/pivpn/hosts.wireguard ]; then
 fi
 
 if wg synnconf wg0 <(wg-quick strip wg0); then
-    echo "::: WireGuard restarted"
+    echo "::: WireGuard reloaded"
 else
-    echo "::: Failed to restart WireGuard"
+    echo "::: Failed to reload WireGuard"
 fi
 
 cp "configs/${CLIENT_NAME}.conf" "${install_home}/configs/${CLIENT_NAME}.conf"
