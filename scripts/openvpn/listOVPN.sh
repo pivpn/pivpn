@@ -28,13 +28,13 @@ while read -r line || [ -n "$line" ]; do
     EXPD=$(echo "$line" | awk '{if (length($2) == 15) print $2; else print "20"$2}' | cut -b 1-8 | date +"%b %d %Y" -f -)
         
     if [ "${STATUS}" == "V" ]; then
-        printf "Valid  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
+        printf "Valid  \t  %s  \t  %s\\n" "$(echo -e "$NAME")" "$EXPD"
     elif [ "${STATUS}" == "R" ]; then
-        printf "Revoked  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
+        printf "Revoked  \t  %s  \t  %s\\n" "$(echo -e "$NAME")" "$EXPD"
     elif [ "${STATUS}" == "E" ]; then
-        printf "Expired  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
+        printf "Expired  \t  %s  \t  %s\\n" "$(echo -e "$NAME")" "$EXPD"
     else
-        printf "Unknown  \t  %s  \t  %s\\n" "$NAME" "$EXPD"
+        printf "Unknown  \t  %s  \t  %s\\n" "$(echo -e "$NAME")" "$EXPD"
     fi
 
 done <${INDEX}
