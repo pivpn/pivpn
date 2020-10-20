@@ -63,6 +63,11 @@ backup(){
     exit 0
 }
 
+restart(){
+    $SUDO ${scriptdir}/${vpn}/restart.sh
+    exit 0
+}
+
 showHelp(){
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
@@ -79,6 +84,7 @@ showHelp(){
     echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
     echo ":::  -up, update           Updates PiVPN Scripts"
     echo ":::  -bk, backup           Backup VPN configs and user profiles"
+    echo ":::  -rs, restart          Restart Wireguard"
     exit 0
 }
 
