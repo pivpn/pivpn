@@ -47,6 +47,18 @@ removeClient(){
     exit 0
 }
 
+disableClient(){
+    shift
+    $SUDO ${scriptdir}/${vpn}/disableCONF.sh "$@"
+    exit 0
+}
+
+enableClient(){
+    shift
+    $SUDO ${scriptdir}/${vpn}/enableCONF.sh "$@"
+    exit 0
+}
+
 uninstallServer(){
     $SUDO ${scriptdir}/uninstall.sh "${vpn}"
     exit 0
@@ -75,6 +87,8 @@ showHelp(){
     echo ":::  -l,  list             List all clients"
     echo ":::  -qr, qrcode           Show the qrcode of a client for use with the mobile app"
     echo ":::  -r,  remove           Remove a client"
+    echo ":::  -dis,  disable        Disable a user"
+    echo ":::  -ena,  enable         Enable a user"
     echo ":::  -h,  help             Show this help dialog"
     echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
     echo ":::  -up, update           Updates PiVPN Scripts"
@@ -88,15 +102,17 @@ fi
 
 # Handle redirecting to specific functions based on arguments
 case "$1" in
-"-a"  | "add"                ) makeConf "$@";;
-"-c"  | "clients"            ) listConnected "$@";;
-"-d"  | "debug"              ) debug;;
-"-l"  | "list"               ) listClients;;
-"-qr" | "qrcode"             ) showQrcode "$@";;
-"-r"  | "remove"             ) removeClient "$@";;
-"-h"  | "help"               ) showHelp;;
-"-u"  | "uninstall"          ) uninstallServer;;
-"-up" | "update"             ) updateScripts "$@" ;;
-"-bk" | "backup"             ) backup ;;
+"-a"   | "add"                ) makeConf "$@";;
+"-c"   | "clients"            ) listConnected "$@";;
+"-d"   | "debug"              ) debug;;
+"-l"   | "list"               ) listClients;;
+"-qr"  | "qrcode"             ) showQrcode "$@";;
+"-r"   | "remove"             ) removeClient "$@";;
+"-dis" | "disable"            ) disableClient "$@";;
+"-ena" | "enable"             ) enableClient "$@";;
+"-h"   | "help"               ) showHelp;;
+"-u"   | "uninstall"          ) uninstallServer;;
+"-up"  | "update"             ) updateScripts "$@" ;;
+"-bk"  | "backup"             ) backup ;;
 *                            ) showHelp;;
 esac

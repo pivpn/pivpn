@@ -13,8 +13,8 @@
 # timestamp 2020/5/24 15:53BST
 
 ######## VARIABLES #########
-pivpnGitUrl="https://github.com/pivpn/pivpn.git"
-#pivpnGitUrl="/home/pi/repos/pivpn"
+#pivpnGitUrl="https://github.com/pivpn/pivpn.git"
+pivpnGitUrl="/home/pi/repos/pivpn"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn"
 tempsetupVarsFile="/tmp/setupVars.conf"
