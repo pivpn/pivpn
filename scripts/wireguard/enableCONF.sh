@@ -17,7 +17,7 @@ helpFunc(){
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  <client>             Client"
-    echo ":::  -y,--yes             Remove client(s) without confirmation"
+    echo ":::  -y,--yes             Enable client(s) without confirmation"
     echo ":::  -v                   Show disabled clients only"
     echo ":::  -h,--help            Show this help dialog"
 }
