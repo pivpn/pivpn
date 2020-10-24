@@ -77,6 +77,9 @@ c=$(( c < 70 ? 70 : c ))
 # Override localization settings so the output is in English language.
 export LC_ALL=C
 
+# Enable recursive globbing to find wireguard.ko in /lib/modules.
+shopt -s globstar
+
 main(){
 
 	######## FIRST CHECK ########
@@ -488,7 +491,7 @@ preconfigurePackages(){
 			# make the module part of the package since the module itself is built at install time
 			# and not part of the .deb).
 			# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
-			for i in /lib/modules/*/kernel/net/wireguard/wireguard.ko; do
+			for i in /lib/modules/**/wireguard.ko; do
 				[[ -f $i ]] || continue
 				dpkg-query -S "$i" &> /dev/null || continue
 				WIREGUARD_BUILTIN=1
