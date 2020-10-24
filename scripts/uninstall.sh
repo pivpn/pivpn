@@ -146,6 +146,10 @@ removeAll(){
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 
+							if [ -f /etc/systemd/system/wg-quick@.service.d/override.conf ]; then
+								rm -f /etc/systemd/system/wg-quick@.service.d/override.conf
+							fi
+
 						elif [ "${i}" = "unattended-upgrades" ]; then
 
 							rm -rf /var/log/unattended-upgrades
