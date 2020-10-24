@@ -58,7 +58,7 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
             NAME=$(echo "$line" | sed -e 's:.*/CN=::')
             if [ "$i" != 0 ]; then
                 # Prevent printing "server" certificate
-                CERTS[$i]=${NAME}
+                CERTS[$i]=$(echo -e "${NAME}")
             fi
             let i=i+1
         fi
@@ -102,7 +102,7 @@ else
     while read -r line || [ -n "$line" ]; do
         STATUS=$(echo "$line" | awk '{print $1}')
         if [[ "${STATUS}" = "V" ]]; then
-            NAME=$(echo "$line" | sed -e 's:.*/CN=::')
+            NAME=$(echo -e "$line" | sed -e 's:.*/CN=::')
             CERTS[$i]=${NAME}
             let i=i+1
         fi
