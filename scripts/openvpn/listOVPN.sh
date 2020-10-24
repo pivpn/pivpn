@@ -14,9 +14,9 @@ if [ ! -f "${EASYRSA}" ]; then
         exit 1
 fi
 
-$EASYRSA update-db >> /dev/null 2>1
+$EASYRSA update-db >> /dev/null 2>&1
 
-printf ": NOTE : The first entry should always be your valid server!\n"
+printf ": NOTE : The first entry is your server, which should always be valid!\n"
 printf "\\n"
 printf "\\e[1m::: Certificate Status List :::\\e[0m\\n"
 {
