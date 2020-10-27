@@ -34,16 +34,15 @@ echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
 echo -e ":::: \e[1mhttps://github.com/pivpn/pivpn/wiki/FAQ\e[0m"
 printf "=============================================\n"
 echo -e "::::      \e[4mSnippet of the server log\e[0m      ::::"
-tail -20 /var/log/openvpn.log > /tmp/snippet
+OVPNLOG="$(tail -n 20 /var/log/openvpn.log)"
 
 # Regular expession taken from https://superuser.com/a/202835, it will match invalid IPs
 # like 123.456.789.012 but it's fine since the log only contains valid ones.
-declare -a IPS_TO_HIDE=($(grepcidr -v 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 /tmp/snippet | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | uniq))
+declare -a IPS_TO_HIDE=($(grepcidr -v 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 <<< "$OVPNLOG" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | uniq))
 for IP in "${IPS_TO_HIDE[@]}"; do
-    sed -i "s/$IP/REDACTED/g" /tmp/snippet
+    OVPNLOG="${OVPNLOG//"$IP"/REDACTED}"
 done
 
-cat /tmp/snippet
-rm /tmp/snippet
+echo "$OVPNLOG"
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mDebug complete\e[0m\t\t ::::"
