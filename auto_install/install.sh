@@ -28,9 +28,6 @@ dhcpcdFile="/etc/dhcpcd.conf"
 subnetClass="24"
 debianOvpnUserGroup="openvpn:openvpn"
 
-# OpenVPN GPG fingerprint, you can look it up at https://keyserver.ubuntu.com (prepend '0x' before it)
-OPENVPN_KEY_ID="30EBF4E73CCE63EEE124DD278E6DA8B4E158C569"
-
 ######## PKG Vars ########
 PKG_MANAGER="apt-get"
 PKG_CACHE="/var/lib/apt/lists/"
@@ -50,9 +47,6 @@ INSTALLED_PACKAGES=()
 ######## URLs ########
 easyrsaVer="3.0.7"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
-
-# Fallback url for the OpenVPN key
-OPENVPN_KEY_URL="https://swupdate.openvpn.net/repos/repo-public.gpg"
 
 ######## Undocumented Flags. Shhh ########
 runUnattended=false
@@ -1184,32 +1178,6 @@ askAboutCustomizing(){
 	fi
 }
 
-downloadVerifyKey(){
-	local KEY_URL="$1"
-	local EXPECTED_KEY_ID="$2"
-
-	local KEY_CONTENT
-	local KEY_INFO
-	local DOWNLOADED_KEY_ID
-
-	if ! KEY_CONTENT="$(wget -qO- "$KEY_URL")"; then
-		return 1
-	fi
-
-	if ! KEY_INFO="$(gpg --show-key --with-colons <<< "$KEY_CONTENT")"; then
-		return 1
-	fi
-
-	DOWNLOADED_KEY_ID="$(sed -n '/^pub:/,/^fpr:/p' <<< "$KEY_INFO" | grep '^fpr' | cut -d ':' -f 10)"
-
-	if [ "$DOWNLOADED_KEY_ID" != "$EXPECTED_KEY_ID" ]; then
-		return 1
-	fi
-
-	echo "$KEY_CONTENT"
-	return 0
-}
-
 installOpenVPN(){
 	local PIVPN_DEPS
 
@@ -1221,17 +1189,11 @@ installOpenVPN(){
 		PIVPN_DEPS=(gnupg)
 		installDependentPackages PIVPN_DEPS[@]
 
-		# We will download the repository key for the official repository from a
-		# keyserver. If we fail, we will attempt to download the key via HTTPS
+		# OpenVPN repo's public GPG key (fingerprint 0x30EBF4E73CCE63EEE124DD278E6DA8B4E158C569)
 		echo "::: Adding repository key..."
-		if ! $SUDO apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "$OPENVPN_KEY_ID"; then
-			echo "::: Import via keyserver failed, now trying wget"
-			if ! downloadVerifyKey "$OPENVPN_KEY_URL" "$OPENVPN_KEY_ID" | $SUDO apt-key add -; then
-				echo "::: Can't import OpenVPN GPG key"
-				exit 1
-			else
-				echo "::: Acquired key $OPENVPN_KEY_ID"
-			fi
+		if ! $SUDO apt-key add "${pivpnFilesDir}"/files/etc/apt/repo-public.gpg; then
+			echo "::: Can't import OpenVPN GPG key"
+			exit 1
 		fi
 
 		echo "::: Adding OpenVPN repository... "
