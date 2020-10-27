@@ -51,7 +51,7 @@ if [ ! -s configs/clients.txt ]; then
 fi
 
 if [ "$DISPLAY_DISABLED" ]; then
-    grep 'disabled### begin client' wg0.conf | sed 's/#//g; s/begin//'
+    grep 'disabled### begin' wg0.conf | sed 's/#//g; s/begin//'
     exit 1
 fi
 

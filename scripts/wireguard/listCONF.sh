@@ -30,4 +30,4 @@ done < clients.txt
 
 cd /etc/wireguard || return
 echo "::: Disabled clients :::"
-grep 'disabled### begin client' wg0.conf | sed 's/#//g; s/begin//'
+grep 'disabled### begin' wg0.conf | sed 's/#//g; s/begin//'
