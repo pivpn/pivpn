@@ -26,7 +26,12 @@ listConnected(){
 }
 
 debug(){
-    $SUDO ${scriptdir}/${vpn}/pivpnDEBUG.sh
+    echo "::: Generating Debug Output"
+    $SUDO ${scriptdir}/${vpn}/pivpnDEBUG.sh | tee /tmp/debug.log
+    echo "::: "
+    echo "::: Debug output completed above."
+    echo "::: Copy saved to /tmp/debug.log"
+    echo "::: "
     exit 0
 }
 

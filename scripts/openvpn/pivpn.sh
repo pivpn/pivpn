@@ -32,10 +32,10 @@ function listOVPNFunc {
 
 function debugFunc {
     echo "::: Generating Debug Output"
-    $SUDO ${scriptDir}/${vpn}/pivpnDebug.sh | tee /tmp/debug.txt
+    $SUDO ${scriptDir}/${vpn}/pivpnDebug.sh | tee /tmp/debug.log
     echo "::: "
     echo "::: Debug output completed above."
-    echo "::: Copy saved to /tmp/debug.txt"
+    echo "::: Copy saved to /tmp/debug.log"
     echo "::: "
     exit 0
 }
