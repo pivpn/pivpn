@@ -552,9 +552,11 @@ installDependentPackages(){
 		fi
 	done
 
+	local APTLOGFILE="$(mktemp)"
+
 	if command -v debconf-apt-progress > /dev/null; then
         # shellcheck disable=SC2086
-		$SUDO debconf-apt-progress -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
+		$SUDO debconf-apt-progress --logfile "${APTLOGFILE}" -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
 	else
 		# shellcheck disable=SC2086
 		$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
@@ -574,6 +576,7 @@ installDependentPackages(){
 	done
 
 	if [ "$FAILED" -gt 0 ]; then
+		cat "${APTLOGFILE}"
 		exit 1
 	fi
 }
