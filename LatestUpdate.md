@@ -1,9 +1,16 @@
 # Information of Latest updates
 
-This file has the objective of describing the major changes for each merge from test to master in a similar way as a
-patch release notes.
+This file has the objective of describing the major changes for each merge from test to master in a similar way as a patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
+
+## Nov 4th 2020
+
+- Official support for Ubuntu Server 20.04 on Raspberry Pi (32-bit and 64-bit).
+- Handle special characters better when managing OpenVPN clients.
+- Show expired OpenVPN certificates as such when using 'pivpn -l'.
+- Improved OpenVPN and WireGuard availability detection.
+- Reload WireGuard instead of restarting so it doesn't kick existing clients.
 
 ## Jul 24th 2020
 
