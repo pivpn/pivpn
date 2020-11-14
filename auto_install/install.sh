@@ -1094,6 +1094,9 @@ installPiVPN(){
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0"
 		vpnGw="${pivpnNET/.0.0/.0.1}"
+		# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
+		# the user after the installation.
+		ALLOWED_IPS="0.0.0.0/0, ::0/0"
 		CUSTOMIZE=0
 
 		installWireGuard
@@ -1110,6 +1113,7 @@ installPiVPN(){
 	echo "pivpnDEV=${pivpnDEV}" >> ${tempsetupVarsFile}
 	echo "pivpnNET=${pivpnNET}" >> ${tempsetupVarsFile}
 	echo "subnetClass=${subnetClass}" >> ${tempsetupVarsFile}
+	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\"" >> ${tempsetupVarsFile}
 }
 
 askWhichVPN(){

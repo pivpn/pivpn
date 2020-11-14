@@ -110,7 +110,7 @@ echo "[Peer]
 PublicKey = $(cat keys/server_pub)
 PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 Endpoint = ${pivpnHOST}:${pivpnPORT}
-AllowedIPs = 0.0.0.0/0, ::0/0" >> "configs/${CLIENT_NAME}.conf"
+AllowedIPs = ${ALLOWED_IPS}" >> "configs/${CLIENT_NAME}.conf"
 echo "::: Client config generated"
 
 echo "### begin ${CLIENT_NAME} ###
