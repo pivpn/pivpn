@@ -92,8 +92,8 @@ showHelp(){
     echo ":::  -l,  list             List all clients"
     echo ":::  -qr, qrcode           Show the qrcode of a client for use with the mobile app"
     echo ":::  -r,  remove           Remove a client"
-    echo ":::  -dis,  disable        Disable a user"
-    echo ":::  -ena,  enable         Enable a user"
+    echo ":::  -off,  off            Disable a user"
+    echo ":::  -on ,  on             Enable a user"
     echo ":::  -h,  help             Show this help dialog"
     echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
     echo ":::  -up, update           Updates PiVPN Scripts"
@@ -113,11 +113,11 @@ case "$1" in
 "-l"   | "list"               ) listClients;;
 "-qr"  | "qrcode"             ) showQrcode "$@";;
 "-r"   | "remove"             ) removeClient "$@";;
-"-dis" | "disable"            ) disableClient "$@";;
-"-ena" | "enable"             ) enableClient "$@";;
+"-off" | "off"                ) disableClient "$@";;
+"-on"  | "on"                 ) enableClient "$@";;
 "-h"   | "help"               ) showHelp;;
 "-u"   | "uninstall"          ) uninstallServer;;
 "-up"  | "update"             ) updateScripts "$@" ;;
 "-bk"  | "backup"             ) backup ;;
-*                            ) showHelp;;
+*                             ) showHelp;;
 esac
