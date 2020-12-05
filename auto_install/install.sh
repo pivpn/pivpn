@@ -215,7 +215,7 @@ main(){
 	# Save installation setting to the final location
 	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
         echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
-        $SUDO mkdir "${setupConfigDir}/${VPN}/"
+        $SUDO mkdir -p "${setupConfigDir}/${VPN}/"
 	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}"
 
 	installScripts
@@ -2288,13 +2288,13 @@ installScripts(){
 		# Unlink the protocol specific pivpn script and symlink the common
 		# script to the location instead
 		$SUDO unlink /usr/local/bin/pivpn
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
 	else
 		# Only one protocol is installed, symlink bash completion, the pivpn script
 		# and the script directory
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" /usr/local/bin/pivpn
-		$SUDO ln -s "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" /usr/local/bin/pivpn
+		$SUDO ln -sf "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"
 		# shellcheck disable=SC1091
 		. /etc/bash_completion.d/pivpn
 	fi
