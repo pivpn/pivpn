@@ -2007,7 +2007,7 @@ confOVPN(){
 
 confWireGuard(){
 	# Reload job type is not yet available in wireguard-tools shipped with Ubuntu 20.04
-	if ! grep -q 'ExecReload' /usr/lib/systemd/system/wg-quick@.service; then
+	if ! grep -q 'ExecReload' /lib/systemd/system/wg-quick@.service; then
 		echo "::: Adding additional reload job type for wg-quick unit"
 		$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@.service.d/override.conf /etc/systemd/system/wg-quick@.service.d/override.conf
 		$SUDO systemctl daemon-reload
