@@ -51,7 +51,7 @@ if [ ! -s configs/clients.txt ]; then
 fi
 
 if [ "$DISPLAY_DISABLED" ]; then
-    grep 'disabled### begin' wg0.conf | sed 's/#//g; s/begin//'
+    grep '\[disabled\] ### begin' wg0.conf | sed 's/#//g; s/begin//'
     exit 1
 fi
 
@@ -95,7 +95,7 @@ for CLIENT_NAME in "${CLIENTS_TO_CHANGE[@]}"; do
 
             # Enable the peer section from the server config
 	    echo "${CLIENT_NAME}" 
-            sed -e "/begin ${CLIENT_NAME}/,/end ${CLIENT_NAME}/ s/#disabled//" -i wg0.conf
+            sed -e "/begin ${CLIENT_NAME}/,/end ${CLIENT_NAME}/ s/#\[disabled\] //" -i wg0.conf
             echo "::: Updated server config"
 
             ((CHANGED_COUNT++))
