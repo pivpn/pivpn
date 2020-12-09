@@ -215,7 +215,7 @@ main(){
 	# Save installation setting to the final location
 	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
         echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
-        $SUDO mkdir "${setupConfigDir}/${VPN}/"
+        $SUDO mkdir -p "${setupConfigDir}/${VPN}/"
 	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}"
 
 	installScripts
@@ -546,7 +546,7 @@ installDependentPackages(){
 		fi
 	done
 
-	local APTLOGFILE="$(mktemp)"
+	local APTLOGFILE="$($SUDO mktemp)"
 
 	if command -v debconf-apt-progress > /dev/null; then
         # shellcheck disable=SC2086
@@ -2007,7 +2007,7 @@ confOVPN(){
 
 confWireGuard(){
 	# Reload job type is not yet available in wireguard-tools shipped with Ubuntu 20.04
-	if ! grep -q 'ExecReload' /usr/lib/systemd/system/wg-quick@.service; then
+	if ! grep -q 'ExecReload' /lib/systemd/system/wg-quick@.service; then
 		echo "::: Adding additional reload job type for wg-quick unit"
 		$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@.service.d/override.conf /etc/systemd/system/wg-quick@.service.d/override.conf
 		$SUDO systemctl daemon-reload
@@ -2288,13 +2288,13 @@ installScripts(){
 		# Unlink the protocol specific pivpn script and symlink the common
 		# script to the location instead
 		$SUDO unlink /usr/local/bin/pivpn
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
 	else
 		# Only one protocol is installed, symlink bash completion, the pivpn script
 		# and the script directory
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" /usr/local/bin/pivpn
-		$SUDO ln -s "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" /usr/local/bin/pivpn
+		$SUDO ln -sf "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"
 		# shellcheck disable=SC1091
 		. /etc/bash_completion.d/pivpn
 	fi
