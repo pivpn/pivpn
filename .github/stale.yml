@@ -1,0 +1,17 @@
+daysUntilStale: 15
+daysUntilClose: 7
+exemptLabels:
+  - On Hold
+  - Fix in Test Branch
+  - Broken Dependency
+  - bug
+  - Good First Issue
+  - help wanted
+  - "status: In Progress"
+  - Waiting For Merge
+staleLabel: Inactive
+markComment: >
+   This issue has been automatically marked as stale because it has not had
+  recent activity. It will be closed if no further activity occurs. Thank you
+  for your contributions.
+closeComment: true
