@@ -12,7 +12,7 @@ source "${setupVars}"
 helpFunc(){
     echo "::: Disable client conf profiles"
     echo ":::"
-    echo "::: Usage: pivpn <-dis|disable> [-h|--help] [-v] [<client-1> ... [<client-2>] ...] "
+    echo "::: Usage: pivpn <-off|off> [-h|--help] [-v] [<client-1> ... [<client-2>] ...] "
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
