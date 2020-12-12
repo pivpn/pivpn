@@ -1,6 +1,6 @@
 dev tun
 proto udp
-proto udp6
+#proto udp6
 port 1194
 ca /etc/openvpn/easy-rsa/pki/ca.crt
 cert /etc/openvpn/easy-rsa/pki/issued/server.crt
