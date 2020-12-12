@@ -1076,6 +1076,7 @@ installPiVPN(){
 		askAboutCustomizing
 		installOpenVPN
 		askCustomProto
+		askListenIP6
 		askCustomPort
 		askClientDNS
 		askCustomDomain
@@ -1358,6 +1359,16 @@ askCustomProto(){
 	else
 		echo "::: Cancel selected, exiting...."
 		exit 1
+	fi
+}
+
+askListenIP6() {
+if [ "${runUnattended}" = 'false' ]; then
+		if (whiptail --title "IPv6" --yesno --defaultno "Do you want the server to listen on IPv6?" ${r} ${c}); then
+			enableIP6Listener="true"
+		else
+			enableIP6Listener="false"
+		fi
 	fi
 }
 
@@ -1965,6 +1976,11 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	# if they modified port put value in server.conf
 	if [ "$pivpnPORT" != 1194 ]; then
 		$SUDO sed -i "s/1194/${pivpnPORT}/g" /etc/openvpn/server.conf
+	fi
+
+	# if they enabled ipv6 listening uncomment flag in server.conf
+	if [ "$enableIP6Listener" = "true" ]; then
+		$SUDO sed -i "s/#proto udp6/proto udp6/g" /etc/openvpn/server.conf
 	fi
 
 	# if they modified protocol put value in server.conf
