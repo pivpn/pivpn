@@ -475,31 +475,33 @@ preconfigurePackages(){
 	fi
 
 	AVAILABLE_WIREGUARD="$(apt-cache policy wireguard | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
-	WIREGUARD_BUILTIN=0
-	NEED_WIREGUARD_REPO=0
 
-	if [ -n "$AVAILABLE_WIREGUARD" ]; then
-		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-			# If a wireguard kernel object is found and is part of any installed package, then
-			# it has not been build via DKMS or manually (installing via wireguard-dkms does not
-			# make the module part of the package since the module itself is built at install time
-			# and not part of the .deb).
-			# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
-			for i in /lib/modules/**/wireguard.ko; do
-				[[ -f $i ]] || continue
-				dpkg-query -S "$i" &> /dev/null || continue
-				WIREGUARD_BUILTIN=1
-				break
-			done
-		fi
+	# If a wireguard kernel object is found and is part of any installed package, then
+	# it has not been build via DKMS or manually (installing via wireguard-dkms does not
+	# make the module part of the package since the module itself is built at install time
+	# and not part of the .deb).
+	# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
+	WIREGUARD_BUILTIN=0
+	for i in /lib/modules/**/wireguard.ko; do
+		[[ -f $i ]] || continue
+		dpkg-query -S "$i" &> /dev/null || continue
+		WIREGUARD_BUILTIN=1
+		break
+	done
+
+	if
+		# If the module is builtin and the package available, we only need to install wireguard-tools.
+		[[ $WIREGUARD_BUILTIN == 1 && -n $AVAILABLE_WIREGUARD ]] ||
+		# If the package is not available, on Debian and Raspbian we can add it via Bullseye repository.
+		[[ $WIREGUARD_BUILTIN == 1 && ( $PLAT == 'Debian' || $PLAT == 'Raspbian' ) ]] ||
+		# If the module is not builtin, on Raspbian we know the headers package: raspberrypi-kernel-headers
+		[[ $PLAT == 'Raspbian' ]] ||
+		# On Debian (and Ubuntu), we can only reliably assume the headers package for amd64: linux-image-amd64
+		[[ $PLAT == 'Debian' && $DPKG_ARCH == 'amd64' ]] ||
+		# On Ubuntu, additionally the WireGuard package needs to be available, since we didn't test mixing Ubuntu repositories.
+		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'amd64' && -n $AVAILABLE_WIREGUARD ]]
+	then
 		WIREGUARD_SUPPORT=1
-	else
-		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
-			NEED_WIREGUARD_REPO=1
-			WIREGUARD_SUPPORT=1
-		else
-			WIREGUARD_SUPPORT=0
-		fi
 	fi
 
 	if [ "$OPENVPN_SUPPORT" -eq 0 ] && [ "$WIREGUARD_SUPPORT" -eq 0 ]; then
@@ -1264,7 +1266,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if [ "$NEED_WIREGUARD_REPO" -eq 1 ]; then
+		if [ -z "$AVAILABLE_WIREGUARD" ]; then
 			echo "::: Adding Raspbian repository... "
 			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
@@ -1284,7 +1286,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if [ "$NEED_WIREGUARD_REPO" -eq 1 ]; then
+		if [ -z "$AVAILABLE_WIREGUARD" ]; then
 			echo "::: Adding Debian repository... "
 			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
