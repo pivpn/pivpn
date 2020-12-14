@@ -570,7 +570,7 @@ installDependentPackages(){
 	done
 
 	if [ "$FAILED" -gt 0 ]; then
-		cat "${APTLOGFILE}"
+		$SUDO cat "${APTLOGFILE}"
 		exit 1
 	fi
 }
