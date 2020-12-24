@@ -2,6 +2,7 @@
 # PiVPN: client status script
 
 CLIENTS_FILE="/etc/wireguard/configs/clients.txt"
+CONF_FILE="/etc/wireguard/wg0.conf"
 
 if [ ! -s "$CLIENTS_FILE" ]; then
     echo "::: There are no clients to list"
@@ -36,33 +37,37 @@ listClients(){
     printf "\e[4mName\e[0m  \t  \e[4mRemote IP\e[0m  \t  \e[4mVirtual IP\e[0m  \t  \e[4mBytes Received\e[0m  \t  \e[4mBytes Sent\e[0m  \t  \e[4mLast Seen\e[0m\n"
 
     while IFS= read -r LINE; do
-
-        PUBLIC_KEY="$(awk '{ print $1 }' <<< "$LINE")"
-        REMOTE_IP="$(awk '{ print $3 }' <<< "$LINE")"
-        VIRTUAL_IP="$(awk '{ print $4 }' <<< "$LINE")"
-        BYTES_RECEIVED="$(awk '{ print $6 }' <<< "$LINE")"
-        BYTES_SENT="$(awk '{ print $7 }' <<< "$LINE")"
-        LAST_SEEN="$(awk '{ print $5 }' <<< "$LINE")"
-        CLIENT_NAME="$(grep "$PUBLIC_KEY" "$CLIENTS_FILE" | awk '{ print $1 }')"
-
-        if [ "$HR" = 1 ]; then
-            if [ "$LAST_SEEN" -ne 0 ]; then
-                printf "%s  \t  %s  \t  %s  \t  %s  \t  %s  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$(hr "$BYTES_RECEIVED")" "$(hr "$BYTES_SENT")" "$(date -d @"$LAST_SEEN" '+%b %d %Y - %T')"
+        if [ -n "${LINE}" ]; then
+            PUBLIC_KEY="$(awk '{ print $1 }' <<< "$LINE")"
+            REMOTE_IP="$(awk '{ print $3 }' <<< "$LINE")"
+            VIRTUAL_IP="$(awk '{ print $4 }' <<< "$LINE")"
+            BYTES_RECEIVED="$(awk '{ print $6 }' <<< "$LINE")"
+            BYTES_SENT="$(awk '{ print $7 }' <<< "$LINE")"
+            LAST_SEEN="$(awk '{ print $5 }' <<< "$LINE")"
+            CLIENT_NAME="$(grep "$PUBLIC_KEY" "$CLIENTS_FILE" | awk '{ print $1 }')"
+            if [ "$HR" = 1 ]; then
+                if [ "$LAST_SEEN" -ne 0 ]; then
+                    printf "%s  \t  %s  \t  %s  \t  %s  \t  %s  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$(hr "$BYTES_RECEIVED")" "$(hr "$BYTES_SENT")" "$(date -d @"$LAST_SEEN" '+%b %d %Y - %T')"
+                else
+                    printf "%s  \t  %s  \t  %s  \t  %s  \t  %s  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$(hr "$BYTES_RECEIVED")" "$(hr "$BYTES_SENT")" "(not yet)"
+                fi
             else
-                printf "%s  \t  %s  \t  %s  \t  %s  \t  %s  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$(hr "$BYTES_RECEIVED")" "$(hr "$BYTES_SENT")" "(not yet)"
-            fi
-        else
-            if [ "$LAST_SEEN" -ne 0 ]; then
-                printf "%s  \t  %s  \t  %s  \t  %'d  \t  %'d  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$BYTES_RECEIVED" "$BYTES_SENT" "$(date -d @"$LAST_SEEN" '+%b %d %Y - %T')"
-            else
-                printf "%s  \t  %s  \t  %s  \t  %'d  \t  %'d  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$BYTES_RECEIVED" "$BYTES_SENT" "(not yet)"
+                if [ "$LAST_SEEN" -ne 0 ]; then
+                    printf "%s  \t  %s  \t  %s  \t  %'d  \t  %'d  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$BYTES_RECEIVED" "$BYTES_SENT" "$(date -d @"$LAST_SEEN" '+%b %d %Y - %T')"
+                else
+                    printf "%s  \t  %s  \t  %s  \t  %'d  \t  %'d  \t  %s\n" "$CLIENT_NAME" "$REMOTE_IP" "${VIRTUAL_IP/\/32/}" "$BYTES_RECEIVED" "$BYTES_SENT" "(not yet)"
+                fi
             fi
         fi
-
     done <<< "$DUMP"
 
     printf "\n"
     } | column -t -s $'\t'
+
+    cd /etc/wireguard || return
+    echo "::: Disabled clients :::"
+    grep '\[disabled\] ### begin' wg0.conf | sed 's/#//g; s/begin//'
+
 }
 
 if [[ $# -eq 0 ]]; then
