@@ -1,9 +1,32 @@
 # Information of Latest updates
 
-This file has the objective of describing the major changes for each merge from test to master in a similar way as a
-patch release notes.
+This file has the objective of describing the major changes for each merge from test to master in a similar way as a patch release notes.
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
+
+## Nov 4th 2020
+
+- Official support for Ubuntu Server 20.04 on Raspberry Pi (32-bit and 64-bit).
+- Handle special characters better when managing OpenVPN clients.
+- Show expired OpenVPN certificates as such when using 'pivpn -l'.
+- Improved OpenVPN and WireGuard availability detection.
+- Reload WireGuard instead of restarting so it doesn't kick existing clients.
+
+## Jul 24th 2020
+
+- Added ability to remove client by index. For example, when the user is presented with '2) phone' he can remove the client by typing either '2' or 'phone'.
+- Added ability to remove a client non-interactively with 'pivpn -r phone -y'.
+- When choosing to use Pi-hole, do not whitelist the specific VPN interface. Instead, use Pi-hole's built-in command 'pihole -a -i local' to allow listening from on the VPN interface. DNS resolution on the LAN shouldn't break anymore in some circumstances if the user changes Pi-hole's listening behavior after installing PiVPN.
+
+## Jun 9th 2020
+
+- Dual VPN mode, use both WireGuard and OpenVPN by running the installer script over an existing installation.
+- Generate a unique pre-shared key for each client as per the WireGuard protocol to improve post-quantum resistance.
+- Added the ability to regenerate the .ovpn config when the client template changes (issue #281). Use 'pivpn -a -o'.
+- Added the '--show-unsupported-nics' argument to the install script for those who need PiVPN on virtual servers where the available network interfaces may not be detected reliably (issue #994).
+- Clone the git repo to '/usr/local/src/pivpn' and replace all other locations with symlinks (issue #695).
+- Simplified the OpenVPN installation flow by moving some settings behind a "customize" dialog.
+-  Temporarily disable 'pivpn -up' until a proper update strategy is defined. See [this commit](https://github.com/pivpn/pivpn/commit/f06f6d79203c29ebd785f860a81a15e9caac4fc9) for more information.
 
 ## Mar 17th 2020
 

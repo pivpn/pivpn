@@ -6,7 +6,36 @@ pivpnrepo="https://github.com/pivpn/pivpn.git"
 pivpnlocalpath="/etc/.pivpn"
 pivpnscripts="/opt/pivpn/"
 bashcompletiondir="/etc/bash_completion.d/"
-setupVars="/etc/pivpn/setupVars.conf"
+
+# Find the rows and columns. Will default to 80x24 if it can not be detected.
+screen_size=$(stty size 2>/dev/null || echo 24 80)
+rows=$(echo "$screen_size" | awk '{print $1}')
+columns=$(echo "$screen_size" | awk '{print $2}')
+
+# Divide by two so the dialogs take up half of the screen, which looks nice.
+r=$(( rows / 2 ))
+c=$(( columns / 2 ))
+# Unless the screen is tiny
+r=$(( r < 20 ? 20 : r ))
+c=$(( c < 70 ? 70 : c ))
+
+echo "::: The updating functionality for PiVPN scripts is temporarily disabled"
+echo "::: To keep the VPN (and the system) up to date, use 'apt update' and 'apt upgrade'"
+exit 0
+
+                       chooseVPNCmd=(whiptail --backtitle "Setup PiVPN" --title "Installation mode" --separate-output --radiolist "Choose a VPN to update (press space to select):" "${r}" "${c}" 2)
+                        VPNChooseOptions=(WireGuard "" on
+                                                                OpenVPN "" off)
+
+                        if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty) ; then
+                                echo "::: Using VPN: $VPN"
+                                VPN="${VPN,,}"
+                        else
+                                echo "::: Cancel selected, exiting...."
+                                exit 1
+                        fi
+
+setupVars="/etc/pivpn/${VPN}/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"

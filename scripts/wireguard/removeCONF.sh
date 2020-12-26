@@ -1,6 +1,6 @@
 #!/bin/bash
 
-setupVars="/etc/pivpn/setupVars.conf"
+setupVars="/etc/pivpn/wireguard/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"
@@ -12,11 +12,12 @@ source "${setupVars}"
 helpFunc(){
     echo "::: Remove a client conf profile"
     echo ":::"
-    echo "::: Usage: pivpn <-r|remove> [-h|--help] [<client-1>] ... [<client-n>] ..."
+    echo "::: Usage: pivpn <-r|remove> [-y|--yes] [-h|--help] [<client-1>] ... [<client-n>] ..."
     echo ":::"
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  <client>             Client(s) to remove"
+    echo ":::  -y,--yes             Remove Client(s) without confirmation"
     echo ":::  -h,--help            Show this help dialog"
 }
 
@@ -28,6 +29,9 @@ do
         -h|--help)
             helpFunc
             exit 0
+            ;;
+        -y|--yes)
+            CONFIRM=true
             ;;
         *)
             CLIENTS_TO_REMOVE+=("$1")
@@ -42,17 +46,17 @@ if [ ! -s configs/clients.txt ]; then
     exit 1
 fi
 
+LIST=($(awk '{print $1}' configs/clients.txt))
 if [ "${#CLIENTS_TO_REMOVE[@]}" -eq 0 ]; then
-
     echo -e "::\e[4m  Client list  \e[0m::"
-    LIST=($(awk '{print $1}' configs/clients.txt))
+    len=${#LIST[@]}
     COUNTER=1
-    while [ $COUNTER -le ${#LIST[@]} ]; do
-        echo "• ${LIST[(($COUNTER-1))]}"
+    while [ $COUNTER -le ${len} ]; do
+        printf "%0${#len}s) %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
         ((COUNTER++))
     done
 
-    read -r -p "Please enter the Name of the Client to be removed from the list above: " CLIENTS_TO_REMOVE
+    read -r -p "Please enter the Index/Name of the Client to be removed from the list above: " CLIENTS_TO_REMOVE
 
     if [ -z "${CLIENTS_TO_REMOVE}" ]; then
         echo "::: You can not leave this blank!"
@@ -64,26 +68,35 @@ DELETED_COUNT=0
 
 for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
-    if ! grep -qw "${CLIENT_NAME}" configs/clients.txt; then
+    re='^[0-9]+$'
+    if [[ ${CLIENT_NAME} =~ $re ]] ; then
+        CLIENT_NAME=${LIST[$(($CLIENT_NAME -1))]}
+    fi
+
+    if ! grep -q "^${CLIENT_NAME} " configs/clients.txt; then
         echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
     else
         REQUESTED="$(sha256sum "configs/${CLIENT_NAME}.conf" | cut -c 1-64)"
-        read -r -p "Do you really want to delete $CLIENT_NAME? [y/N] "
+        if [ -n "$CONFIRM" ]; then
+            REPLY="y"
+        else
+            read -r -p "Do you really want to delete $CLIENT_NAME? [y/N] "
+        fi
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
 
             # Grab the least significant octed of the client IP address
-            COUNT=$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $4}')
+            COUNT=$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $4}')
             # The creation date of the client
-            CREATION_DATE="$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $3}')"
+            CREATION_DATE="$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $3}')"
             # And its public key
-            PUBLIC_KEY="$(grep "${CLIENT_NAME}" configs/clients.txt | awk '{print $2}')"
+            PUBLIC_KEY="$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $2}')"
 
             # Then remove the client matching the variables above
             sed "\#${CLIENT_NAME} ${PUBLIC_KEY} ${CREATION_DATE} ${COUNT}#d" -i configs/clients.txt
 
             # Remove the peer section from the server config
-            sed "/# begin ${CLIENT_NAME}/,/# end ${CLIENT_NAME}/d" -i wg0.conf
+            sed "/### begin ${CLIENT_NAME} ###/,/### end ${CLIENT_NAME} ###/d" -i wg0.conf
             echo "::: Updated server config"
 
             rm "configs/${CLIENT_NAME}.conf"
@@ -91,6 +104,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
             rm "keys/${CLIENT_NAME}_priv"
             rm "keys/${CLIENT_NAME}_pub"
+            rm "keys/${CLIENT_NAME}_psk"
             echo "::: Client Keys for ${CLIENT_NAME} removed"
 
             # Find all .conf files in the home folder of the user matching the checksum of the
@@ -125,9 +139,9 @@ done
 
 # Restart WireGuard only if some clients were actually deleted
 if [ "${DELETED_COUNT}" -gt 0 ]; then
-    if systemctl restart wg-quick@wg0; then
-        echo "::: WireGuard restarted"
+    if systemctl reload wg-quick@wg0; then
+        echo "::: WireGuard reloaded"
     else
-        echo "::: Failed to restart WireGuard"
+        echo "::: Failed to reload WireGuard"
     fi
 fi

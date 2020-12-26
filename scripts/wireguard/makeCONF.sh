@@ -1,6 +1,6 @@
 #!/bin/bash
 
-setupVars="/etc/pivpn/setupVars.conf"
+setupVars="/etc/pivpn/wireguard/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"
@@ -64,6 +64,11 @@ if [[ "${CLIENT_NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
     exit 1
 fi
 
+if [[ "${CLIENT_NAME}" =~ ^[0-9]+$ ]]; then
+    echo "Names cannot be integers."
+    exit 1
+fi
+
 if [ -z "${CLIENT_NAME}" ]; then
     echo "::: You cannot leave the name blank."
     exit 1
@@ -75,6 +80,7 @@ if [ -f "configs/${CLIENT_NAME}.conf" ]; then
 fi
 
 wg genkey | tee "keys/${CLIENT_NAME}_priv" | wg pubkey > "keys/${CLIENT_NAME}_pub"
+wg genpsk | tee "keys/${CLIENT_NAME}_psk" &> /dev/null
 echo "::: Client Keys generated"
 
 # Find an unused number for the last octet of the client IP
@@ -102,17 +108,17 @@ echo >> "configs/${CLIENT_NAME}.conf"
 
 echo "[Peer]
 PublicKey = $(cat keys/server_pub)
-PresharedKey = $(cat keys/psk)
+PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 Endpoint = ${pivpnHOST}:${pivpnPORT}
-AllowedIPs = 0.0.0.0/0, ::0/0" >> "configs/${CLIENT_NAME}.conf"
+AllowedIPs = ${ALLOWED_IPS}" >> "configs/${CLIENT_NAME}.conf"
 echo "::: Client config generated"
 
-echo "# begin ${CLIENT_NAME}
+echo "### begin ${CLIENT_NAME} ###
 [Peer]
 PublicKey = $(cat "keys/${CLIENT_NAME}_pub")
-PresharedKey = $(cat keys/psk)
+PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 AllowedIPs = ${NET_REDUCED}.${COUNT}/32
-# end ${CLIENT_NAME}" >> wg0.conf
+### end ${CLIENT_NAME} ###" >> wg0.conf
 echo "::: Updated server config"
 
 if [ -f /etc/pivpn/hosts.wireguard ]; then
@@ -124,10 +130,10 @@ if [ -f /etc/pivpn/hosts.wireguard ]; then
     fi
 fi
 
-if systemctl restart wg-quick@wg0; then
-    echo "::: WireGuard restarted"
+if systemctl reload wg-quick@wg0; then
+    echo "::: WireGuard reloaded"
 else
-    echo "::: Failed to restart WireGuard"
+    echo "::: Failed to reload WireGuard"
 fi
 
 cp "configs/${CLIENT_NAME}.conf" "${install_home}/configs/${CLIENT_NAME}.conf"

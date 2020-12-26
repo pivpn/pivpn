@@ -1,0 +1,152 @@
+// Unattended-Upgrade::Origins-Pattern controls which packages are
+// upgraded.
+//
+// Lines below have the format "keyword=value,...".  A
+// package will be upgraded only if the values in its metadata match
+// all the supplied keywords in a line.  (In other words, omitted
+// keywords are wild cards.) The keywords originate from the Release
+// file, but several aliases are accepted.  The accepted keywords are:
+//   a,archive,suite (eg, "stable")
+//   c,component     (eg, "main", "contrib", "non-free")
+//   l,label         (eg, "Rapsbian", "Raspbian")
+//   o,origin        (eg, "Raspbian", "Unofficial Multimedia Packages")
+//   n,codename      (eg, "jessie", "jessie-updates")
+//     site          (eg, "http.debian.net")
+// The available values on the system are printed by the command
+// "apt-cache policy", and can be debugged by running
+// "unattended-upgrades -d" and looking at the log file.
+//
+// Within lines unattended-upgrades allows 2 macros whose values are
+// derived from /etc/debian_version:
+//   ${distro_id}            Installed origin.
+//   ${distro_codename}      Installed codename (eg, "jessie")
+Unattended-Upgrade::Origins-Pattern {
+        // Codename based matching:
+        // This will follow the migration of a release through different
+        // archives (e.g. from testing to stable and later oldstable).
+//      "o=Raspbian,n=jessie";
+//      "o=Raspbian,n=jessie-updates";
+//      "o=Raspbian,n=jessie-proposed-updates";
+//      "o=Raspbian,n=jessie,l=Raspbian";
+
+        // Archive or Suite based matching:
+        // Note that this will silently match a different release after
+        // migration to the specified archive (e.g. testing becomes the
+        // new stable).
+//      "o=Raspbian,a=stable";
+//      "o=Raspbian,a=testing";
+        "origin=Raspbian,codename=${distro_codename},label=Raspbian";
+
+        // Additionally, for those running Raspbian on a Raspberry Pi,
+        // match packages from the Raspberry Pi Foundation as well.
+        "origin=Raspberry Pi Foundation,codename=${distro_codename},label=Raspberry Pi Foundation";
+};
+
+// Python regular expressions, matching packages to exclude from upgrading
+Unattended-Upgrade::Package-Blacklist {
+    // The following matches all packages starting with linux-
+//  "linux-";
+
+    // Use $ to explicitely define the end of a package name. Without
+    // the $, "libc6" would match all of them.
+//  "libc6$";
+//  "libc6-dev$";
+//  "libc6-i686$";
+
+    // Special characters need escaping
+//  "libstdc\+\+6$";
+
+    // The following matches packages like xen-system-amd64, xen-utils-4.1,
+    // xenstore-utils and libxenstore3.0
+//  "(lib)?xen(store)?";
+
+    // For more information about Python regular expressions, see
+    // https://docs.python.org/3/howto/regex.html
+};
+
+// This option allows you to control if on a unclean dpkg exit
+// unattended-upgrades will automatically run 
+//   dpkg --force-confold --configure -a
+// The default is true, to ensure updates keep getting installed
+//Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+
+// Split the upgrade into the smallest possible chunks so that
+// they can be interrupted with SIGTERM. This makes the upgrade
+// a bit slower but it has the benefit that shutdown while a upgrade
+// is running is possible (with a small delay)
+//Unattended-Upgrade::MinimalSteps "true";
+
+// Install all updates when the machine is shutting down
+// instead of doing it in the background while the machine is running.
+// This will (obviously) make shutdown slower.
+// Unattended-upgrades increases logind's InhibitDelayMaxSec to 30s.
+// This allows more time for unattended-upgrades to shut down gracefully
+// or even install a few packages in InstallOnShutdown mode, but is still a
+// big step back from the 30 minutes allowed for InstallOnShutdown previously.
+// Users enabling InstallOnShutdown mode are advised to increase
+// InhibitDelayMaxSec even further, possibly to 30 minutes.
+//Unattended-Upgrade::InstallOnShutdown "false";
+
+// Send email to this address for problems or packages upgrades
+// If empty or unset then no email is sent, make sure that you
+// have a working mail setup on your system. A package that provides
+// 'mailx' must be installed. E.g. "user@example.com"
+//Unattended-Upgrade::Mail "";
+
+// Set this value to one of:
+//    "always", "only-on-error" or "on-change"
+// If this is not set, then any legacy MailOnlyOnError (boolean) value
+// is used to chose between "only-on-error" and "on-change"
+//Unattended-Upgrade::MailReport "on-change";
+
+// Remove unused automatically installed kernel-related packages
+// (kernel images, kernel headers and kernel version locked tools).
+//Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+
+// Do automatic removal of newly unused dependencies after the upgrade
+//Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+
+// Do automatic removal of unused packages after the upgrade
+// (equivalent to apt-get autoremove)
+//Unattended-Upgrade::Remove-Unused-Dependencies "false";
+
+// Automatically reboot *WITHOUT CONFIRMATION* if
+//  the file /var/run/reboot-required is found after the upgrade 
+//Unattended-Upgrade::Automatic-Reboot "false";
+
+// Automatically reboot even if there are users currently logged in
+// when Unattended-Upgrade::Automatic-Reboot is set to true
+//Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+
+// If automatic reboot is enabled and needed, reboot at the specific
+// time instead of immediately
+//  Default: "now"
+//Unattended-Upgrade::Automatic-Reboot-Time "02:00";
+
+// Use apt bandwidth limit feature, this example limits the download
+// speed to 70kb/sec
+//Acquire::http::Dl-Limit "70";
+
+// Enable logging to syslog. Default is False
+// Unattended-Upgrade::SyslogEnable "false";
+
+// Specify syslog facility. Default is daemon
+// Unattended-Upgrade::SyslogFacility "daemon";
+
+// Download and install upgrades only on AC power
+// (i.e. skip or gracefully stop updates on battery)
+// Unattended-Upgrade::OnlyOnACPower "true";
+
+// Download and install upgrades only on non-metered connection
+// (i.e. skip or gracefully stop updates on a metered connection)
+// Unattended-Upgrade::Skip-Updates-On-Metered-Connections "true";
+
+// Verbose logging
+// Unattended-Upgrade::Verbose "false";
+
+// Print debugging information both in unattended-upgrades and
+// in unattended-upgrade-shutdown
+// Unattended-Upgrade::Debug "false";
+
+// Allow package downgrade if Pin-Priority exceeds 1000
+// Unattended-Upgrade::Allow-downgrade "false";

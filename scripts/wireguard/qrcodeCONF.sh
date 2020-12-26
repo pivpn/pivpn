@@ -33,17 +33,18 @@ if [ ! -s clients.txt ]; then
     exit 1
 fi
 
+LIST=($(awk '{print $1}' clients.txt))
 if [ "${#CLIENTS_TO_SHOW[@]}" -eq 0 ]; then
 
     echo -e "::\e[4m  Client list  \e[0m::"
-    LIST=($(awk '{print $1}' clients.txt))
+    len=${#LIST[@]}
     COUNTER=1
-    while [ $COUNTER -le ${#LIST[@]} ]; do
-        echo "• ${LIST[(($COUNTER-1))]}"
+    while [ $COUNTER -le ${len} ]; do
+        printf "%0${#len}s) %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
         ((COUNTER++))
     done
 
-    read -r -p "Please enter the Name of the Client to show: " CLIENTS_TO_SHOW
+    read -r -p "Please enter the Index/Name of the Client to show: " CLIENTS_TO_SHOW
 
     if [ -z "${CLIENTS_TO_SHOW}" ]; then
         echo "::: You can not leave this blank!"
@@ -52,6 +53,10 @@ if [ "${#CLIENTS_TO_SHOW[@]}" -eq 0 ]; then
 fi
 
 for CLIENT_NAME in "${CLIENTS_TO_SHOW[@]}"; do
+    re='^[0-9]+$'
+    if [[ ${CLIENT_NAME} =~ $re ]] ; then
+        CLIENT_NAME=${LIST[$(($CLIENT_NAME -1))]}
+    fi    
     if grep -qw "${CLIENT_NAME}" clients.txt; then
         echo -e "::: Showing client \e[1m${CLIENT_NAME}\e[0m below"
         echo "====================================================================="
