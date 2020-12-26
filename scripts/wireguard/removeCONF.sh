@@ -80,7 +80,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
         if [ -n "$CONFIRM" ]; then
             REPLY="y"
         else
-            read -r -p "Do you really want to delete $CLIENT_NAME? [Y/n] "
+            read -r -p "Do you really want to delete $CLIENT_NAME? [y/N] "
         fi
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -129,6 +129,9 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
                 fi
             fi
 
+        else
+            echo "Aborting operation"
+            exit 1
         fi
     fi
 
