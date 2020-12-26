@@ -68,7 +68,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
         echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
     else
         REQUESTED="$(sha256sum "configs/${CLIENT_NAME}.conf" | cut -c 1-64)"
-        read -r -p "Do you really want to delete $CLIENT_NAME? [Y/n] "
+        read -r -p "Do you really want to delete $CLIENT_NAME? [y/N] "
 
         if [[ $REPLY =~ ^[Yy]$ ]]; then
 
@@ -115,6 +115,9 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
                 fi
             fi
 
+        else
+            echo "Aborting operation"
+            exit 1
         fi
     fi
 
