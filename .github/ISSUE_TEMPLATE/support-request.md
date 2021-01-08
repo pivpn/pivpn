@@ -7,10 +7,10 @@ assignees: ''
 
 ---
 
-<!-- 
+<!--
 # PiVPN Issue Template
-PLEASE READ THIS TEMPLATE CAREFULLY BEFORE OPENING AN ISSUE! 
-Any Issue opened that doesn't follow this template will be removed. 
+PLEASE READ THIS TEMPLATE CAREFULLY BEFORE OPENING AN ISSUE!
+Any Issue opened that doesn't follow this template will be removed.
 
 
 Hi, you are about to open a new issue, Please provide us with all the info required below, incomplete issues will decrease our effectiveness to troubleshoot your issue and increase the time we need to spend helping you out, or with your issue closed even if it is a legitimate issue. Please remember we do not have any super power that makes us guess exactly what your issue is without any decent details!
@@ -18,7 +18,7 @@ Hi, you are about to open a new issue, Please provide us with all the info requi
 For any output requested below, you may alternatively post it on https://pastebin.com and provide the Pastebin URL in its place
 -->
 
-## In raising this issue, I confirm the following: 
+## In raising this issue, I confirm the following:
 
 `{please fill the checkboxes, e.g: [X]}`
 
@@ -30,7 +30,7 @@ For any output requested below, you may alternatively post it on https://pastebi
 
 
 
-<!-- If the install failed: can you please copy-paste the console output after running `curl install.pivpn.dev | bash` between the backticks -->
+<!-- If the install failed: can you please copy-paste the console output after running `curl install.pivpn.io | bash` between the backticks -->
 
 <!-- Please explain your issue. Feel free to format your text -->
 ### Issue
@@ -40,7 +40,7 @@ For any output requested below, you may alternatively post it on https://pastebi
     (yes/no / which issues?)
 
 
-### Console output of      `curl -L install.pivpn.dev | bash`
+### Console output of      `curl -L install.pivpn.io | bash`
 ```
   Output Here
 ```
