@@ -31,7 +31,7 @@ debianOvpnUserGroup="openvpn:openvpn"
 PKG_MANAGER="apt-get"
 PKG_CACHE="/var/lib/apt/lists/"
 ### FIXME: quoting UPDATE_PKG_CACHE and PKG_INSTALL hangs the script, shellcheck SC2086
-UPDATE_PKG_CACHE="${PKG_MANAGER} update"
+UPDATE_PKG_CACHE="${PKG_MANAGER} update -y"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
@@ -399,24 +399,12 @@ verifyFreeDiskSpace(){
 }
 
 updatePackageCache(){
-	#Running apt-get update/upgrade with minimal output can cause some issues with
-	#requiring user input
-
-	#Check to see if apt-get update has already been run today
-	#it needs to have been run at least once on new installs!
-	timestamp=$(stat -c %Y ${PKG_CACHE})
-	timestampAsDate=$(date -d @"${timestamp}" "+%b %e")
-	today=$(date "+%b %e")
-
-
-	 if [ ! "${today}" == "${timestampAsDate}" ]; then
 		#update package lists
 		echo ":::"
-		echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\n"
+		echo -ne "::: Package Cache update is needed, running ${UPDATE_PKG_CACHE} ...\\n"
         # shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		echo " done!"
-	fi
 }
 
 notifyPackageUpdatesAvailable(){
@@ -1206,7 +1194,7 @@ installOpenVPN(){
 
 		echo "::: Updating package cache..."
 		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		updatePackageCache
 	fi
 
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
@@ -1274,7 +1262,7 @@ installWireGuard(){
 
 			echo "::: Updating package cache..."
 			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+			updatePackageCache
 		fi
 
 		# qrencode is used to generate qrcodes from config file, for use with mobile clients
@@ -1293,7 +1281,7 @@ installWireGuard(){
 
 			echo "::: Updating package cache..."
 			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+			updatePackageCache
 		fi
 
 		PIVPN_DEPS=(wireguard-tools qrencode)
