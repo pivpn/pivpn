@@ -980,7 +980,7 @@ chooseUser(){
 isRepo(){
 	# If the directory does not have a .git folder it is not a repo
 	echo -n ":::    Checking $1 is a repo..."
-	cd "${1}" &> /dev/null || return 1
+	cd "${1}" &> /dev/null || { echo " not found!"; return 1; }
 	$SUDO git status &> /dev/null && echo " OK!"; return 0 || echo " not found!"; return 1
 }
 
