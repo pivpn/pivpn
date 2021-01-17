@@ -4,6 +4,17 @@ This file has the objective of describing the major changes for each merge from 
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jan 17th 2021
+
+- Issues Fixed:
+  - #1180 Incorrect system detection
+  - #1212 Confusing prompt when removing wireguard config
+  - #1204 Package cache update not workig
+- New Features
+  - #1111 Possibility to turn on/off single wireguard client configs
+  - #1177 Possibility to change AllowedIPs 
+- English corrections
+
 ## Nov 4th 2020
 
 - Official support for Ubuntu Server 20.04 on Raspberry Pi (32-bit and 64-bit).

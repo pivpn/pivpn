@@ -13,7 +13,7 @@ assignees: ''
 
 - [] I have read and understood the [contributors guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md).
 - [] The issue I am reporting can be *replicated*.
-- [] The issue I am reporting can be *is* directly related to the pivpn installer script.
+- [] The issue I am reporting *is* directly related to the pivpn installer script.
 - [] The issue I am reporting isn't a duplicate (see [FAQs](https://github.com/pivpn/pivpn/wiki/FAQ), [closed issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aclosed), and [open issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen)).
 
 **Describe the bug**

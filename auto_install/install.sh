@@ -10,7 +10,6 @@
 # curl -L https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
-# timestamp 2020/5/24 15:53BST
 
 ######## VARIABLES #########
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
@@ -32,7 +31,7 @@ debianOvpnUserGroup="openvpn:openvpn"
 PKG_MANAGER="apt-get"
 PKG_CACHE="/var/lib/apt/lists/"
 ### FIXME: quoting UPDATE_PKG_CACHE and PKG_INSTALL hangs the script, shellcheck SC2086
-UPDATE_PKG_CACHE="${PKG_MANAGER} update"
+UPDATE_PKG_CACHE="${PKG_MANAGER} update -y"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
@@ -215,7 +214,7 @@ main(){
 	# Save installation setting to the final location
 	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
         echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
-        $SUDO mkdir "${setupConfigDir}/${VPN}/"
+        $SUDO mkdir -p "${setupConfigDir}/${VPN}/"
 	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}"
 
 	installScripts
@@ -400,24 +399,12 @@ verifyFreeDiskSpace(){
 }
 
 updatePackageCache(){
-	#Running apt-get update/upgrade with minimal output can cause some issues with
-	#requiring user input
-
-	#Check to see if apt-get update has already been run today
-	#it needs to have been run at least once on new installs!
-	timestamp=$(stat -c %Y ${PKG_CACHE})
-	timestampAsDate=$(date -d @"${timestamp}" "+%b %e")
-	today=$(date "+%b %e")
-
-
-	 if [ ! "${today}" == "${timestampAsDate}" ]; then
 		#update package lists
 		echo ":::"
-		echo -ne "::: ${PKG_MANAGER} update has not been run today. Running now...\\n"
+		echo -ne "::: Package Cache update is needed, running ${UPDATE_PKG_CACHE} ...\\n"
         # shellcheck disable=SC2086
 		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 		echo " done!"
-	fi
 }
 
 notifyPackageUpdatesAvailable(){
@@ -475,31 +462,33 @@ preconfigurePackages(){
 	fi
 
 	AVAILABLE_WIREGUARD="$(apt-cache policy wireguard | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
-	WIREGUARD_BUILTIN=0
-	NEED_WIREGUARD_REPO=0
 
-	if [ -n "$AVAILABLE_WIREGUARD" ]; then
-		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-			# If a wireguard kernel object is found and is part of any installed package, then
-			# it has not been build via DKMS or manually (installing via wireguard-dkms does not
-			# make the module part of the package since the module itself is built at install time
-			# and not part of the .deb).
-			# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
-			for i in /lib/modules/**/wireguard.ko; do
-				[[ -f $i ]] || continue
-				dpkg-query -S "$i" &> /dev/null || continue
-				WIREGUARD_BUILTIN=1
-				break
-			done
-		fi
+	# If a wireguard kernel object is found and is part of any installed package, then
+	# it has not been build via DKMS or manually (installing via wireguard-dkms does not
+	# make the module part of the package since the module itself is built at install time
+	# and not part of the .deb).
+	# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
+	WIREGUARD_BUILTIN=0
+	for i in /lib/modules/**/wireguard.ko; do
+		[[ -f $i ]] || continue
+		dpkg-query -S "$i" &> /dev/null || continue
+		WIREGUARD_BUILTIN=1
+		break
+	done
+
+	if
+		# If the module is builtin and the package available, we only need to install wireguard-tools.
+		[[ $WIREGUARD_BUILTIN == 1 && -n $AVAILABLE_WIREGUARD ]] ||
+		# If the package is not available, on Debian and Raspbian we can add it via Bullseye repository.
+		[[ $WIREGUARD_BUILTIN == 1 && ( $PLAT == 'Debian' || $PLAT == 'Raspbian' ) ]] ||
+		# If the module is not builtin, on Raspbian we know the headers package: raspberrypi-kernel-headers
+		[[ $PLAT == 'Raspbian' ]] ||
+		# On Debian (and Ubuntu), we can only reliably assume the headers package for amd64: linux-image-amd64
+		[[ $PLAT == 'Debian' && $DPKG_ARCH == 'amd64' ]] ||
+		# On Ubuntu, additionally the WireGuard package needs to be available, since we didn't test mixing Ubuntu repositories.
+		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'amd64' && -n $AVAILABLE_WIREGUARD ]]
+	then
 		WIREGUARD_SUPPORT=1
-	else
-		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Raspbian" ]; then
-			NEED_WIREGUARD_REPO=1
-			WIREGUARD_SUPPORT=1
-		else
-			WIREGUARD_SUPPORT=0
-		fi
 	fi
 
 	if [ "$OPENVPN_SUPPORT" -eq 0 ] && [ "$WIREGUARD_SUPPORT" -eq 0 ]; then
@@ -546,7 +535,7 @@ installDependentPackages(){
 		fi
 	done
 
-	local APTLOGFILE="$(mktemp)"
+	local APTLOGFILE="$($SUDO mktemp)"
 
 	if command -v debconf-apt-progress > /dev/null; then
         # shellcheck disable=SC2086
@@ -570,7 +559,7 @@ installDependentPackages(){
 	done
 
 	if [ "$FAILED" -gt 0 ]; then
-		cat "${APTLOGFILE}"
+		$SUDO cat "${APTLOGFILE}"
 		exit 1
 	fi
 }
@@ -991,7 +980,7 @@ chooseUser(){
 isRepo(){
 	# If the directory does not have a .git folder it is not a repo
 	echo -n ":::    Checking $1 is a repo..."
-	cd "${1}" &> /dev/null || return 1
+	cd "${1}" &> /dev/null || { echo " not found!"; return 1; }
 	$SUDO git status &> /dev/null && echo " OK!"; return 0 || echo " not found!"; return 1
 }
 
@@ -1094,6 +1083,9 @@ installPiVPN(){
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0"
 		vpnGw="${pivpnNET/.0.0/.0.1}"
+		# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
+		# the user after the installation.
+		ALLOWED_IPS="0.0.0.0/0, ::0/0"
 		CUSTOMIZE=0
 
 		installWireGuard
@@ -1110,6 +1102,7 @@ installPiVPN(){
 	echo "pivpnDEV=${pivpnDEV}" >> ${tempsetupVarsFile}
 	echo "pivpnNET=${pivpnNET}" >> ${tempsetupVarsFile}
 	echo "subnetClass=${subnetClass}" >> ${tempsetupVarsFile}
+	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\"" >> ${tempsetupVarsFile}
 }
 
 askWhichVPN(){
@@ -1201,7 +1194,7 @@ installOpenVPN(){
 
 		echo "::: Updating package cache..."
 		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		updatePackageCache
 	fi
 
 	# grepcidr is used to redact IPs in the debug log whereas expect is used
@@ -1260,7 +1253,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if [ "$NEED_WIREGUARD_REPO" -eq 1 ]; then
+		if [ -z "$AVAILABLE_WIREGUARD" ]; then
 			echo "::: Adding Raspbian repository... "
 			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
@@ -1269,7 +1262,7 @@ installWireGuard(){
 
 			echo "::: Updating package cache..."
 			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+			updatePackageCache
 		fi
 
 		# qrencode is used to generate qrcodes from config file, for use with mobile clients
@@ -1280,7 +1273,7 @@ installWireGuard(){
 
 		echo "::: Installing WireGuard from Debian package... "
 
-		if [ "$NEED_WIREGUARD_REPO" -eq 1 ]; then
+		if [ -z "$AVAILABLE_WIREGUARD" ]; then
 			echo "::: Adding Debian repository... "
 			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
@@ -1288,7 +1281,7 @@ installWireGuard(){
 
 			echo "::: Updating package cache..."
 			# shellcheck disable=SC2086
-			$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+			updatePackageCache
 		fi
 
 		PIVPN_DEPS=(wireguard-tools qrencode)
@@ -2003,7 +1996,7 @@ confOVPN(){
 
 confWireGuard(){
 	# Reload job type is not yet available in wireguard-tools shipped with Ubuntu 20.04
-	if ! grep -q 'ExecReload' /usr/lib/systemd/system/wg-quick@.service; then
+	if ! grep -q 'ExecReload' /lib/systemd/system/wg-quick@.service; then
 		echo "::: Adding additional reload job type for wg-quick unit"
 		$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@.service.d/override.conf /etc/systemd/system/wg-quick@.service.d/override.conf
 		$SUDO systemctl daemon-reload
@@ -2284,13 +2277,13 @@ installScripts(){
 		# Unlink the protocol specific pivpn script and symlink the common
 		# script to the location instead
 		$SUDO unlink /usr/local/bin/pivpn
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
 	else
 		# Only one protocol is installed, symlink bash completion, the pivpn script
 		# and the script directory
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
-		$SUDO ln -s -T "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" /usr/local/bin/pivpn
-		$SUDO ln -s "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
+		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" /usr/local/bin/pivpn
+		$SUDO ln -sf "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"
 		# shellcheck disable=SC1091
 		. /etc/bash_completion.d/pivpn
 	fi

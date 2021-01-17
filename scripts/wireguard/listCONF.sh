@@ -26,3 +26,8 @@ while read -r LINE; do
 done < clients.txt
 
 } | column -t -s $'\t'
+
+
+cd /etc/wireguard || return
+echo "::: Disabled clients :::"
+grep '\[disabled\] ### begin' wg0.conf | sed 's/#//g; s/begin//'
