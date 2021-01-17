@@ -4,6 +4,17 @@ This file has the objective of describing the major changes for each merge from 
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jan 17th 2021
+
+- Changed user enable/disable to on/off
+- Multiple updates on README.md
+- Changed wireguard unith path
+- Workaround fori Permission error on ubuntu 20.04
+- Fix for directory and symlinks creation
+- fix for wireguard support detection
+- fixes for clients stats
+- English corrections
+
 ## Nov 4th 2020
 
 - Official support for Ubuntu Server 20.04 on Raspberry Pi (32-bit and 64-bit).
