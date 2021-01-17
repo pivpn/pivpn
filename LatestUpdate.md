@@ -6,13 +6,13 @@ Everytime Test branch is merged into master, a new entry should be created with 
 
 ## Jan 17th 2021
 
-- Changed user enable/disable to on/off
-- Multiple updates on README.md
-- Changed wireguard unith path
-- Workaround fori Permission error on ubuntu 20.04
-- Fix for directory and symlinks creation
-- fix for wireguard support detection
-- fixes for clients stats
+- Issues Fixed:
+  - #1180 Incorrect system detection
+  - #1212 Confusing prompt when removing wireguard config
+  - #1204 Package cache update not workig
+- New Features
+  - #1111 Possibility to turn on/off single wireguard client configs
+  - #1177 Possibility to change AllowedIPs 
 - English corrections
 
 ## Nov 4th 2020
