@@ -16,13 +16,13 @@ vpn="wireguard"
 makeConf(){
     shift
     $SUDO ${scriptdir}/${vpn}/makeCONF.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 listConnected(){
     shift
     $SUDO ${scriptdir}/${vpn}/clientSTAT.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 debug(){
@@ -32,52 +32,52 @@ debug(){
     echo "::: Debug output completed above."
     echo "::: Copy saved to /tmp/debug.log"
     echo "::: "
-    exit 0
+    exit "$?"
 }
 
 listClients(){
     $SUDO ${scriptdir}/${vpn}/listCONF.sh
-    exit 0
+    exit "$?"
 }
 
 showQrcode(){
     shift
     $SUDO ${scriptdir}/${vpn}/qrcodeCONF.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 removeClient(){
     shift
     $SUDO ${scriptdir}/${vpn}/removeCONF.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 disableClient(){
     shift
     $SUDO ${scriptdir}/${vpn}/disableCONF.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 enableClient(){
     shift
     $SUDO ${scriptdir}/${vpn}/enableCONF.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 uninstallServer(){
     $SUDO ${scriptdir}/uninstall.sh "${vpn}"
-    exit 0
+    exit "$?"
 }
 
 updateScripts(){
     shift
     $SUDO ${scriptdir}/update.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 backup(){
     $SUDO ${scriptdir}/backup.sh "${vpn}"
-    exit 0
+    exit "$?"
 }
 
 showHelp(){
