@@ -93,7 +93,7 @@ if [[ ! $EUID -eq 0 ]];then
         export SUDO="sudo"
     else
     echo "::: Please install sudo or run this as root."
-    exit 0
+    exit 1
   fi
 fi
 

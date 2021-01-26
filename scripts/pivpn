@@ -14,12 +14,12 @@ scriptDir="/opt/pivpn"
 
 uninstallServer(){
     $SUDO ${scriptDir}/uninstall.sh
-    exit 0
+    exit "$?"
 }
 
 backup(){
     $SUDO ${scriptDir}/backup.sh
-    exit 0
+    exit "$?"
 }
 
 showHelp(){

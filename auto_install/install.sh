@@ -143,7 +143,7 @@ main(){
 		:
 	elif [ "$UpdateCmd" = "Update" ]; then
 		$SUDO ${pivpnScriptDir}/update.sh "$@"
-		exit 0
+		exit "$?"
 	elif [ "$UpdateCmd" = "Repair" ]; then
 		# shellcheck disable=SC1090
 		source "$setupVars"

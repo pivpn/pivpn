@@ -1,6 +1,8 @@
 ![WireGuard + OpenVPN logo](logos.jpg)
 
-**[Is pivpn.io down?](https://status.pivpn.io)**
+**[Is pivpn.io down?](https://status.pivpn.io)** |
+**Test:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn) |
+**Master:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn)
 
 About
 -----

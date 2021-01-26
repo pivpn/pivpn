@@ -4,6 +4,14 @@ This file has the objective of describing the major changes for each merge from 
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## Jan 26th 2021
+
+Fixed: 
+  - #1231 Return proper exit codes
+Improvements
+  - First implementation of Automated testing with travisCI
+
+
 ## Jan 17th 2021
 
 - Issues Fixed:

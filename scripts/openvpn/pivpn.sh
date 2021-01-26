@@ -16,18 +16,18 @@ vpn="openvpn"
 function makeOVPNFunc {
     shift
     $SUDO ${scriptDir}/${vpn}/makeOVPN.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 function listClientsFunc {
     shift
     $SUDO ${scriptDir}/${vpn}/clientStat.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 function listOVPNFunc {
     $SUDO ${scriptDir}/${vpn}/listOVPN.sh
-    exit 0
+    exit "$?"
 }
 
 function debugFunc {
@@ -37,29 +37,29 @@ function debugFunc {
     echo "::: Debug output completed above."
     echo "::: Copy saved to /tmp/debug.log"
     echo "::: "
-    exit 0
+    exit "$?"
 }
 
 function removeOVPNFunc {
     shift
     $SUDO ${scriptDir}/${vpn}/removeOVPN.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 function uninstallFunc {
     $SUDO ${scriptDir}/uninstall.sh "${vpn}"
-    exit 0
+    exit "$?"
 }
 
 function update {
     shift
     $SUDO ${scriptDir}/update.sh "$@"
-    exit 0
+    exit "$?"
 }
 
 function backup {
     $SUDO ${scriptDir}/backup.sh "${vpn}"
-    exit 0
+    exit "$?"
 }
 
 
