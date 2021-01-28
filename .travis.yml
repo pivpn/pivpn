@@ -65,9 +65,9 @@ jobs:
         - pivpn add -o -n foo
         - pivpn -bk
         - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -r foo -y
         - pivpn -l
         - pivpn -c
+        - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
 
@@ -84,6 +84,7 @@ jobs:
         - pivpn add -n foo
         - pivpn -qr foo
         - pivpn -bk
+        - ls ~pi/pivpnbackup/ | grep backup
         - pivpn -l
         - pivpn -c
         - pivpn -r foo -y
@@ -108,9 +109,9 @@ jobs:
         - pivpn add -o -n foo
         - pivpn -bk
         - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -r foo -y
         - pivpn -l
         - pivpn -c
+        - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
 
@@ -129,6 +130,7 @@ jobs:
         - pivpn add -n foo
         - pivpn -qr foo
         - pivpn -bk
+        - ls ~pi/pivpnbackup/ | grep backup
         - pivpn -l
         - pivpn -c
         - pivpn -r foo -y
@@ -151,9 +153,9 @@ jobs:
         - pivpn add -o -n foo
         - pivpn -bk
         - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -r foo -y
         - pivpn -l
         - pivpn -c
+        - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
 
@@ -171,6 +173,7 @@ jobs:
         - pivpn add -n foo
         - pivpn -qr foo
         - pivpn -bk
+        - ls ~pi/pivpnbackup/ | grep backup
         - pivpn -l
         - pivpn -c
         - pivpn -r foo -y
