@@ -22,32 +22,14 @@ branches:
 jobs:
   allow_failures:
     - stage: lint
+
   include:
     - stage: lint
       name: "Shellcheck lint"
       dist: linux
       script:
         - shellcheck autoinstall/install.sh
-        - shellcheck scripts/backup.sh
-        - shellcheck scripts/pivpn
-        - shellcheck scripts/self_check.sh
-        - shellcheck scripts/uninstall.sh
-        - shellcheck scripts/update.sh
-        - shellcheck scripts/openvpn/clientstat.sh
-        - shellcheck scripts/openvpn/listOVPN.sh
-        - shellcheck scripts/openvpn/makeOVPN.sh
-        - shellcheck scripts/openvpn/pivpnDebug.sh
-        - shellcheck scripts/openvpn/pivpn.sh
-        - shellcheck scripts/openvpn/removeOVPN.sh
-        - shellcheck scripts/wireguard/clientSTAT.sh
-        - shellcheck scripts/wireguard/disableCONF.sh
-        - shellcheck scripts/wireguard/enableCONF.sh
-        - shellcheck scripts/wireguard/listCONF.sh
-        - shellcheck scripts/wireguard/makeCONF.sh
-        - shellcheck scripts/wireguard/pivpnDEBUG.sh
-        - shellcheck scripts/wireguard/pivpn.sh
-        - shellcheck scripts/wireguard/qrcodeCONF.sh
-        - shellcheck scripts/wireguard/removeCONF.sh
+        - find scripts/ -type f -exec shellcheck {} \;
 
     - stage: test
       name: "OpenVPN Xenial & Commands"
@@ -59,15 +41,16 @@ jobs:
         - ./ciscripts/startup.sh -o
       script:
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
+      after_script:
         - systemctl status openvpn
         - pivpn add -n foo nopass -d 180
         - pivpn add -p "$RANDOM$RANDOM" -n bar -d 180
         - pivpn add -o -n foo
         - pivpn -bk
         - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -r foo -y
         - pivpn -l
         - pivpn -c
+        - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
 
@@ -81,14 +64,15 @@ jobs:
         - ./ciscripts/startup.sh -w
       script: 
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
+      after_script:
+        - systemctl status wg-quick@wg0
         - pivpn add -n foo
         - pivpn -qr foo
         - pivpn -bk
+        - ls ~pi/pivpnbackup/ | grep backup
         - pivpn -l
         - pivpn -c
         - pivpn -r foo -y
-      after_script:
-        - systemctl status wg-quick@wg0
       after_fail:
         - sudo journalctl -xe
 
@@ -108,9 +92,9 @@ jobs:
         - pivpn add -o -n foo
         - pivpn -bk
         - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -r foo -y
         - pivpn -l
         - pivpn -c
+        - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
 
@@ -129,6 +113,7 @@ jobs:
         - pivpn add -n foo
         - pivpn -qr foo
         - pivpn -bk
+        - ls ~pi/pivpnbackup/ | grep backup
         - pivpn -l
         - pivpn -c
         - pivpn -r foo -y
@@ -151,9 +136,9 @@ jobs:
         - pivpn add -o -n foo
         - pivpn -bk
         - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -r foo -y
         - pivpn -l
         - pivpn -c
+        - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
 
@@ -171,6 +156,7 @@ jobs:
         - pivpn add -n foo
         - pivpn -qr foo
         - pivpn -bk
+        - ls ~pi/pivpnbackup/ | grep backup
         - pivpn -l
         - pivpn -c
         - pivpn -r foo -y

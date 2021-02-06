@@ -6,7 +6,7 @@ CONF_FILE="/etc/wireguard/wg0.conf"
 
 if [ ! -s "$CLIENTS_FILE" ]; then
     echo "::: There are no clients to list"
-    exit 1
+    exit 0
 fi
 
 scriptusage(){
