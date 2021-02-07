@@ -60,7 +60,7 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
                 # Prevent printing "server" certificate
                 CERTS[$i]=$(echo -e "${NAME}")
             fi
-            let i=i+1
+            ((i++))
         fi
     done <${INDEX}
     
@@ -82,7 +82,7 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
 
     re='^[0-9]+$'
     if [[ ${NAME} =~ $re ]] ; then
-        NAME=${CERTS[$(($NAME))]}
+        NAME=${CERTS[$((NAME))]}
     fi
 
     for((x=1;x<=i;++x)); do
@@ -104,7 +104,7 @@ else
         if [[ "${STATUS}" = "V" ]]; then
             NAME=$(echo -e "$line" | sed -e 's:.*/CN=::')
             CERTS[$i]=${NAME}
-            let i=i+1
+            ((i++))
         fi
     done <${INDEX}
 
