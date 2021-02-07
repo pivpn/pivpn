@@ -55,7 +55,7 @@ fi
 for CLIENT_NAME in "${CLIENTS_TO_SHOW[@]}"; do
     re='^[0-9]+$'
     if [[ ${CLIENT_NAME} =~ $re ]] ; then
-        CLIENT_NAME=${LIST[$(($CLIENT_NAME -1))]}
+        CLIENT_NAME=${LIST[$((CLIENT_NAME -1))]}
     fi    
     if grep -qw "${CLIENT_NAME}" clients.txt; then
         echo -e "::: Showing client \e[1m${CLIENT_NAME}\e[0m below"

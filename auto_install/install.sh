@@ -764,9 +764,11 @@ getStaticIPv4Settings() {
 			echo "::: Skipping setting static IP address"
 		fi
 
-		echo "dhcpReserv=${dhcpReserv}" >> ${tempsetupVarsFile}
-		echo "IPv4addr=${IPv4addr}" >> ${tempsetupVarsFile}
-		echo "IPv4gw=${IPv4gw}" >> ${tempsetupVarsFile}
+		{
+		echo "dhcpReserv=${dhcpReserv}"
+		echo "IPv4addr=${IPv4addr}"
+		echo "IPv4gw=${IPv4gw}"
+		} >> ${tempsetupVarsFile}
 		return
 	fi
 
@@ -1099,10 +1101,12 @@ installPiVPN(){
 
 	fi
 
-	echo "pivpnDEV=${pivpnDEV}" >> ${tempsetupVarsFile}
-	echo "pivpnNET=${pivpnNET}" >> ${tempsetupVarsFile}
-	echo "subnetClass=${subnetClass}" >> ${tempsetupVarsFile}
-	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\"" >> ${tempsetupVarsFile}
+	{
+	echo "pivpnDEV=${pivpnDEV}"
+	echo "pivpnNET=${pivpnNET}"
+	echo "subnetClass=${subnetClass}"
+	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\""
+	} >> ${tempsetupVarsFile}
 }
 
 askWhichVPN(){
@@ -1737,9 +1741,11 @@ askEncryption(){
 			fi
 		fi
 
-		echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> ${tempsetupVarsFile}
-		echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
-		echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
+		{
+		echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+		echo "pivpnENCRYPT=${pivpnENCRYPT}"
+		echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
+		} >> ${tempsetupVarsFile}
 		return
 	fi
 
@@ -1747,9 +1753,11 @@ askEncryption(){
 		if [ "$VPN" = "openvpn" ]; then
 			TWO_POINT_FOUR=1
 			pivpnENCRYPT=256
-			echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> ${tempsetupVarsFile}
-			echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
-			echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
+			{
+			echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+			echo "pivpnENCRYPT=${pivpnENCRYPT}"
+			echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
+			} >> ${tempsetupVarsFile}
 			return
 		fi
 	fi
@@ -1782,9 +1790,11 @@ askEncryption(){
 		USE_PREDEFINED_DH_PARAM=0
 	fi
 
-	echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> ${tempsetupVarsFile}
-	echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
-	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
+	{
+	echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+	echo "pivpnENCRYPT=${pivpnENCRYPT}"
+	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
+	} >> ${tempsetupVarsFile}
 }
 
 cidrToMask(){
