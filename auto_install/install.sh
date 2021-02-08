@@ -1258,7 +1258,7 @@ installWireGuard(){
 		echo "::: Installing WireGuard from Debian package... "
 
 		if [ -z "$AVAILABLE_WIREGUARD" ]; then
-			echo "::: Adding Raspbian repository... "
+			echo "::: Adding Raspbian Bullseye repository... "
 			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
 			# Do not upgrade packages from the bullseye repository except for wireguard
@@ -1270,7 +1270,13 @@ installWireGuard(){
 		fi
 
 		# qrencode is used to generate qrcodes from config file, for use with mobile clients
-		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard-tools wireguard-dkms qrencode)
+		PIVPN_DEPS=(wireguard-tools qrencode)
+
+		if [ "$WIREGUARD_BUILTIN" -eq 0 ]; then
+			# Explicitly install the module if not built-in
+			PIVPN_DEPS+=(raspberrypi-kernel-headers wireguard-dkms)
+		fi
+
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$PLAT" = "Debian" ]; then
@@ -1278,7 +1284,7 @@ installWireGuard(){
 		echo "::: Installing WireGuard from Debian package... "
 
 		if [ -z "$AVAILABLE_WIREGUARD" ]; then
-			echo "::: Adding Debian repository... "
+			echo "::: Adding Debian Bullseye repository... "
 			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
 			printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
