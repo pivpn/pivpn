@@ -133,7 +133,7 @@ function useBitwarden() {
     # login and unlock vault
     printf "****Bitwarden Login****"
     printf "\n"
-    SESSION_KEY=`bw login --raw`
+    SESSION_KEY=$(bw login --raw)
     export BW_SESSION=$SESSION_KEY
     printf "Successfully Logged in!"
     printf "\n"
@@ -168,7 +168,7 @@ function useBitwarden() {
     printf "Creating a PiVPN item for your vault..."
     printf "\n"
     # create a new item for your PiVPN Password
-    PASSWD=`bw generate -usln --length $LENGTH`
+    PASSWD=$(bw generate -usln --length $LENGTH)
     bw get template item | jq '.login.type = "1"'| jq '.name = "PiVPN"' | jq -r --arg NAME "$NAME" '.login.username = $NAME' | jq -r --arg PASSWD "$PASSWD" '.login.password = $PASSWD' |  bw encode | bw create item
     bw logout
 
