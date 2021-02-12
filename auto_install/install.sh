@@ -439,8 +439,10 @@ preconfigurePackages(){
 		BASE_DEPS+=(dhcpcd5)
 	fi
 
-	AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
 	DPKG_ARCH="$(dpkg --print-architecture)"
+
+	AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	OPENVPN_SUPPORT=0
 	NEED_OPENVPN_REPO=0
 
 	# We require OpenVPN 2.4 or later for ECC support. If not available in the
@@ -462,6 +464,7 @@ preconfigurePackages(){
 	fi
 
 	AVAILABLE_WIREGUARD="$(apt-cache policy wireguard | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	WIREGUARD_SUPPORT=0
 
 	# If a wireguard kernel object is found and is part of any installed package, then
 	# it has not been build via DKMS or manually (installing via wireguard-dkms does not
