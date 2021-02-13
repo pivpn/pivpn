@@ -53,7 +53,7 @@ if [ ! -d "${install_home}/configs" ]; then
     chmod 0750 "${install_home}/configs"
 fi
 
-cd /etc/wireguard
+cd /etc/wireguard || exit
 
 if [ -z "${CLIENT_NAME}" ]; then
     read -r -p "Enter a Name for the Client: " CLIENT_NAME
