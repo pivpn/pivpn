@@ -1810,7 +1810,7 @@ askEncryption(){
 cidrToMask(){
 	# Source: https://stackoverflow.com/a/20767392
 	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
-	[ $1 -gt 1 ] && shift $1 || shift
+	shift $1
 	echo ${1-0}.${2-0}.${3-0}.${4-0}
 }
 
