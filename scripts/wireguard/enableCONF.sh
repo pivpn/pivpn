@@ -44,7 +44,7 @@ do
     shift
 done
 
-cd /etc/wireguard
+cd /etc/wireguard || exit
 if [ ! -s configs/clients.txt ]; then
     echo "::: There are no clients to change"
     exit 1
