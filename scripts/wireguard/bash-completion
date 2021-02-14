@@ -1,10 +1,9 @@
 #!/bin/bash
 _pivpn()
 {
-    local cur prev opts
+    local cur opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
     dashopts="-a -c -d -l -qr -r -h -u -up -bk -off -on"
     opts="add clients debug list qrcode remove help uninstall update backup (temp) off (temp) on"
     if [ "${#COMP_WORDS[@]}" -eq 2 ]
