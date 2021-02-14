@@ -29,7 +29,6 @@ debianOvpnUserGroup="openvpn:openvpn"
 
 ######## PKG Vars ########
 PKG_MANAGER="apt-get"
-PKG_CACHE="/var/lib/apt/lists/"
 ### FIXME: quoting UPDATE_PKG_CACHE and PKG_INSTALL hangs the script, shellcheck SC2086
 UPDATE_PKG_CACHE="${PKG_MANAGER} update -y"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"

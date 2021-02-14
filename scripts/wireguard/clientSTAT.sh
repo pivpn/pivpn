@@ -2,7 +2,6 @@
 # PiVPN: client status script
 
 CLIENTS_FILE="/etc/wireguard/configs/clients.txt"
-CONF_FILE="/etc/wireguard/wg0.conf"
 
 if [ ! -s "$CLIENTS_FILE" ]; then
     echo "::: There are no clients to list"
