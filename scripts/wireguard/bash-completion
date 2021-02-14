@@ -1,3 +1,4 @@
+#!/bin/bash
 _pivpn()
 {
     local cur prev opts
