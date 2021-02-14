@@ -25,7 +25,7 @@ helpFunc() {
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  nopass               Create a client without a password"
-    echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
+    echo ":::  -n,--name            Name for the Client (default: \"$(hostname)\")"
     echo ":::  -p,--password        Password for the Client (no default)"
     echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
