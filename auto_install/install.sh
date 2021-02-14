@@ -689,7 +689,8 @@ validIP(){
 }
 
 validIPAndNetmask(){
-	local ip=$1
+	local ip
+	ip=$1
 	local stat=1
 	ip="${ip/\//.}"
 
