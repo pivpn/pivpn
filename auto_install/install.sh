@@ -2078,7 +2078,7 @@ confNetwork(){
 			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before.rules
 		fi
 		# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
-		$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" >/dev/null
+		$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" comment vpn >/dev/null
 		$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
 
 		$SUDO ufw reload >/dev/null
