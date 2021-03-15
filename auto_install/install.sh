@@ -540,12 +540,17 @@ installDependentPackages(){
 	local APTLOGFILE
 	APTLOGFILE="$($SUDO mktemp)"
 
-	if command -v debconf-apt-progress > /dev/null; then
-        # shellcheck disable=SC2086
-		$SUDO debconf-apt-progress --logfile "${APTLOGFILE}" -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
-	else
+	if [ "${runUnattended}" = 'true' ]; then
 		# shellcheck disable=SC2086
 		$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
+	else
+		if command -v debconf-apt-progress > /dev/null; then
+			# shellcheck disable=SC2086
+			$SUDO debconf-apt-progress --logfile "${APTLOGFILE}" -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
+		else
+			# shellcheck disable=SC2086
+			$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
+		fi
 	fi
 
 	local FAILED=0
@@ -1238,11 +1243,15 @@ installWireGuard(){
 				exit 1
 			else
 				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel package ${INSTALLED_KERNEL}, however the latest version is ${CANDIDATE_KERNEL}.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
-					if command -v debconf-apt-progress &> /dev/null; then
-						# shellcheck disable=SC2086
-						$SUDO debconf-apt-progress -- ${PKG_MANAGER} upgrade -y
-					else
+					if [ "${runUnattended}" = 'true' ]; then
 						$SUDO ${PKG_MANAGER} upgrade -y
+					else
+						if command -v debconf-apt-progress &> /dev/null; then
+							# shellcheck disable=SC2086
+							$SUDO debconf-apt-progress -- ${PKG_MANAGER} upgrade -y
+						else
+							$SUDO ${PKG_MANAGER} upgrade -y
+						fi
 					fi
 					if (whiptail --title "Reboot" --yesno "You need to reboot after upgrading to run the new kernel.\n\nWould you like to reboot now?" ${r} ${c}); then
 						whiptail --title "Rebooting" --msgbox "The system will now reboot.\n\nWhen you come back, just run the installation command again:\n\n    curl -L https://install.pivpn.io | bash" ${r} ${c}
