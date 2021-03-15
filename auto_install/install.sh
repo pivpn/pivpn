@@ -24,7 +24,6 @@ piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
 dhcpcdFile="/etc/dhcpcd.conf"
-subnetClass="24"
 debianOvpnUserGroup="openvpn:openvpn"
 
 ######## PKG Vars ########
@@ -1055,6 +1054,11 @@ cloneOrUpdateRepos(){
 installPiVPN(){
 	$SUDO mkdir -p /etc/pivpn/
 	askWhichVPN
+
+	# Allow custom subnetClass via unattend setupVARs file. Use default if not provided.
+	if [ -z "$subnetClass" ]; then
+		subnetClass="24"
+	fi
 
 	if [ "$VPN" = "openvpn" ]; then
 
