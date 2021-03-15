@@ -1083,6 +1083,12 @@ installPiVPN(){
 		pivpnDEV="wg0"
 		pivpnNET="10.6.0.0"
 		vpnGw="${pivpnNET/.0.0/.0.1}"
+		# The default MTU should be fine for most users but we allow to set a
+		# custom MTU via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnMTU" ]; then
+			# Using default Wireguard MTU
+			pivpnMTU="1420"
+		fi
 		# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
 		# the user after the installation.
 		ALLOWED_IPS="0.0.0.0/0, ::0/0"
@@ -1096,6 +1102,7 @@ installPiVPN(){
 		confNetwork
 
 		echo "pivpnPROTO=${pivpnPROTO}" >> ${tempsetupVarsFile}
+		echo "pivpnMTU=${pivpnMTU}" >> ${tempsetupVarsFile}
 
 	fi
 
@@ -2047,6 +2054,7 @@ confWireGuard(){
 	echo "[Interface]
 PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
 Address = ${vpnGw}/${subnetClass}
+MTU = ${pivpnMTU}
 ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
 	echo "::: Server config generated."
 }

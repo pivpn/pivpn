@@ -94,11 +94,15 @@ done
 
 NET_REDUCED="${pivpnNET::-2}"
 
-echo -n "[Interface]
+echo "[Interface]
 PrivateKey = $(cat "keys/${CLIENT_NAME}_priv")
-Address = ${NET_REDUCED}.${COUNT}/${subnetClass}
-DNS = ${pivpnDNS1}" > "configs/${CLIENT_NAME}.conf"
+Address = ${NET_REDUCED}.${COUNT}/${subnetClass}" > "configs/${CLIENT_NAME}.conf"
 
+if [ -n "${pivpnMTU}" ]; then
+    echo "MTU = ${pivpnMTU}" >> "configs/${CLIENT_NAME}.conf"
+fi
+
+echo -n "DNS = ${pivpnDNS1}" >> "configs/${CLIENT_NAME}.conf"
 if [ -n "${pivpnDNS2}" ]; then
     echo ", ${pivpnDNS2}" >> "configs/${CLIENT_NAME}.conf"
 else
