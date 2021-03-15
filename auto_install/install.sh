@@ -1063,7 +1063,10 @@ installPiVPN(){
 	if [ "$VPN" = "openvpn" ]; then
 
 		pivpnDEV="tun0"
-		pivpnNET="10.8.0.0"
+		# Allow custom NET via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnNET" ]; then
+			pivpnNET="10.8.0.0"
+		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
 
 		askAboutCustomizing
@@ -1085,7 +1088,10 @@ installPiVPN(){
 		# set the protocol here.
 		pivpnPROTO="udp"
 		pivpnDEV="wg0"
-		pivpnNET="10.6.0.0"
+		# Allow custom NET via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnNET" ]; then
+			pivpnNET="10.6.0.0"
+		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
 		# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
 		# the user after the installation.
