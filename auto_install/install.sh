@@ -1093,9 +1093,12 @@ installPiVPN(){
 			pivpnNET="10.6.0.0"
 		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
-		# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
-		# the user after the installation.
-		ALLOWED_IPS="0.0.0.0/0, ::0/0"
+		# Allow custom allowed IPs via unattend setupVARs file. Use default if not provided.
+		if [ -z "$ALLOWED_IPS" ]; then
+			# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
+			# the user after the installation.
+			ALLOWED_IPS="0.0.0.0/0, ::0/0"
+		fi
 		CUSTOMIZE=0
 
 		installWireGuard
