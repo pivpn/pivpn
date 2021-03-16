@@ -1,6 +1,7 @@
 ![WireGuard + OpenVPN logo](logos.jpg)
 
 **[Is pivpn.io down?](https://status.pivpn.io)** |
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings)
 **Test:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn) |
 **Master:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn)
 
@@ -100,7 +101,7 @@ After the installation is complete you can use the command `pivpn` to manage the
 Feedback & Support
 --------
 
-#### Please read carefully the [issue template](https://github.com/pivpn/pivpn/blob/master/ISSUE_TEMPLATE.md) and the [contributors' guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md), we will close all incomplete issue templates.
+#### Before submitting any new issue or Pull request, please carefully read the [contributors' guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md) also please properly select the correct type of issue and and fill the presented template with all requested data! we will close all incomplete issue templates.
 
 PiVPN is purely community driven, and we are interested in making this script work for as many people as possible, we welcome any feedback on your experience.
 Please be respectful and be aware that this is maintained with our free time!
