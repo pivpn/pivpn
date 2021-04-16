@@ -28,7 +28,7 @@ jobs:
       name: "Shellcheck lint"
       dist: linux
       script:
-        - shellcheck autoinstall/install.sh
+        - shellcheck auto_install/install.sh
         - find scripts/ -type f -exec shellcheck {} \;
 
     - stage: test

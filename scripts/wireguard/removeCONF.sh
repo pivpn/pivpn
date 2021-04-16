@@ -40,7 +40,7 @@ do
     shift
 done
 
-cd /etc/wireguard
+cd /etc/wireguard || exit
 if [ ! -s configs/clients.txt ]; then
     echo "::: There are no clients to remove"
     exit 1
@@ -70,7 +70,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
     re='^[0-9]+$'
     if [[ ${CLIENT_NAME} =~ $re ]] ; then
-        CLIENT_NAME=${LIST[$(($CLIENT_NAME -1))]}
+        CLIENT_NAME=${LIST[$((CLIENT_NAME -1))]}
     fi
 
     if ! grep -q "^${CLIENT_NAME} " configs/clients.txt; then

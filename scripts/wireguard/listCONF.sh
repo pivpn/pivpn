@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /etc/wireguard/configs
+cd /etc/wireguard/configs || exit
 if [ ! -s clients.txt ]; then
     echo "::: There are no clients to list"
     exit 1

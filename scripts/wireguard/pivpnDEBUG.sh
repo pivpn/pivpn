@@ -19,7 +19,7 @@ echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
 sed "s/$pivpnHOST/REDACTED/" < ${setupVars}
 printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
-cd /etc/wireguard/keys
+cd /etc/wireguard/keys || exit
 cp ../wg0.conf ../wg0.tmp
 # Replace every key in the server configuration with just its file name
 for k in *; do
