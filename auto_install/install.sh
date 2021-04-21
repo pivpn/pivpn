@@ -24,7 +24,6 @@ piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
 dhcpcdFile="/etc/dhcpcd.conf"
-subnetClass="24"
 debianOvpnUserGroup="openvpn:openvpn"
 
 ######## PKG Vars ########
@@ -1067,10 +1066,18 @@ installPiVPN(){
 	$SUDO mkdir -p /etc/pivpn/
 	askWhichVPN
 
+	# Allow custom subnetClass via unattend setupVARs file. Use default if not provided.
+	if [ -z "$subnetClass" ]; then
+		subnetClass="24"
+	fi
+
 	if [ "$VPN" = "openvpn" ]; then
 
 		pivpnDEV="tun0"
-		pivpnNET="10.8.0.0"
+		# Allow custom NET via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnNET" ]; then
+			pivpnNET="10.8.0.0"
+		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
 
 		askAboutCustomizing
@@ -1092,17 +1099,24 @@ installPiVPN(){
 		# set the protocol here.
 		pivpnPROTO="udp"
 		pivpnDEV="wg0"
-		pivpnNET="10.6.0.0"
+		# Allow custom NET via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnNET" ]; then
+			pivpnNET="10.6.0.0"
+		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
+		# Allow custom allowed IPs via unattend setupVARs file. Use default if not provided.
+		if [ -z "$ALLOWED_IPS" ]; then
+			# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
+			# the user after the installation.
+			ALLOWED_IPS="0.0.0.0/0, ::0/0"
+		fi
 		# The default MTU should be fine for most users but we allow to set a
 		# custom MTU via unattend setupVARs file. Use default if not provided.
 		if [ -z "$pivpnMTU" ]; then
 			# Using default Wireguard MTU
 			pivpnMTU="1420"
 		fi
-		# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
-		# the user after the installation.
-		ALLOWED_IPS="0.0.0.0/0, ::0/0"
+    
 		CUSTOMIZE=0
 
 		installWireGuard
