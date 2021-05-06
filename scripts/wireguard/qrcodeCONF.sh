@@ -60,7 +60,7 @@ for CLIENT_NAME in "${CLIENTS_TO_SHOW[@]}"; do
     if grep -qw "${CLIENT_NAME}" clients.txt; then
         echo -e "::: Showing client \e[1m${CLIENT_NAME}\e[0m below"
         echo "====================================================================="
-        qrencode -t ansiutf8 < "${CLIENT_NAME}.conf"
+        qrencode -t ansi256 < "${CLIENT_NAME}.conf"
         echo "====================================================================="
     else
         echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
