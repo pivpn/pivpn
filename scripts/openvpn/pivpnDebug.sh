@@ -31,7 +31,7 @@ echo -e "::::\t\t\e[4mSelf check\e[0m\t\t ::::"
 /opt/pivpn/self_check.sh ${VPN}
 printf "=============================================\n"
 echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
-echo -e ":::: \e[1mhttps://github.com/pivpn/pivpn/wiki/FAQ\e[0m"
+echo -e ":::: \e[1mhttps://docs.pivpn.io/faq\e[0m"
 printf "=============================================\n"
 echo -e "::::      \e[4mSnippet of the server log\e[0m      ::::"
 OVPNLOG="$(tail -n 20 /var/log/openvpn.log)"
