@@ -13,7 +13,9 @@ source "${setupVars}"
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mLatest commit\e[0m\t\t ::::"
-git --git-dir /usr/local/src/pivpn/.git log -n 1
+echo -n "Branch: "
+git --git-dir /usr/local/src/pivpn/.git rev-parse --abbrev-ref HEAD
+git --git-dir /usr/local/src/pivpn/.git log -n 1 --format='Commit: %H%nAuthor: %an%nDate: %ad%nSummary: %s'
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
 sed "s/$pivpnHOST/REDACTED/" < ${setupVars}
@@ -49,7 +51,7 @@ echo -e "::::\t\t\e[4mSelf check\e[0m\t\t ::::"
 /opt/pivpn/self_check.sh ${VPN}
 printf "=============================================\n"
 echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
-echo -e ":::: \e[1mhttps://github.com/pivpn/pivpn/wiki/FAQ\e[0m"
+echo -e ":::: \e[1mhttps://docs.pivpn.io/faq\e[0m"
 printf "=============================================\n"
 echo -e ":::: \e[1mWARNING\e[0m: This script should have automatically masked sensitive       ::::"
 echo -e ":::: information, however, still make sure that \e[4mPrivateKey\e[0m, \e[4mPublicKey\e[0m      ::::"
