@@ -108,7 +108,7 @@ Please be respectful and be aware that this is maintained with our free time!
 
 for community support or general questions.
 Feel free to post on our subreddit <https://www.reddit.com/r/pivpn/>
-You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC
+You can also join #pivpn on [libera.chat](https://libera.chat) IRC network
 
 For code related issues, code contributions, feature requests, feel free to open an issue here at github.
 We will classify the issues the best we can to keep things sorted.
