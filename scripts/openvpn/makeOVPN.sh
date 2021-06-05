@@ -25,7 +25,7 @@ helpFunc() {
     echo "::: Commands:"
     echo ":::  [none]               Interactive mode"
     echo ":::  nopass               Create a client without a password"
-    echo ":::  -n,--name            Name for the Client (default: '"$(hostname)"')"
+    echo ":::  -n,--name            Name for the Client (default: \"$(hostname)\")"
     echo ":::  -p,--password        Password for the Client (no default)"
     echo ":::  -d,--days            Expire the certificate after specified number of days (default: 1080)"
     echo ":::  -b,--bitwarden       Create and save a client through Bitwarden"
@@ -133,7 +133,7 @@ function useBitwarden() {
     # login and unlock vault
     printf "****Bitwarden Login****"
     printf "\n"
-    SESSION_KEY=`bw login --raw`
+    SESSION_KEY=$(bw login --raw)
     export BW_SESSION=$SESSION_KEY
     printf "Successfully Logged in!"
     printf "\n"
@@ -168,7 +168,7 @@ function useBitwarden() {
     printf "Creating a PiVPN item for your vault..."
     printf "\n"
     # create a new item for your PiVPN Password
-    PASSWD=`bw generate -usln --length $LENGTH`
+    PASSWD=$(bw generate -usln --length $LENGTH)
     bw get template item | jq '.login.type = "1"'| jq '.name = "PiVPN"' | jq -r --arg NAME "$NAME" '.login.username = $NAME' | jq -r --arg PASSWD "$PASSWD" '.login.password = $PASSWD' |  bw encode | bw create item
     bw logout
 
@@ -422,7 +422,7 @@ fi
 cidrToMask(){
 	# Source: https://stackoverflow.com/a/20767392
 	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
-	[ $1 -gt 1 ] && shift $1 || shift
+	shift $1
 	echo ${1-0}.${2-0}.${3-0}.${4-0}
 }
 

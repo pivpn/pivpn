@@ -1,6 +1,7 @@
 ![WireGuard + OpenVPN logo](logos.jpg)
 
-**[Is pivpn.io down?](https://status.pivpn.io)** |
+**[Is pivpn.io down?](https://stats.uptimerobot.com/8X64yTjrJO)** |
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings)
 **Test:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn) |
 **Master:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn)
 
@@ -107,7 +108,7 @@ Please be respectful and be aware that this is maintained with our free time!
 
 for community support or general questions.
 Feel free to post on our subreddit <https://www.reddit.com/r/pivpn/>
-You can also join #pivpn <ircs://freenode/pivpn> on freenode in IRC
+You can also join #pivpn on [libera.chat](https://libera.chat) IRC network
 
 For code related issues, code contributions, feature requests, feel free to open an issue here at github.
 We will classify the issues the best we can to keep things sorted.

@@ -24,12 +24,10 @@ piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
 dhcpcdFile="/etc/dhcpcd.conf"
-subnetClass="24"
 debianOvpnUserGroup="openvpn:openvpn"
 
 ######## PKG Vars ########
 PKG_MANAGER="apt-get"
-PKG_CACHE="/var/lib/apt/lists/"
 ### FIXME: quoting UPDATE_PKG_CACHE and PKG_INSTALL hangs the script, shellcheck SC2086
 UPDATE_PKG_CACHE="${PKG_MANAGER} update -y"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
@@ -439,8 +437,10 @@ preconfigurePackages(){
 		BASE_DEPS+=(dhcpcd5)
 	fi
 
-	AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
 	DPKG_ARCH="$(dpkg --print-architecture)"
+
+	AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	OPENVPN_SUPPORT=0
 	NEED_OPENVPN_REPO=0
 
 	# We require OpenVPN 2.4 or later for ECC support. If not available in the
@@ -462,6 +462,7 @@ preconfigurePackages(){
 	fi
 
 	AVAILABLE_WIREGUARD="$(apt-cache policy wireguard | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	WIREGUARD_SUPPORT=0
 
 	# If a wireguard kernel object is found and is part of any installed package, then
 	# it has not been build via DKMS or manually (installing via wireguard-dkms does not
@@ -535,14 +536,20 @@ installDependentPackages(){
 		fi
 	done
 
-	local APTLOGFILE="$($SUDO mktemp)"
+	local APTLOGFILE
+	APTLOGFILE="$($SUDO mktemp)"
 
-	if command -v debconf-apt-progress > /dev/null; then
-        # shellcheck disable=SC2086
-		$SUDO debconf-apt-progress --logfile "${APTLOGFILE}" -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
-	else
+	if [ "${runUnattended}" = 'true' ]; then
 		# shellcheck disable=SC2086
 		$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
+	else
+		if command -v debconf-apt-progress > /dev/null; then
+			# shellcheck disable=SC2086
+			$SUDO debconf-apt-progress --logfile "${APTLOGFILE}" -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
+		else
+			# shellcheck disable=SC2086
+			$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
+		fi
 	fi
 
 	local FAILED=0
@@ -685,7 +692,8 @@ validIP(){
 }
 
 validIPAndNetmask(){
-	local ip=$1
+	local ip
+	ip=$1
 	local stat=1
 	ip="${ip/\//.}"
 
@@ -764,9 +772,11 @@ getStaticIPv4Settings() {
 			echo "::: Skipping setting static IP address"
 		fi
 
-		echo "dhcpReserv=${dhcpReserv}" >> ${tempsetupVarsFile}
-		echo "IPv4addr=${IPv4addr}" >> ${tempsetupVarsFile}
-		echo "IPv4gw=${IPv4gw}" >> ${tempsetupVarsFile}
+		{
+		echo "dhcpReserv=${dhcpReserv}"
+		echo "IPv4addr=${IPv4addr}"
+		echo "IPv4gw=${IPv4gw}"
+		} >> ${tempsetupVarsFile}
 		return
 	fi
 
@@ -1056,10 +1066,18 @@ installPiVPN(){
 	$SUDO mkdir -p /etc/pivpn/
 	askWhichVPN
 
+	# Allow custom subnetClass via unattend setupVARs file. Use default if not provided.
+	if [ -z "$subnetClass" ]; then
+		subnetClass="24"
+	fi
+
 	if [ "$VPN" = "openvpn" ]; then
 
 		pivpnDEV="tun0"
-		pivpnNET="10.8.0.0"
+		# Allow custom NET via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnNET" ]; then
+			pivpnNET="10.8.0.0"
+		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
 
 		askAboutCustomizing
@@ -1081,11 +1099,24 @@ installPiVPN(){
 		# set the protocol here.
 		pivpnPROTO="udp"
 		pivpnDEV="wg0"
-		pivpnNET="10.6.0.0"
+		# Allow custom NET via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnNET" ]; then
+			pivpnNET="10.6.0.0"
+		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
-		# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
-		# the user after the installation.
-		ALLOWED_IPS="0.0.0.0/0, ::0/0"
+		# Allow custom allowed IPs via unattend setupVARs file. Use default if not provided.
+		if [ -z "$ALLOWED_IPS" ]; then
+			# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
+			# the user after the installation.
+			ALLOWED_IPS="0.0.0.0/0, ::0/0"
+		fi
+		# The default MTU should be fine for most users but we allow to set a
+		# custom MTU via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnMTU" ]; then
+			# Using default Wireguard MTU
+			pivpnMTU="1420"
+		fi
+    
 		CUSTOMIZE=0
 
 		installWireGuard
@@ -1096,13 +1127,16 @@ installPiVPN(){
 		confNetwork
 
 		echo "pivpnPROTO=${pivpnPROTO}" >> ${tempsetupVarsFile}
+		echo "pivpnMTU=${pivpnMTU}" >> ${tempsetupVarsFile}
 
 	fi
 
-	echo "pivpnDEV=${pivpnDEV}" >> ${tempsetupVarsFile}
-	echo "pivpnNET=${pivpnNET}" >> ${tempsetupVarsFile}
-	echo "subnetClass=${subnetClass}" >> ${tempsetupVarsFile}
-	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\"" >> ${tempsetupVarsFile}
+	{
+	echo "pivpnDEV=${pivpnDEV}"
+	echo "pivpnNET=${pivpnNET}"
+	echo "subnetClass=${subnetClass}"
+	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\""
+	} >> ${tempsetupVarsFile}
 }
 
 askWhichVPN(){
@@ -1230,11 +1264,15 @@ installWireGuard(){
 				exit 1
 			else
 				if (whiptail --title "Install WireGuard" --yesno "Your Raspberry Pi is running kernel package ${INSTALLED_KERNEL}, however the latest version is ${CANDIDATE_KERNEL}.\n\nInstalling WireGuard requires the latest kernel, so to continue, first you need to upgrade all packages, then reboot, and then run the script again.\n\nProceed to the upgrade?" ${r} ${c}); then
-					if command -v debconf-apt-progress &> /dev/null; then
-						# shellcheck disable=SC2086
-						$SUDO debconf-apt-progress -- ${PKG_MANAGER} upgrade -y
-					else
+					if [ "${runUnattended}" = 'true' ]; then
 						$SUDO ${PKG_MANAGER} upgrade -y
+					else
+						if command -v debconf-apt-progress &> /dev/null; then
+							# shellcheck disable=SC2086
+							$SUDO debconf-apt-progress -- ${PKG_MANAGER} upgrade -y
+						else
+							$SUDO ${PKG_MANAGER} upgrade -y
+						fi
 					fi
 					if (whiptail --title "Reboot" --yesno "You need to reboot after upgrading to run the new kernel.\n\nWould you like to reboot now?" ${r} ${c}); then
 						whiptail --title "Rebooting" --msgbox "The system will now reboot.\n\nWhen you come back, just run the installation command again:\n\n    curl -L https://install.pivpn.io | bash" ${r} ${c}
@@ -1254,7 +1292,7 @@ installWireGuard(){
 		echo "::: Installing WireGuard from Debian package... "
 
 		if [ -z "$AVAILABLE_WIREGUARD" ]; then
-			echo "::: Adding Raspbian repository... "
+			echo "::: Adding Raspbian Bullseye repository... "
 			echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
 			# Do not upgrade packages from the bullseye repository except for wireguard
@@ -1266,7 +1304,13 @@ installWireGuard(){
 		fi
 
 		# qrencode is used to generate qrcodes from config file, for use with mobile clients
-		PIVPN_DEPS=(raspberrypi-kernel-headers wireguard-tools wireguard-dkms qrencode)
+		PIVPN_DEPS=(wireguard-tools qrencode)
+
+		if [ "$WIREGUARD_BUILTIN" -eq 0 ]; then
+			# Explicitly install the module if not built-in
+			PIVPN_DEPS+=(raspberrypi-kernel-headers wireguard-dkms)
+		fi
+
 		installDependentPackages PIVPN_DEPS[@]
 
 	elif [ "$PLAT" = "Debian" ]; then
@@ -1274,7 +1318,7 @@ installWireGuard(){
 		echo "::: Installing WireGuard from Debian package... "
 
 		if [ -z "$AVAILABLE_WIREGUARD" ]; then
-			echo "::: Adding Debian repository... "
+			echo "::: Adding Debian Bullseye repository... "
 			echo "deb https://deb.debian.org/debian/ bullseye main" | $SUDO tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
 
 			printf 'Package: *\nPin: release n=bullseye\nPin-Priority: -1\n\nPackage: wireguard wireguard-dkms wireguard-tools\nPin: release n=bullseye\nPin-Priority: 100\n' | $SUDO tee /etc/apt/preferences.d/pivpn-limit-bullseye > /dev/null
@@ -1737,9 +1781,11 @@ askEncryption(){
 			fi
 		fi
 
-		echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> ${tempsetupVarsFile}
-		echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
-		echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
+		{
+		echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+		echo "pivpnENCRYPT=${pivpnENCRYPT}"
+		echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
+		} >> ${tempsetupVarsFile}
 		return
 	fi
 
@@ -1747,9 +1793,11 @@ askEncryption(){
 		if [ "$VPN" = "openvpn" ]; then
 			TWO_POINT_FOUR=1
 			pivpnENCRYPT=256
-			echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> ${tempsetupVarsFile}
-			echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
-			echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
+			{
+			echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+			echo "pivpnENCRYPT=${pivpnENCRYPT}"
+			echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
+			} >> ${tempsetupVarsFile}
 			return
 		fi
 	fi
@@ -1782,15 +1830,17 @@ askEncryption(){
 		USE_PREDEFINED_DH_PARAM=0
 	fi
 
-	echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}" >> ${tempsetupVarsFile}
-	echo "pivpnENCRYPT=${pivpnENCRYPT}" >> ${tempsetupVarsFile}
-	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}" >> ${tempsetupVarsFile}
+	{
+	echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+	echo "pivpnENCRYPT=${pivpnENCRYPT}"
+	echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
+	} >> ${tempsetupVarsFile}
 }
 
 cidrToMask(){
 	# Source: https://stackoverflow.com/a/20767392
 	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
-	[ $1 -gt 1 ] && shift $1 || shift
+	shift $1
 	echo ${1-0}.${2-0}.${3-0}.${4-0}
 }
 
@@ -2047,6 +2097,7 @@ confWireGuard(){
 	echo "[Interface]
 PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
 Address = ${vpnGw}/${subnetClass}
+MTU = ${pivpnMTU}
 ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
 	echo "::: Server config generated."
 }
@@ -2078,7 +2129,7 @@ confNetwork(){
 			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before.rules
 		fi
 		# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
-		$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" >/dev/null
+		$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" comment allow-${VPN} >/dev/null
 		$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
 
 		$SUDO ufw reload >/dev/null

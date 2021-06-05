@@ -4,6 +4,19 @@ This file has the objective of describing the major changes for each merge from 
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+## May 7th 2021
+
+General code quality fixes
+ - #1253, #1254, #1256, #1272
+Disabled progress bar when running unattended
+ - #1276
+Added wireguard MTU support when setting up unattended
+ - #1278
+Support for multiple setupVars while via unattended setup
+- #1279
+Fix for currupted QR code display in multiple fonts
+ - #1305
+
 ## Jan 26th 2021
 
 Fixed: 
