@@ -1129,6 +1129,13 @@ installPiVPN(){
 		echo "pivpnPROTO=${pivpnPROTO}" >> ${tempsetupVarsFile}
 		echo "pivpnMTU=${pivpnMTU}" >> ${tempsetupVarsFile}
 
+		# Write PERSISTENTKEEPALIVE if provided via unattended file
+		# May also be added manually to /etc/pivpn/wireguard/setupVars.conf
+		# post installation to be used for client profile generation
+		if [ "$pivpnPERSISTENTKEEPALIVE" ]; then
+			echo "pivpnPERSISTENTKEEPALIVE=${pivpnPERSISTENTKEEPALIVE}" >> ${tempsetupVarsFile}
+		fi
+
 	fi
 
 	{

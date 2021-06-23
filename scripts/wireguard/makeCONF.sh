@@ -120,6 +120,10 @@ PublicKey = $(cat keys/server_pub)
 PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 Endpoint = ${pivpnHOST}:${pivpnPORT}
 AllowedIPs = ${ALLOWED_IPS}" >> "configs/${CLIENT_NAME}.conf"
+
+if [ -n "${pivpnPERSISTENTKEEPALIVE}" ]; then
+    echo "PersistentKeepalive = ${pivpnPERSISTENTKEEPALIVE}" >> "configs/${CLIENT_NAME}.conf"
+fi
 echo "::: Client config generated"
 
 echo "### begin ${CLIENT_NAME} ###
