@@ -1,10 +1,15 @@
 ![WireGuard + OpenVPN logo](logos.jpg)
 
-**[Is pivpn.io down?](https://stats.uptimerobot.com/8X64yTjrJO)** |
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings)
-**Test:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn) |
-**Master:** [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn)
+[![Website shields.io](https://img.shields.io/website-up-down-green-red/https/pivpn.io.svg)](http://shields.io/) |
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/pivpn/pivpn/graphs/commit-activity) |
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings) |
+[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn) |
+[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn) |
+[![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
 
+
+
+**[pivpn.io status page](https://stats.uptimerobot.com/8X64yTjrJO)**  | **[PiVPN Website](https://pivpn.io)** | **[Documentation](https://docs.pivpn.io)**
 About
 -----
 
@@ -13,6 +18,7 @@ This is a set of shell scripts initially developed by **@0-kaladin** that serve 
 into a VPN server using two free, open-source protocols:
   * [WireGuard](https://www.wireguard.com/)
   * [OpenVPN](https://openvpn.net)
+
 
 Have you been looking for a good guide or tutorial for setting up a VPN server on a Raspberry Pi or Ubuntu based server?  
 Run this script and you don't need a guide or tutorial, this will do it all for you, in a fraction of the time and with hardened security settings in place by default.  
@@ -71,7 +77,7 @@ bash pivpn/auto_install/install.sh
 
 **To install from Test/Development branch**
 
-Check our [Wiki Page](https://github.com/pivpn/pivpn/wiki#testing)
+`curl -L https://test.pivpn.io | TESTING= bash`
 
 **How it works**
 
@@ -96,10 +102,12 @@ Finally, if you are using RSA, the script will take some time to build the serve
 
 The script will also make some changes to your system to allow it to forward internet traffic and allow VPN connections through the Pi's firewall. When the script informs you that it has finished configuring PiVPN, it will ask if you want to reboot. I have it where you do not need to reboot when done but it also can't hurt.
 
-After the installation is complete you can use the command `pivpn` to manage the server. Have a look at the [OpenVPN](https://github.com/pivpn/pivpn/wiki/OpenVPN) or [WireGuard](https://github.com/pivpn/pivpn/wiki/WireGuard) wiki for some example commands, connection instructions, FAQs, [troubleshooting steps](https://github.com/pivpn/pivpn/wiki/FAQ#how-do-i-troubleshoot-connection-issues).
+After the installation is complete you can use the command `pivpn` to manage the server. Have a look at the [OpenVPN](https://docs.pivpn.io/openvpn.html) or [WireGuard](https://docs.pivpn.io/wireguard.html) documentation for some example commands, connection instructions, FAQs, [troubleshooting steps](https://docs.pivpn.io/faq.html#how-do-i-troubleshoot-connection-issues).
 
 Feedback & Support
 --------
+
+Please check our documentation at: https://docs.pivpn.io
 
 #### Before submitting any new issue or Pull request, please carefully read the [contributors' guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md) also please properly select the correct type of issue and and fill the presented template with all requested data! we will close all incomplete issue templates.
 
