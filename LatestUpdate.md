@@ -4,6 +4,12 @@ This file has the objective of describing the major changes for each merge from 
 
 Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
 
+
+## August 5th 2021
+
+- Added support for persistent keepalive
+- General documentation and code quality updates
+
 ## May 7th 2021
 
 General code quality fixes
@@ -19,7 +25,7 @@ Fix for currupted QR code display in multiple fonts
 
 ## Jan 26th 2021
 
-Fixed: 
+Fixed:
   - #1231 Return proper exit codes
 Improvements
   - First implementation of Automated testing with travisCI
@@ -33,7 +39,7 @@ Improvements
   - #1204 Package cache update not workig
 - New Features
   - #1111 Possibility to turn on/off single wireguard client configs
-  - #1177 Possibility to change AllowedIPs 
+  - #1177 Possibility to change AllowedIPs
 - English corrections
 
 ## Nov 4th 2020
@@ -111,7 +117,7 @@ tested and added support on Ubuntu 16.04 & 18.08
   * added kernel headers to dependencies as its requred for wireguard-dkms
 unattended install
   * When user is provided and doest exist, it will create one without password set
-  * Use metapackage to install kernel headers on Ubuntu 
+  * Use metapackage to install kernel headers on Ubuntu
 
 
 ## Jan 8th 2020
