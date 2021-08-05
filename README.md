@@ -1,15 +1,17 @@
-![WireGuard + OpenVPN logo](logos.jpg)
+![WireGuard + OpenVPN logo](logos.png)
 
-[![Website shields.io](https://img.shields.io/website-up-down-green-red/https/pivpn.io.svg)](http://shields.io/) |
-[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/pivpn/pivpn/graphs/commit-activity) |
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings) |
-[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn) |
-[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn) |
+[![Website shields.io](https://img.shields.io/website-up-down-green-red/https/pivpn.io.svg)](http://shields.io/)
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/pivpn/pivpn/graphs/commit-activity)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings)
+[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn)
+[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn)
 [![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
 
 
 
 **[pivpn.io status page](https://stats.uptimerobot.com/8X64yTjrJO)**  | **[PiVPN Website](https://pivpn.io)** | **[Documentation](https://docs.pivpn.io)**
+
+
 About
 -----
 
@@ -77,7 +79,9 @@ bash pivpn/auto_install/install.sh
 
 **To install from Test/Development branch**
 
-`curl -L https://test.pivpn.io | TESTING= bash`
+```shell
+curl -L https://test.pivpn.io | TESTING= bash
+```
 
 **How it works**
 
