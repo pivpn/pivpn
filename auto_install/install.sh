@@ -263,14 +263,14 @@ distroCheck(){
 		source /etc/os-release
 		PLAT=$(awk '{print $1}' <<< "$NAME")
 		VER="$VERSION_ID"
-		declare -A VER_MAP=(["9"]="stretch" ["10"]="buster" ["16.04"]="xenial" ["18.04"]="bionic" ["20.04"]="focal")
+		declare -A VER_MAP=(["9"]="stretch" ["10"]="buster" ["11"]="bullseye" ["16.04"]="xenial" ["18.04"]="bionic" ["20.04"]="focal")
 		OSCN=${VER_MAP["${VER}"]}
 	fi
 
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
 			case ${OSCN} in
-				stretch|buster|xenial|bionic|focal)
+				stretch|buster|bullseye|xenial|bionic|focal)
 				:
 				;;
 				*)
