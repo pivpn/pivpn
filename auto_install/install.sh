@@ -2151,10 +2151,13 @@ confNetwork(){
 }
 
 confLogging() {
+	# Pre-create rsyslog/logrotate config directories if missing, to assure logs are handled as expected when those are installed at a later time
+	$SUDO mkdir -p etc/{rsyslog,logrotate}.d 
+
 	echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
 if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
-  echo "/var/log/openvpn.log
+	echo "/var/log/openvpn.log
 {
 	rotate 4
 	weekly
@@ -2171,7 +2174,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 	# Restart the logging service
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
-			$SUDO systemctl restart rsyslog.service || true
+			$SUDO systemctl -q is-active rsyslog.service && $SUDO systemctl restart rsyslog.service
 		;;
 	esac
 }
