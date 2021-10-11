@@ -2152,7 +2152,7 @@ confNetwork(){
 
 confLogging() {
 	# Pre-create rsyslog/logrotate config directories if missing, to assure logs are handled as expected when those are installed at a later time
-	$SUDO mkdir -p etc/{rsyslog,logrotate}.d 
+	$SUDO mkdir -p /etc/{rsyslog,logrotate}.d 
 
 	echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
 if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
