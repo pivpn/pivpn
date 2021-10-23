@@ -1,5 +1,7 @@
 ![Pivpn Banner](pivpnbanner.png)
 
+![Logos](logos.jpg)
+
 **[PIVPN.IO](https://pivpn.io)** | **[DOCUMENTATION](https://docs.pivpn.io)**
 
 
