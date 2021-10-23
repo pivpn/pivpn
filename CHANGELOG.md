@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## Octover 23rd 2021
+## October 23rd 2021
 
 - Fixed errors on logging configuration
   - Closes [#1360](#1360)
