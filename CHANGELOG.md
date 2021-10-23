@@ -1,9 +1,13 @@
-# Information of Latest updates
+# Change Log
+All notable changes to this project will be documented in this file.
 
-This file has the objective of describing the major changes for each merge from test to master in a similar way as a patch release notes.
+## Octover 23rd 2021
 
-Everytime Test branch is merged into master, a new entry should be created with the date and changes being merged.
-
+- Fixed errors on logging configuration
+  - Closes [#1360](#1360)
+- Fixes typos
+- Updates to README.md
+- Changed LatestUpdate.md to CHANGELOG.md
 
 ## August 5th 2021
 

@@ -1,15 +1,17 @@
-![WireGuard + OpenVPN logo](logos.png)
+![Pivpn Banner](pivpnbanner.png)
 
-[![Website shields.io](https://img.shields.io/website-up-down-green-red/https/pivpn.io.svg)](http://shields.io/)
+**[PIVPN.IO](https://pivpn.io)** | **[DOCUMENTATION](https://docs.pivpn.io)**
+
+
+[![Website shields.io](https://img.shields.io/website-up-down-green-red/https/pivpn.io.svg)](https://pivpn.io/)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/pivpn/pivpn/graphs/commit-activity)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings)
 [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn)
 [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn)
 [![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
+[![Generic badge](https://img.shields.io/badge/status-page-blue.svg)](https://stats.uptimerobot.com/8X64yTjrJO)
 
 
-
-**[pivpn.io status page](https://stats.uptimerobot.com/8X64yTjrJO)**  | **[PiVPN Website](https://pivpn.io)** | **[Documentation](https://docs.pivpn.io)**
 
 
 About
