@@ -543,13 +543,8 @@ installDependentPackages(){
 		# shellcheck disable=SC2086
 		$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
 	else
-		if command -v debconf-apt-progress > /dev/null; then
-			# shellcheck disable=SC2086
-			$SUDO debconf-apt-progress --logfile "${APTLOGFILE}" -- ${PKG_INSTALL} "${TO_INSTALL[@]}"
-		else
-			# shellcheck disable=SC2086
-			$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
-		fi
+		# shellcheck disable=SC2086
+		$SUDO ${PKG_INSTALL} "${TO_INSTALL[@]}"
 	fi
 
 	local FAILED=0
