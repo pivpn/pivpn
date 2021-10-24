@@ -7,7 +7,7 @@
 #
 # Install with this command (from your Pi):
 #
-# curl -L https://install.pivpn.io | bash
+# curl -sSfL https://install.pivpn.io | bash
 # Make sure you have `curl` installed
 
 
@@ -34,7 +34,7 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar wget curl grep dnsutils whiptail net-tools bsdmainutils)
+BASE_DEPS=(git tar curl grep dnsutils whiptail net-tools bsdmainutils)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
@@ -389,7 +389,7 @@ verifyFreeDiskSpace(){
 		echo "::: You only have ${existing_free_kilobytes} KiloBytes free."
 		echo "::: If this is a new install on a Raspberry Pi you may need to expand your disk."
 		echo "::: Try running 'sudo raspi-config', and choose the 'expand file system option'"
-		echo "::: After rebooting, run this installation again. (curl -L https://install.pivpn.io | bash)"
+		echo "::: After rebooting, run this installation again. (curl -sSfL https://install.pivpn.io | bash)"
 
 		echo "Insufficient free space, exiting..."
 		exit 1
@@ -1623,7 +1623,7 @@ askCustomDomain(){
 askPublicIPOrDNS(){
 	if ! IPv4pub=$(dig +short myip.opendns.com @208.67.222.222) || ! validIP "$IPv4pub"; then
 		echo "dig failed, now trying to curl checkip.amazonaws.com"
-		if ! IPv4pub=$(curl -s https://checkip.amazonaws.com) || ! validIP "$IPv4pub"; then
+		if ! IPv4pub=$(curl -sSf https://checkip.amazonaws.com) || ! validIP "$IPv4pub"; then
 			echo "checkip.amazonaws.com failed, please check your internet connection/DNS"
 			exit 1
 		fi
@@ -1832,7 +1832,7 @@ confOpenVPN(){
 	fi
 
 	# Get easy-rsa
-	wget -qO- "${easyrsaRel}" | $SUDO tar xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
+	curl -sSfL "${easyrsaRel}" | $SUDO tar xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
 	if ! test -s /etc/openvpn/easy-rsa/easyrsa; then
 		echo "$0: ERR: Failed to download EasyRSA."
 		exit 1
