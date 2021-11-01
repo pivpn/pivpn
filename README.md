@@ -16,8 +16,7 @@
 
 
 
-About
------
+## About
 
 Visit the [PiVPN](https://pivpn.io) site for more information.
 This is a set of shell scripts initially developed by **@0-kaladin** that serve to easily turn your Raspberry Pi (TM)
@@ -42,8 +41,7 @@ That being said...
 > This will also work on a free-tier Amazon AWS server using Ubuntu or Debian.  I don't want to support every scenario there but getting it to run and install successfully on a free server in the cloud was also important.  
 Many people have untrustworthy ISP's so running on a server elsewhere means you can connect to the VPN from home and your ISP will just see encrypted traffic as your traffic will now be leaving out the Amazon infrastructure.
 
-Prerequisites
--------------
+## Prerequisites
 
 To follow this guide and use the script to setup a VPN, you will need to have
 a Raspberry Pi Model B or later with, an SD or microSD card with Raspbian installed,
@@ -62,20 +60,22 @@ compact headless server without a monitor or keyboard and be able to access it
 even more conveniently.
 
 
-Installation
------------------
+## Installation
 
 **Method 1**
+
 ```Shell
 curl -L https://install.pivpn.io | bash
 ```
 
 **Method 2 (direct link)**
+
 ```Shell
 curl https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh | bash
 ```
 
 **Method 3 (clone repo)**
+
 ```Shell
 git clone https://github.com/pivpn/pivpn.git
 bash pivpn/auto_install/install.sh
@@ -87,7 +87,7 @@ bash pivpn/auto_install/install.sh
 curl -L https://test.pivpn.io | TESTING= bash
 ```
 
-**How it works**
+### How it works
 
 The script will first update your APT repositories, upgrade packages, and install WireGuard (default) or OpenVPN, which will take some time.
 
@@ -112,26 +112,70 @@ The script will also make some changes to your system to allow it to forward int
 
 After the installation is complete you can use the command `pivpn` to manage the server. Have a look at the [OpenVPN](https://docs.pivpn.io/openvpn.html) or [WireGuard](https://docs.pivpn.io/wireguard.html) documentation for some example commands, connection instructions, FAQs, [troubleshooting steps](https://docs.pivpn.io/faq.html#how-do-i-troubleshoot-connection-issues).
 
-Feedback & Support
---------
-
-Please check our documentation at: https://docs.pivpn.io
-
-#### Before submitting any new issue or Pull request, please carefully read the [contributors' guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md) also please properly select the correct type of issue and and fill the presented template with all requested data! we will close all incomplete issue templates.
+## Feedback & Support
 
 PiVPN is purely community driven, and we are interested in making this script work for as many people as possible, we welcome any feedback on your experience.
 Please be respectful and be aware that this is maintained with our free time!
 
-for community support or general questions.
-Feel free to post on our subreddit <https://www.reddit.com/r/pivpn/>
-You can also join #pivpn on [libera.chat](https://libera.chat) IRC network
+### General Guidelines
 
-For code related issues, code contributions, feature requests, feel free to open an issue here at github.
-We will classify the issues the best we can to keep things sorted.
+* Please check our documentation at: https://docs.pivpn.io
+* Please carefully read the [contributors' guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md)
+* Please read the pinned posts on [Github Discussions](https://github.com/pivpn/pivpn/discussions)
+* Please use Github [Github Discussions](https://github.com/pivpn/pivpn/discussions) instead of Issues
+* Please Help us helping you, no ... really, **PLEASE**
+  * Fill the adequate template and provide the requested data
+  * If you can't find adequate template, please ask first in any of our official channels
+* The Github issues page is not intended for general support usage or feature requests
+* PiVPN team may close any Discussion/Issue without any warning if they don't follow the Guidelines
+
+### Official PiVPN Community support
+
+If you have any questions or need any support, feel free to reach out in any of the following platforms
+
+* [Github Discussions](https://github.com/pivpn/pivpn/discussions)
+* Reddit at [r/pivpn](https://www.reddit.com/r/pivpn/)
+* #pivpn at [libera.chat](https://libera.chat) IRC network
+* #pivpn:matrix.org at [matrix.org](https://matrix.org)
 
 
-Related Projects
---------
+### Feature requests
+
+Feature requests are very welcome, and should be done here:
+
+* [Feature requests](https://github.com/pivpn/pivpn/discussions/categories/feature-requests)
+
+### Bug reports
+
+Bug reports can be opened here:
+
+* https://github.com/pivpn/pivpn/issues
+
+If you are not sure or you cannot relate the issue with code/script bug then please reach out first through any of the official communication channels and we will try our best to help and guide you, or move it from discussion to Issues if confirmed to be code related.
+
+## contributions
+
+PiVPN is not taking donations at this time but if you want to show your appreciation, then contribute or leave feedback on suggestions or improvements.
+
+Contributions can come in all kinds of different ways and you don't need to be a developer to be able to help out, here are some ways you can help out:
+
+* Please check the current [issues](https://github.com/pivpn/pivpn/issues) and [discussions](https://github.com/pivpn/pivpn/discussions)
+to see where you can help.
+* Help improving [documentation](https://github.com/pivpn/docs), either with new content or improving the existing writing.
+* Testing!! Run pivpn in different ways, different systems, different configurations and let us know if you find something!
+* Assisting other users in any of our official channels is also very welcomed
+
+
+Still if you have found this tool to be useful and want to Donate instead, then consider the following sources.
+
+1. [OpenVPNSetup](https://github.com/StarshipEngineer/OpenVPN-Setup)
+2. [pi-hole.net](https://github.com/pi-hole/pi-hole)
+3. [OpenVPN](https://openvpn.net)
+4. [WireGuard](https://www.wireguard.com/)
+5. [EFF](https://www.eff.org/)
+
+### Related Projects
+
 [StarshipEngineer/OpenVPN-Setup](https://github.com/StarshipEngineer/OpenVPN-Setup)
 Shell script to set up a OpenVPN server.
 
@@ -143,27 +187,3 @@ The foundation for all open-source VPN projects.
 
 [WireGuard](https://www.wireguard.com/)
 *An extremely simple yet fast and modern VPN that utilizes state-of-the-art cryptography.*
-
-Contributions
--------------
-
-Please check the current issues to see where you can help. If you have any
-feature ideas or requests, or are interested in adding your ideas to it,
-testing it on other platforms, please comment or leave a pull request.
-If you contribute often I can add you as a member of the PiVPN project.
-I will be happy to work with you!
-
-If you have found this tool to be useful and want to Donate then consider the following
-sources.
-
-1. I began this as a rough merger of the code at [OpenVPNSetup](https://github.com/StarshipEngineer/OpenVPN-Setup) who you can donate to at [this PayPal link](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=K99QGVL7KA6ZL)
-
-2. And the code at [pi-hole.net](https://github.com/pi-hole/pi-hole)
-
-3. Of course there is [OpenVPN](https://openvpn.net)
-
-4. Also [WireGuard](https://www.wireguard.com/)
-
-5. And as always the ever vigilant [EFF](https://www.eff.org/)
-
-PiVPN is not taking donations at this time but if you want to show your appreciation, then contribute or leave feedback on suggestions or improvements.
