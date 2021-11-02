@@ -10,13 +10,13 @@ _pivpn()
     if [ "${#COMP_WORDS[@]}" -eq 2 ]
     then
         if [[ ${cur} == -* ]] ; then
-            COMPREPLY=( $(compgen -W "${dashopts}" -- "${cur}") )
+            COMPREPLY=( "$(compgen -W "${dashopts}" -- "${cur}")" )
         else
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            COMPREPLY=( "$(compgen -W "${opts}" -- "${cur}")" )
         fi
     elif [[ ( "$prev" == "add" || "$prev" == "-a" ) && "${#COMP_WORDS[@]}" -eq 3 ]]
     then
-        COMPREPLY=( $(compgen -W "nopass" -- "${cur}") )
+        COMPREPLY=( "$(compgen -W "nopass" -- "${cur}")" )
     fi
     return 0
 }
