@@ -61,7 +61,7 @@ if [ ! -f "${setupVars}" ]; then
 	echo "::: Missing setup vars file!"
 	exit 1
 fi
- 
+
 # shellcheck disable=SC1090
 source "${setupVars}"
 
@@ -97,9 +97,11 @@ removeAll(){
 
 	if [ "$USING_UFW" -eq 1 ]; then
 
-    ### FIXME: SC2154
+    ### Ignoring SC2154, value sourced from setupVars file
+		# shellcheck disable=SC2154
 		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
-    ### FIXME: SC2154
+    ### Ignoring SC2154, value sourced from setupVars file
+		# shellcheck disable=SC2154
 		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any > /dev/null
 		sed "/-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/d" -i /etc/ufw/before.rules
 		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
@@ -199,7 +201,8 @@ removeAll(){
 		rm -f /etc/wireguard/wg0.conf
 		rm -rf /etc/wireguard/configs
 		rm -rf /etc/wireguard/keys
-    ### FIXME SC2154
+    ### Ignoring SC2154, value sourced from setupVars file
+		# shellcheck disable=SC2154
 		rm -rf "$install_home/configs"
 	elif [ "$VPN" = "openvpn" ]; then
 		rm -rf /var/log/*openvpn*
