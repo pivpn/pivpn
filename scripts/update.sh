@@ -42,6 +42,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 scriptusage(){
@@ -70,6 +71,7 @@ updatepivpnscripts(){
       cloneandupdate
     fi
     echo "PiVPN Scripts have been updated"
+# Disabling warning for SC1090
 }
 
 ##Updates scripts using test branch
@@ -92,8 +94,8 @@ updatefromtest(){
 cloneandupdate(){
   git clone "$pivpnrepo" "$pivpnlocalpath"
   cp "${pivpnlocalpath}"/scripts/*.sh "$pivpnscripts"
-  cp "${pivpnlocalpath}"/scripts/$VPN/*.sh "$pivpnscripts"
-  cp "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir"
+  cp "${pivpnlocalpath}"/scripts/"$VPN"/*.sh "$pivpnscripts"
+  cp "${pivpnlocalpath}"/scripts/"$VPN"/bash-completion "$bashcompletiondir"
 }
 
 ##same as cloneandupdate() but from test branch
@@ -103,8 +105,8 @@ cloneupdttest(){
   git -C "$pivpnlocalpath" checkout test
   git -C "$pivpnlocalpath" pull origin test
   cp "${pivpnlocalpath}"/scripts/*.sh "$pivpnscripts"
-  cp "${pivpnlocalpath}"/scripts/$VPN/*.sh "$pivpnscripts"
-  cp "${pivpnlocalpath}"/scripts/$VPN/bash-completion "$bashcompletiondir"
+  cp "${pivpnlocalpath}"/scripts/"$VPN"/*.sh "$pivpnscripts"
+  cp "${pivpnlocalpath}"/scripts/"$VPN"/bash-completion "$bashcompletiondir"
   git -C "$pivpnlocalpath" checkout master
 }
 
