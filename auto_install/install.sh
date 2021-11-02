@@ -621,7 +621,7 @@ fi
 
 if [ "${runUnattended}" = 'true' ]; then
     if [ -z "$IPv4dev" ]; then
-        if [ $interfaceCount -eq 1 ]; then
+        if [ "$interfaceCount" -eq 1 ]; then
             IPv4dev="${availableInterfaces}"
             echo "::: No interface specified, but only ${IPv4dev} is available, using it"
         else
@@ -1111,7 +1111,7 @@ installPiVPN(){
 			# Using default Wireguard MTU
 			pivpnMTU="1420"
 		fi
-    
+
 		CUSTOMIZE=0
 
 		installWireGuard
@@ -1790,8 +1790,8 @@ askEncryption(){
 cidrToMask(){
 	# Source: https://stackoverflow.com/a/20767392
 	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
-	shift $1
-	echo ${1-0}.${2-0}.${3-0}.${4-0}
+	shift "$1"
+	echo "${1-0}"."${2-0}"."${3-0}"."${4-0}"
 }
 
 confOpenVPN(){
@@ -1917,12 +1917,12 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
 	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
 
 	# Apply client DNS settings
-	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'${pivpnDNS1}'\"/' /etc/openvpn/server.conf
+	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'"${pivpnDNS1}"'\"/' /etc/openvpn/server.conf
 
-	if [ -z ${pivpnDNS2} ]; then
+	if [ -z "${pivpnDNS2}" ]; then
 		${SUDOE} sed -i '/\(dhcp-option DNS \)/{n;N;d}' /etc/openvpn/server.conf
 	else
-		${SUDOE} sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'${pivpnDNS2}'\"/' /etc/openvpn/server.conf
+		${SUDOE} sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'"${pivpnDNS2}"'\"/' /etc/openvpn/server.conf
 	fi
 
 	# Set the user encryption key size
@@ -2147,7 +2147,7 @@ confNetwork(){
 
 confLogging() {
 	# Pre-create rsyslog/logrotate config directories if missing, to assure logs are handled as expected when those are installed at a later time
-	$SUDO mkdir -p /etc/{rsyslog,logrotate}.d 
+	$SUDO mkdir -p /etc/{rsyslog,logrotate}.d
 
 	echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
 if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
