@@ -59,6 +59,8 @@ source "${setupVars}"
 
 checkbackupdir(){
 
+		# Disabling shellcheck error $install_home sourced from $setupVars
+		# shellcheck disable=SC2154
     if [[ ! -d $install_home/$backupdir ]]; then
         mkdir -p "$install_home"/"$backupdir"
     fi
