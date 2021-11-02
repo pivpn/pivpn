@@ -10,6 +10,8 @@ if [ ! -f "${setupVars}" ]; then
 	exit 1
 fi
 
+# SC1090 disabled as setupVars file differs from system to system
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 if [ "$VPN" = "wireguard" ]; then
@@ -34,6 +36,8 @@ fi
 
 if [ "$USING_UFW" -eq 0 ]; then
 
+	# Disabled SC Warnings for SC2154, values for variables are sourced from setupVars
+	# shellcheck disable=SC2154
 	if iptables -t nat -C POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule" &> /dev/null; then
 		echo ":: [OK] Iptables MASQUERADE rule set"
 	else
@@ -48,6 +52,8 @@ if [ "$USING_UFW" -eq 0 ]; then
 
 	if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
 
+		# Disabled SC Warnings for SC2154, values for variables are sourced from setupVars
+		# shellcheck disable=SC2154
 		if iptables -C INPUT -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule" &> /dev/null; then
 			echo ":: [OK] Iptables INPUT rule set"
 		else
@@ -63,6 +69,8 @@ if [ "$USING_UFW" -eq 0 ]; then
 
 	if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
 
+		# Disabled SC Warnings for SC2154, values for variables are sourced from setupVars
+		# shellcheck disable=SC2154
 		if iptables -C FORWARD -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule" &> /dev/null; then
 			echo ":: [OK] Iptables FORWARD rule set"
 		else
