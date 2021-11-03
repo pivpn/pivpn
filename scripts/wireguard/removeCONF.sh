@@ -7,6 +7,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 helpFunc(){
@@ -46,13 +47,13 @@ if [ ! -s configs/clients.txt ]; then
     exit 1
 fi
 
-LIST=($(awk '{print $1}' configs/clients.txt))
+mapfile -t LIST < <(awk '{print $1}' configs/clients.txt)
 if [ "${#CLIENTS_TO_REMOVE[@]}" -eq 0 ]; then
     echo -e "::\e[4m  Client list  \e[0m::"
     len=${#LIST[@]}
     COUNTER=1
-    while [ $COUNTER -le ${len} ]; do
-        printf "%0${#len}s) %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
+    while [ $COUNTER -le "${len}" ]; do
+        printf "%0${#len}s) %s\r\n" "${COUNTER}" "${LIST[(($COUNTER-1))]}"
         ((COUNTER++))
     done
 
@@ -109,6 +110,8 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
             # Find all .conf files in the home folder of the user matching the checksum of the
             # config and delete them. '-maxdepth 3' is used to avoid traversing too many folders.
+            # Disabling SC2154, variable sourced externaly and may vary
+            # shellcheck disable=SC2154
             find "${install_home}" -maxdepth 3 -type f -name '*.conf' -print0 | while IFS= read -r -d '' CONFIG; do
                 if sha256sum -c <<< "${REQUESTED}  ${CONFIG}" &> /dev/null; then
                     rm "${CONFIG}"
@@ -119,6 +122,8 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
             echo "::: Successfully deleted ${CLIENT_NAME}"
 
             # If using Pi-hole, remove the client from the hosts file
+            # Disabling SC2154, variable sourced externaly and may vary
+            # shellcheck disable=SC2154
             if [ -f /etc/pivpn/hosts.wireguard ]; then
                 NET_REDUCED="${pivpnNET::-2}"
                 sed "\#${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn#d" -i /etc/pivpn/hosts.wireguard
