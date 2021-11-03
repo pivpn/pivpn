@@ -20,9 +20,6 @@ branches:
     - master
 
 jobs:
-  allow_failures:
-    - stage: lint
-
   include:
     - stage: lint
       name: "Shellcheck lint"
