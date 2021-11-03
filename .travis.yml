@@ -29,7 +29,7 @@ jobs:
       dist: linux
       script:
         - shellcheck auto_install/install.sh
-        - find scripts/ -type f -exec shellcheck {} \;
+        - find scripts/ -type f | xargs shellcheck
 
     - stage: test
       name: "OpenVPN Xenial & Commands"
