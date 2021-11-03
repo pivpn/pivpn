@@ -58,7 +58,7 @@ if [ "$DISPLAY_DISABLED" ]; then
 fi
 
 
-LIST=("$(awk '{print $1}' configs/clients.txt)")
+mapfile -t LIST < <(awk '{print $1}' configs/clients.txt)
 if [ "${#CLIENTS_TO_CHANGE[@]}" -eq 0 ]; then
     echo -e "::\e[4m  Client list  \e[0m::"
     len=${#LIST[@]}

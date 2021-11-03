@@ -7,6 +7,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 helpFunc(){
@@ -55,13 +56,13 @@ if [ "$DISPLAY_DISABLED" ]; then
     exit 1
 fi
 
-LIST=($(awk '{print $1}' configs/clients.txt))
+mapfile -t LIST < <(awk '{print $1}' configs/clients.txt)
 if [ "${#CLIENTS_TO_CHANGE[@]}" -eq 0 ]; then
     echo -e "::\e[4m  Client list  \e[0m::"
     len=${#LIST[@]}
     COUNTER=1
-    while [ $COUNTER -le ${len} ]; do
-        printf "%0${#len}s) %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
+    while [ $COUNTER -le "${len}" ]; do
+        printf "%0${#len}s) %s\r\n" "${COUNTER}" "${LIST[(($COUNTER-1))]}"
         ((COUNTER++))
     done
 
@@ -94,7 +95,7 @@ for CLIENT_NAME in "${CLIENTS_TO_CHANGE[@]}"; do
         if [[ $REPLY =~ ^[Yy]$ ]]; then
 
             # Enable the peer section from the server config
-	    echo "${CLIENT_NAME}" 
+	    echo "${CLIENT_NAME}"
             sed -e "/begin ${CLIENT_NAME}/,/end ${CLIENT_NAME}/ s/#\[disabled\] //" -i wg0.conf
             echo "::: Updated server config"
 
