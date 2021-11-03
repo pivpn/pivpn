@@ -15,6 +15,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 helpFunc() {
@@ -168,7 +169,7 @@ function useBitwarden() {
     printf "Creating a PiVPN item for your vault..."
     printf "\n"
     # create a new item for your PiVPN Password
-    PASSWD=$(bw generate -usln --length $LENGTH)
+    PASSWD=$(bw generate -usln --length "$LENGTH")
     bw get template item | jq '.login.type = "1"'| jq '.name = "PiVPN"' | jq -r --arg NAME "$NAME" '.login.username = $NAME' | jq -r --arg PASSWD "$PASSWD" '.login.password = $PASSWD' |  bw encode | bw create item
     bw logout
 
@@ -205,7 +206,7 @@ function keyPASS() {
 
     #Escape chars in PASSWD
     PASSWD_UNESCAPED="${PASSWD}"
-    PASSWD=$(echo -n ${PASSWD} | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/\$/\\\$/g' -e 's/!/\\!/g' -e 's/\./\\\./g' -e "s/'/\\\'/g" -e 's/"/\\"/g' -e 's/\*/\\\*/g' -e 's/\@/\\\@/g' -e 's/\#/\\\#/g' -e 's/£/\\£/g' -e 's/%/\\%/g' -e 's/\^/\\\^/g' -e 's/\&/\\\&/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/-/\\-/g' -e 's/_/\\_/g' -e 's/\+/\\\+/g' -e 's/=/\\=/g' -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/;/\\;/g' -e 's/:/\\:/g' -e 's/|/\\|/g' -e 's/</\\</g' -e 's/>/\\>/g' -e 's/,/\\,/g' -e 's/?/\\?/g' -e 's/~/\\~/g' -e 's/{/\\{/g' -e 's/}/\\}/g')
+    PASSWD=$(echo -n "${PASSWD}" | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/\$/\\\$/g' -e 's/!/\\!/g' -e 's/\./\\\./g' -e "s/'/\\\'/g" -e 's/"/\\"/g' -e 's/\*/\\\*/g' -e 's/\@/\\\@/g' -e 's/\#/\\\#/g' -e 's/£/\\£/g' -e 's/%/\\%/g' -e 's/\^/\\\^/g' -e 's/\&/\\\&/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/-/\\-/g' -e 's/_/\\_/g' -e 's/\+/\\\+/g' -e 's/=/\\=/g' -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/;/\\;/g' -e 's/:/\\:/g' -e 's/|/\\|/g' -e 's/</\\</g' -e 's/>/\\>/g' -e 's/,/\\,/g' -e 's/?/\\?/g' -e 's/~/\\~/g' -e 's/{/\\{/g' -e 's/}/\\}/g')
 
     #Build the client key and then encrypt the key
 
@@ -222,6 +223,8 @@ EOF
 }
 
 #make sure ovpns dir exists
+# Disabling warning for SC2154, var sourced externaly
+# shellcheck disable=SC2154
 if [ ! -d "$install_home/ovpns" ]; then
     mkdir "$install_home/ovpns"
     chown "$install_user":"$install_user" "$install_home/ovpns"
@@ -267,7 +270,9 @@ else
         STATUS=$(echo "$line" | awk '{print $1}')
 
         if [ "${STATUS}" == "V" ]; then
-            CERT=$(echo "$line" | sed -e 's:.*/CN=::')
+           # Disabling SC2001 as ${variable//search/replace} doesn't go well with regexp
+           # shellcheck disable=SC2001
+           CERT=$(echo "$line" | sed -e 's:.*/CN=::')
             if [ "${CERT}" == "${NAME}" ]; then
                 INUSE="1"
                 break
@@ -422,10 +427,12 @@ fi
 cidrToMask(){
 	# Source: https://stackoverflow.com/a/20767392
 	set -- $(( 5 - ($1 / 8) )) 255 255 255 255 $(( (255 << (8 - ($1 % 8))) & 255 )) 0 0 0
-	shift $1
-	echo ${1-0}.${2-0}.${3-0}.${4-0}
+	shift "$1"
+	echo "${1-0}"."${2-0}"."${3-0}"."${4-0}"
 }
 
+#disabling SC2514, variable sourced externaly
+# shellcheck disable=SC2154
 NET_REDUCED="${pivpnNET::-2}"
 
 # Find an unused number for the last octet of the client IP
@@ -433,6 +440,8 @@ for i in {2..254}; do
     # find returns 0 if the folder is empty, so we create the 'ls -A [...]'
     # exception to stop at the first static IP (10.8.0.2). Otherwise it would
     # cycle to the end without finding and available octet.
+    # disabling SC2514, variable sourced externaly
+    # shellcheck disable=SC2154
     if [ -z "$(ls -A /etc/openvpn/ccd)" ] || ! find /etc/openvpn/ccd -type f -exec grep -q "${NET_REDUCED}.${i}" {} +; then
         COUNT="${i}"
         echo "ifconfig-push ${NET_REDUCED}.${i} $(cidrToMask "$subnetClass")" >> /etc/openvpn/ccd/"${NAME}"
