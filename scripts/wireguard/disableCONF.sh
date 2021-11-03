@@ -7,6 +7,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 helpFunc(){
@@ -57,13 +58,13 @@ if [ "$DISPLAY_DISABLED" ]; then
 fi
 
 
-LIST=($(awk '{print $1}' configs/clients.txt))
+LIST=("$(awk '{print $1}' configs/clients.txt)")
 if [ "${#CLIENTS_TO_CHANGE[@]}" -eq 0 ]; then
     echo -e "::\e[4m  Client list  \e[0m::"
     len=${#LIST[@]}
     COUNTER=1
-    while [ $COUNTER -le ${len} ]; do
-        printf "%0${#len}s) %s\r\n" ${COUNTER} ${LIST[(($COUNTER-1))]}
+    while [ $COUNTER -le "${len}" ]; do
+        printf "%0${#len}s) %s\r\n" "${COUNTER}" "${LIST[(($COUNTER-1))]}"
         ((COUNTER++))
     done
 
