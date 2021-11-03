@@ -7,6 +7,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 helpFunc(){
@@ -46,6 +47,8 @@ while test $# -gt 0; do
     shift
 done
 
+# Disabling SC2154, variables sourced externaly
+# shellcheck disable=SC2154
 # The home folder variable was sourced from the settings file.
 if [ ! -d "${install_home}/configs" ]; then
     mkdir "${install_home}/configs"
@@ -92,17 +95,21 @@ echo "::: Client Keys generated"
 for i in {2..254}; do
     if ! grep -q " $i$" configs/clients.txt; then
         COUNT="$i"
-        echo "${CLIENT_NAME} $(<keys/${CLIENT_NAME}_pub) $(date +%s) ${COUNT}" >> configs/clients.txt
+        echo "${CLIENT_NAME} $(<keys/"${CLIENT_NAME}"_pub) $(date +%s) ${COUNT}" >> configs/clients.txt
         break
     fi
 done
 
+# Disabling SC2154, variables sourced externaly
+# shellcheck disable=SC2154
 NET_REDUCED="${pivpnNET::-2}"
 
+# shellcheck disable=SC2154
 echo "[Interface]
 PrivateKey = $(cat "keys/${CLIENT_NAME}_priv")
 Address = ${NET_REDUCED}.${COUNT}/${subnetClass}" > "configs/${CLIENT_NAME}.conf"
 
+# shellcheck disable=SC2154
 echo -n "DNS = ${pivpnDNS1}" >> "configs/${CLIENT_NAME}.conf"
 if [ -n "${pivpnDNS2}" ]; then
     echo ", ${pivpnDNS2}" >> "configs/${CLIENT_NAME}.conf"
@@ -111,6 +118,7 @@ else
 fi
 echo >> "configs/${CLIENT_NAME}.conf"
 
+# shellcheck disable=SC2154
 echo "[Peer]
 PublicKey = $(cat keys/server_pub)
 PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
