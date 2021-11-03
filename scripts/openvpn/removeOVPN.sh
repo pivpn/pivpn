@@ -9,6 +9,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 helpFunc() {
@@ -47,6 +48,8 @@ if [ ! -f "${INDEX}" ]; then
         exit 1
 fi
 
+# Disabling SC2128, just checking if variable is empty or not
+# shellcheck disable=SC2128
 if [[ -z "${CERTS_TO_REVOKE}" ]]; then
     printf "\n"
     printf " ::\e[4m  Certificate List  \e[0m:: \n"
@@ -55,6 +58,8 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
     while read -r line || [ -n "$line" ]; do
         STATUS=$(echo "$line" | awk '{print $1}')
         if [[ "${STATUS}" = "V" ]]; then
+            # Disabling SC2001 warning, suggested method doesn't work with regexp
+            # shellcheck disable=SC2001
             NAME=$(echo "$line" | sed -e 's:.*/CN=::')
             if [ "$i" != 0 ]; then
                 # Prevent printing "server" certificate
@@ -63,13 +68,13 @@ if [[ -z "${CERTS_TO_REVOKE}" ]]; then
             ((i++))
         fi
     done <${INDEX}
-    
+
     i=1
     len=${#CERTS[@]}
-    while [ $i -le ${len} ]; do
-        printf "%0${#len}s) %s\r\n" ${i} ${CERTS[(($i))]}
+    while [ $i -le "${len}" ]; do
+        printf "%0${#len}s) %s\r\n" ${i} "${CERTS[(($i))]}"
         ((i++))
-    done    
+    done
     printf "\n"
 
     echo -n "::: Please enter the Index/Name of the client to be revoked from the list above: "
@@ -117,7 +122,7 @@ else
         done
 
         if [ "${VALID}" != 1 ]; then
-            printf "You passed an invalid cert name: '"%s"'!\n" "${CERTS_TO_REVOKE[ii]}"
+            printf "You passed an invalid cert name: '%s'! \n" "${CERTS_TO_REVOKE[ii]}"
             exit 1
         fi
     done
@@ -129,10 +134,10 @@ for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     if [ -n "$CONFIRM" ]; then
         REPLY="y"
     else
-        read -r -p "Do you really want to revoke ${CERTS_TO_REVOKE[ii]}? [Y/n] "
+        read -r -p "Do you really want to revoke '${CERTS_TO_REVOKE[ii]}'? [Y/n] "
     fi
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        printf "\n::: Revoking certificate '"%s"'.\n" "${CERTS_TO_REVOKE[ii]}"
+        printf "\n::: Revoking certificate '%s'. \n" "${CERTS_TO_REVOKE[ii]}"
         ./easyrsa --batch revoke "${CERTS_TO_REVOKE[ii]}"
         ./easyrsa gen-crl
         printf "\n::: Certificate revoked, and CRL file updated.\n"
@@ -141,11 +146,15 @@ for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
         rm -rf "pki/private/${CERTS_TO_REVOKE[ii]}.key"
         rm -rf "pki/issued/${CERTS_TO_REVOKE[ii]}.crt"
 
+        # Disabling SC2154 $pivpnNET sourced externally
+        # shellcheck disable=SC2154
         # Grab the client IP address
         NET_REDUCED="${pivpnNET::-2}"
         STATIC_IP=$(grep -v "^#" /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}" | grep -w ifconfig-push | grep -oE "${NET_REDUCED}\.[0-9]{1,3}")
         rm -rf /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}"
 
+        # disablung warning SC2154, $install_home sourced externally
+        # shellcheck disable=SC2154
         rm -rf "${install_home}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
         rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
         cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
