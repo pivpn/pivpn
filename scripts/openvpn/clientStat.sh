@@ -37,15 +37,15 @@ listClients(){
             if [ -n "$(type -t numfmt)" ]; then
                 if [ "$HR" = 1 ]; then
                     while read -r line; do
-                        read -r -a array <<< $line
+                        read -r -a array <<< "$line"
                         [[ ${array[0]} = CLIENT_LIST ]] || continue
-                        printf "%s  \t  %s  \t  %s  \t  %s  \t  %s  \t  %s %s %s - %s\n" ${array[1]} ${array[2]} ${array[3]} $(hr ${array[4]}) $(hr ${array[5]}) ${array[7]} ${array[8]} ${array[10]} ${array[9]}
+                        printf "%s  \t  %s  \t  %s  \t  %s  \t  %s  \t  %s %s %s - %s\n" "${array[1]}" "${array[2]}" "${array[3]}" "$(hr "${array[4]}")" "$(hr "${array[5]}")" "${array[7]}" "${array[8]}" "${array[10]}" "${array[9]}"
                     done <$STATUS_LOG
                 else
                     while read -r line; do
-                        read -r -a array <<< $line
+                        read -r -a array <<< "$line"
                         [[ ${array[0]} = CLIENT_LIST ]] || continue
-                        printf "%s  \t  %s  \t  %s  \t  %'d  \t  %'d  \t  %s %s %s - %s\n" ${array[1]} ${array[2]} ${array[3]} ${array[4]} ${array[5]} ${array[7]} ${array[8]} ${array[10]} ${array[9]}
+                        printf "%s  \t  %s  \t  %s  \t  %'d  \t  %'d  \t  %s %s %s - %s\n" "${array[1]}" "${array[2]}" "${array[3]}" "${array[4]}" "${array[5]}" "${array[7]}" "${array[8]}" "${array[10]}" "${array[9]}"
                     done <$STATUS_LOG
                 fi
             else
