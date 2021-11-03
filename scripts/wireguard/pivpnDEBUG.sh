@@ -8,6 +8,7 @@ if [ ! -f "${setupVars}" ]; then
     exit 1
 fi
 
+# shellcheck disable=SC1090
 source "${setupVars}"
 
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
@@ -18,6 +19,8 @@ git --git-dir /usr/local/src/pivpn/.git rev-parse --abbrev-ref HEAD
 git --git-dir /usr/local/src/pivpn/.git log -n 1 --format='Commit: %H%nAuthor: %an%nDate: %ad%nSummary: %s'
 printf "=============================================\n"
 echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
+# Disabling SC2154 warning, variable is sourced externaly and may vary
+# shellcheck disable=SC2154
 sed "s/$pivpnHOST/REDACTED/" < ${setupVars}
 printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
@@ -48,7 +51,7 @@ echo -e ":::: \t\e[4mRecursive list of files in\e[0m\t ::::\n::::\e\t[4m/etc/wir
 ls -LR /etc/wireguard
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mSelf check\e[0m\t\t ::::"
-/opt/pivpn/self_check.sh ${VPN}
+/opt/pivpn/self_check.sh "${VPN}"
 printf "=============================================\n"
 echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
 echo -e ":::: \e[1mhttps://docs.pivpn.io/faq\e[0m"
