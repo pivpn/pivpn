@@ -9,9 +9,9 @@ _pivpn()
     if [ "${#COMP_WORDS[@]}" -eq 2 ]
     then
         if [[ ${cur} == -* ]] ; then
-            COMPREPLY=( $(compgen -W "${dashopts}" -- "${cur}") )
+            COMPREPLY=( "$(compgen -W "${dashopts}" -- "${cur}")" )
         else
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            COMPREPLY=( "$(compgen -W "${opts}" -- "${cur}")" )
         fi
     fi
     return 0
