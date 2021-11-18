@@ -1473,6 +1473,12 @@ askClientDNS(){
 
 			echo "pivpnDNS1=${pivpnDNS1}" >> ${tempsetupVarsFile}
 			echo "pivpnDNS2=${pivpnDNS2}" >> ${tempsetupVarsFile}
+
+			# Allow DNS incomming requests through UFW.
+			if [ "$USING_UFW" -eq 1 ]; then
+				$SUDO ufw insert 1 allow in on "${pivpnDEV}" to any port 53 from "${pivpnNET}/${subnetClass}" >/dev/null
+			fi
+
 			return
 		fi
 	fi

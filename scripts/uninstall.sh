@@ -103,6 +103,7 @@ removeAll(){
     ### Ignoring SC2154, value sourced from setupVars file
 		# shellcheck disable=SC2154
 		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any > /dev/null
+		ufw delete allow in on "${pivpnDEV}" to any port 53 from "${pivpnNET}/${subnetClass}" >/dev/null
 		sed "/-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/d" -i /etc/ufw/before.rules
 		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
 		ufw reload &> /dev/null
