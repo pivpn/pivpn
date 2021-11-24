@@ -34,7 +34,7 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar curl grep dnsutils whiptail net-tools bsdmainutils)
+BASE_DEPS=(git tar curl grep dnsutils whiptail net-tools bsdmainutils bash-completion)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
@@ -72,7 +72,56 @@ export LC_ALL=C
 shopt -s globstar
 
 main(){
+	# Pre install checks and configs
+	rootCheck
+	flagsCheck "$@"
+	unattendedCheck
+	checkExistingInstall "$@"
+	distroCheck
+	checkHostname
+	# Verify there is enough disk space for the install
+	if [[ "${skipSpaceCheck}" == true ]]; then
+		echo "::: --skip-space-check passed to script, skipping free disk space verification!"
+	else
+		verifyFreeDiskSpace
+	fi
+	updatePackageCache
+	notifyPackageUpdatesAvailable
+	preconfigurePackages
+	installDependentPackages BASE_DEPS[@]
+	welcomeDialogs
+	chooseInterface
+	if [ "$PLAT" != "Raspbian" ]; then
+		avoidStaticIPv4Ubuntu
+	else
+		getStaticIPv4Settings
+		if [ -z "$dhcpReserv" ] || [ "$dhcpReserv" -ne 1 ]; then
+			setStaticIPv4
+		fi
+	fi
+	chooseUser
+	cloneOrUpdateRepos
+	# Install
+	if installPiVPN; then
+		echo "::: Install Complete..."
+	else
+		exit 1
+	fi
+	restartServices
+	# Ask if unattended-upgrades will be enabled
+	askUnattendedUpgrades
+	if [ "$UNATTUPG" -eq 1 ]; then
+		confUnattendedUpgrades
+	fi
+	writeConfigFiles
+	installScripts
+	displayFinalMessage
+	echo ":::"
+}
 
+####### FUNCTIONS ##########
+
+rootCheck(){
 	######## FIRST CHECK ########
 	# Must be root to install
 	echo ":::"
@@ -90,7 +139,9 @@ main(){
 			exit 1
 		fi
 	fi
+}
 
+flagsCheck(){
 	# Check arguments for the undocumented flags
 	for ((i=1; i <= "$#"; i++)); do
 		j="$((i+1))"
@@ -102,6 +153,9 @@ main(){
 		esac
 	done
 
+}
+
+unattendedCheck(){
 	if [[ "${runUnattended}" == true ]]; then
 		echo "::: --unattended passed to install script, no whiptail dialogs will be displayed"
 		if [ -z "$unattendedConfig" ]; then
@@ -117,13 +171,15 @@ main(){
 			fi
 		fi
 	fi
+}
 
-        # see which setup already exists
-        if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]; then
-                setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
-        elif [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
-                setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
-        fi
+checkExistingInstall(){
+  # see which setup already exists
+	if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]; then
+    setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
+	elif [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
+    setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
+	fi
 
 	if [ -r "$setupVars" ]; then
 		if [[ "${reconfigure}" == true ]]; then
@@ -147,86 +203,7 @@ main(){
 		source "$setupVars"
 		runUnattended=true
 	fi
-
-	# Check for supported distribution
-	distroCheck
-
-	# Checks for hostname Length
-	checkHostname
-
-	# Start the installer
-	# Verify there is enough disk space for the install
-	if [[ "${skipSpaceCheck}" == true ]]; then
-		echo "::: --skip-space-check passed to script, skipping free disk space verification!"
-	else
-		verifyFreeDiskSpace
-	fi
-
-	updatePackageCache
-
-	# Notify user of package availability
-	notifyPackageUpdatesAvailable
-
-	# Install packages used by this installation script
-	preconfigurePackages
-	installDependentPackages BASE_DEPS[@]
-
-	# Display welcome dialogs
-	welcomeDialogs
-
-	# Find interfaces and let the user choose one
-	chooseInterface
-
-	if [ "$PLAT" != "Raspbian" ]; then
-		avoidStaticIPv4Ubuntu
-	else
-		getStaticIPv4Settings
-		if [ -z "$dhcpReserv" ] || [ "$dhcpReserv" -ne 1 ]; then
-			setStaticIPv4
-		fi
-	fi
-
-	# Choose the user for the ovpns
-	chooseUser
-
-	# Clone/Update the repos
-	cloneOrUpdateRepos
-
-	# Install
-	if installPiVPN; then
-		echo "::: Install Complete..."
-	else
-		exit 1
-	fi
-
-	# Start services
-	restartServices
-
-	# Ask if unattended-upgrades will be enabled
-	askUnattendedUpgrades
-
-	if [ "$UNATTUPG" -eq 1 ]; then
-		confUnattendedUpgrades
-	fi
-
-	# Save installation setting to the final location
-	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
-        echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
-        $SUDO mkdir -p "${setupConfigDir}/${VPN}/"
-	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}"
-
-	installScripts
-
-	# Ensure that cached writes reach persistent storage
-	echo "::: Flushing writes to disk..."
-	sync
-	echo "::: done."
-
-	displayFinalMessage
-	echo ":::"
 }
-
-####### FUNCTIONS ##########
 
 askAboutExistingInstall(){
 	opt1a="Update"
@@ -248,9 +225,10 @@ askAboutExistingInstall(){
 }
 
 
-# Compatibility, functions to check for supported OS
-# distroCheck, maybeOSSupport, noOSSupport
 distroCheck(){
+	# Check for supported distribution
+	# Compatibility, functions to check for supported OS
+	# distroCheck, maybeOSSupport, noOSSupport
 	# if lsb_release command is on their system
 	if command -v lsb_release > /dev/null; then
 
@@ -322,7 +300,7 @@ Would you like to continue anyway?" ${r} ${c}) then
 
 
 checkHostname(){
-###Checks for hostname size
+	# Checks for hostname Length
 	host_name=$(hostname -s)
 	if [[ ! ${#host_name} -le 28 ]]; then
 		if [ "${runUnattended}" = 'true' ]; then
@@ -423,6 +401,7 @@ notifyPackageUpdatesAvailable(){
 }
 
 preconfigurePackages(){
+	# Install packages used by this installation script
 	# If apt is older than 1.5 we need to install an additional package to add
 	# support for https repositories that will be used later on
 	if [[ -f /etc/apt/sources.list ]]; then
@@ -519,10 +498,12 @@ preconfigurePackages(){
 }
 
 installDependentPackages(){
+
 	declare -a TO_INSTALL=()
 
-	# Install packages passed in via argument array
+	# Install packages passed via argument array
 	# No spinner - conflicts with set -e
+
 	declare -a argArray1=("${!1}")
 
 	for i in "${argArray1[@]}"; do
@@ -584,6 +565,8 @@ In the next section, you can choose to use your current network settings (DHCP) 
 }
 
 chooseInterface(){
+# Find interfaces and let the user choose one
+
 # Turn the available interfaces into an array so it can be used with a whiptail dialog
 local interfacesArray=()
 # Number of available interfaces
@@ -905,6 +888,7 @@ setStaticIPv4(){
 }
 
 chooseUser(){
+	# Choose the user for the ovpns
 	if [ "${runUnattended}" = 'true' ]; then
 		if [ -z "$install_user" ]; then
 			if [ "$(awk -F':' 'BEGIN {count=0} $3>=1000 && $3<=60000 { count++ } END{ print count }' /etc/passwd)" -eq 1 ]; then
@@ -1047,6 +1031,7 @@ getGitFiles(){
 }
 
 cloneOrUpdateRepos(){
+	# Clone/Update the repos
 	# /usr/local should always exist, not sure about the src subfolder though
 	$SUDO mkdir -p /usr/local/src
 
@@ -1060,21 +1045,11 @@ cloneOrUpdateRepos(){
 installPiVPN(){
 	$SUDO mkdir -p /etc/pivpn/
 	askWhichVPN
-
-	# Allow custom subnetClass via unattend setupVARs file. Use default if not provided.
-	if [ -z "$subnetClass" ]; then
-		subnetClass="24"
-	fi
+	setVPNDefaultVars
 
 	if [ "$VPN" = "openvpn" ]; then
 
-		pivpnDEV="tun0"
-		# Allow custom NET via unattend setupVARs file. Use default if not provided.
-		if [ -z "$pivpnNET" ]; then
-			pivpnNET="10.8.0.0"
-		fi
-		vpnGw="${pivpnNET/.0.0/.0.1}"
-
+		setOpenVPNDefaultVars
 		askAboutCustomizing
 		installOpenVPN
 		askCustomProto
@@ -1090,6 +1065,36 @@ installPiVPN(){
 
 	elif [ "$VPN" = "wireguard" ]; then
 
+		setWireguardDefaultVars
+		installWireGuard
+		askCustomPort
+		askClientDNS
+		askPublicIPOrDNS
+		confWireGuard
+		confNetwork
+		writeWireguardTempVarsFile
+
+	fi
+	writeVPNTempVarsFile
+}
+
+setVPNDefaultVars(){
+	# Allow custom subnetClass via unattend setupVARs file. Use default if not provided.
+	if [ -z "$subnetClass" ]; then
+		subnetClass="24"
+	fi
+}
+
+setOpenVPNDefaultVars(){
+		pivpnDEV="tun0"
+		# Allow custom NET via unattend setupVARs file. Use default if not provided.
+		if [ -z "$pivpnNET" ]; then
+			pivpnNET="10.8.0.0"
+		fi
+		vpnGw="${pivpnNET/.0.0/.0.1}"
+}
+
+setWireguardDefaultVars(){
 		# Since WireGuard only uses UDP, askCustomProto() is never called so we
 		# set the protocol here.
 		pivpnPROTO="udp"
@@ -1113,32 +1118,27 @@ installPiVPN(){
 		fi
 
 		CUSTOMIZE=0
+}
 
-		installWireGuard
-		askCustomPort
-		askClientDNS
-		askPublicIPOrDNS
-		confWireGuard
-		confNetwork
-
-		echo "pivpnPROTO=${pivpnPROTO}" >> ${tempsetupVarsFile}
-		echo "pivpnMTU=${pivpnMTU}" >> ${tempsetupVarsFile}
-
-		# Write PERSISTENTKEEPALIVE if provided via unattended file
-		# May also be added manually to /etc/pivpn/wireguard/setupVars.conf
-		# post installation to be used for client profile generation
-		if [ "$pivpnPERSISTENTKEEPALIVE" ]; then
-			echo "pivpnPERSISTENTKEEPALIVE=${pivpnPERSISTENTKEEPALIVE}" >> ${tempsetupVarsFile}
-		fi
-
-	fi
-
+writeVPNTempVarsFile(){
 	{
 	echo "pivpnDEV=${pivpnDEV}"
 	echo "pivpnNET=${pivpnNET}"
 	echo "subnetClass=${subnetClass}"
 	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\""
 	} >> ${tempsetupVarsFile}
+}
+
+writeWireguardTempVarsFile(){
+	echo "pivpnPROTO=${pivpnPROTO}" >> ${tempsetupVarsFile}
+	echo "pivpnMTU=${pivpnMTU}" >> ${tempsetupVarsFile}
+
+	# Write PERSISTENTKEEPALIVE if provided via unattended file
+	# May also be added manually to /etc/pivpn/wireguard/setupVars.conf
+	# post installation to be used for client profile generation
+	if [ "$pivpnPERSISTENTKEEPALIVE" ]; then
+		echo "pivpnPERSISTENTKEEPALIVE=${pivpnPERSISTENTKEEPALIVE}" >> ${tempsetupVarsFile}
+	fi
 }
 
 askWhichVPN(){
@@ -2182,6 +2182,7 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 
 
 restartServices(){
+	# Start services
 	echo "::: Restarting services..."
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
@@ -2266,6 +2267,14 @@ confUnattendedUpgrades(){
 	fi
 }
 
+writeConfigFiles(){
+	# Save installation setting to the final location
+	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
+        echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
+        $SUDO mkdir -p "${setupConfigDir}/${VPN}/"
+	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}"
+}
+
 installScripts(){
 	# Ensure /opt exists (issue #607)
 	$SUDO mkdir -p /opt
@@ -2289,6 +2298,10 @@ installScripts(){
 		$SUDO unlink /usr/local/bin/pivpn
 		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
 	else
+		# Check if bash_completion scripts dir exists and creates it if not
+		if [ ! -d "/etc/bash_completion.d" ]; then
+				mkdir -p /etc/bash_copletion.d
+		fi
 		# Only one protocol is installed, symlink bash completion, the pivpn script
 		# and the script directory
 		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
@@ -2302,6 +2315,11 @@ installScripts(){
 }
 
 displayFinalMessage(){
+		# Ensure that cached writes reach persistent storage
+		echo "::: Flushing writes to disk..."
+		sync
+		echo "::: done."
+
 	if [ "${runUnattended}" = 'true' ]; then
 		echo "::: Installation Complete!"
 		echo "::: Now run 'pivpn add' to create the client profiles."
