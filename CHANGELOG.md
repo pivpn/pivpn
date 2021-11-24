@@ -1,6 +1,15 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## November 24th 2021
+
+- Code quality improvements
+  - Fixes #1233 shellcheck compliance
+- CI tests
+  - Failure is no longer allowed during lint stage
+- Bug fixes & Improvements
+  - Fixes #1282
+
 ## October 23rd 2021
 
 - Fixed errors on logging configuration
