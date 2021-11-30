@@ -75,7 +75,7 @@ backup_openvpn(){
     backupzip=$date-pivpnovpnbackup.tgz
     # shellcheck disable=SC2210
     tar czpf "$install_home"/"$backupdir"/"$backupzip" "$openvpndir" "$ovpnsdir" > /dev/null 2>&1
-    echo -e "Backup created in $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/OpenVPN#how-can-i-migrate-my-configs-to-another-pivpn-instance"
+    echo -e "Backup created in $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://docs.pivpn.io/openvpn/#migrating-pivpn-openvpn\n"
 
 }
 
@@ -86,7 +86,7 @@ backup_wireguard(){
     checkbackupdir
     backupzip=$date-pivpnwgbackup.tgz
     tar czpf "$install_home"/"$backupdir"/"$backupzip" "$wireguarddir" "$configsdir" > /dev/null 2>&1
-    echo -e "Backup created in $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://github.com/pivpn/pivpn/wiki/WireGuard#how-can-i-migrate-my-configs-to-another-pivpn-instance"
+    echo -e "Backup created in $install_home/$backupdir/$backupzip \nTo restore the backup, follow instructions at:\nhttps://docs.pivpn.io/wireguard/#migrating-pivpn-wireguard\n"
 
 }
 
