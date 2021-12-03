@@ -1,5 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
+## December 03rd 2021
+
+- Code quality improvements
+  - General code cleanup
+- OS Support
+  - Added support for Debian 11 bullseye
+- Bug fixes
+  - Fixes issue #1419
 
 ## November 24th 2021
 
