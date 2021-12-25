@@ -1089,7 +1089,7 @@ generateRandomSubnet() {
 	# Source: https://community.openvpn.net/openvpn/wiki/AvoidRoutingConflicts
 	declare -a SUBNET_EXCLUDE_LIST=(10.0.0.0/24 10.0.1.0/24 10.1.1.0/24 10.1.10.0/24 10.2.0.0/24 10.8.0.0/24 10.10.1.0/24 10.90.90.0/24 10.100.1.0/24 10.255.255.0/24)
 
-	readarray -t CURRENTLY_USED_SUBNETS <<< "$(ip -o addr show | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
+	readarray -t CURRENTLY_USED_SUBNETS <<< "$(ip route show | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
 
 	SUBNET_EXCLUDE_LIST=("${SUBNET_EXCLUDE_LIST[@]}" "${CURRENTLY_USED_SUBNETS[@]}")
 
