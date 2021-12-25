@@ -1122,7 +1122,7 @@ setOpenVPNDefaultVars(){
 		if [ -z "$pivpnNET" ]; then
 			pivpnNET="$(generateRandomSubnet)"
 		fi
-		vpnGw="${pivpnNET/.0/.1}"
+		vpnGw="$(cut -d '.' -f 1-3 <<< "${pivpnNET}").1"
 }
 
 setWireguardDefaultVars(){
@@ -1134,7 +1134,7 @@ setWireguardDefaultVars(){
 		if [ -z "$pivpnNET" ]; then
 			pivpnNET="$(generateRandomSubnet)"
 		fi
-		vpnGw="${pivpnNET/.0/.1}"
+		vpnGw="$(cut -d '.' -f 1-3 <<< "${pivpnNET}").1"
 		# Allow custom allowed IPs via unattend setupVARs file. Use default if not provided.
 		if [ -z "$ALLOWED_IPS" ]; then
 			# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
