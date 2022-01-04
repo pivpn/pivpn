@@ -34,7 +34,7 @@ PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
-BASE_DEPS=(git tar curl grep dnsutils whiptail net-tools bsdmainutils bash-completion)
+BASE_DEPS=(git tar curl grep dnsutils grepcidr whiptail net-tools bsdmainutils bash-completion)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
@@ -1085,13 +1085,38 @@ setVPNDefaultVars(){
 	fi
 }
 
+generateRandomSubnet() {
+	# Source: https://community.openvpn.net/openvpn/wiki/AvoidRoutingConflicts
+	declare -a SUBNET_EXCLUDE_LIST=(10.0.0.0/24 10.0.1.0/24 10.1.1.0/24 10.1.10.0/24 10.2.0.0/24 10.8.0.0/24 10.10.1.0/24 10.90.90.0/24 10.100.1.0/24 10.255.255.0/24)
+	readarray -t CURRENTLY_USED_SUBNETS <<< "$(ip route show | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
+	SUBNET_EXCLUDE_LIST=("${SUBNET_EXCLUDE_LIST[@]}" "${CURRENTLY_USED_SUBNETS[@]}")
+
+	local MATCHES
+	while true; do
+		MATCHES=0
+		pivpnNET="10.$((RANDOM%256)).$((RANDOM%256)).0"
+
+		for SUB in "${SUBNET_EXCLUDE_LIST[@]}"; do
+			if grepcidr "${SUB}" <<< "${pivpnNET}/$subnetClass" 2>&1 > /dev/null; then
+				((MATCHES++))
+			fi
+		done
+
+		if [ "${MATCHES}" -eq 0 ]; then
+			break
+		fi
+	done
+
+	echo "${pivpnNET}"
+}
+
 setOpenVPNDefaultVars(){
 		pivpnDEV="tun0"
 		# Allow custom NET via unattend setupVARs file. Use default if not provided.
 		if [ -z "$pivpnNET" ]; then
-			pivpnNET="10.8.0.0"
+			pivpnNET="$(generateRandomSubnet)"
 		fi
-		vpnGw="${pivpnNET/.0.0/.0.1}"
+		vpnGw="$(cut -d '.' -f 1-3 <<< "${pivpnNET}").1"
 }
 
 setWireguardDefaultVars(){
@@ -1101,9 +1126,9 @@ setWireguardDefaultVars(){
 		pivpnDEV="wg0"
 		# Allow custom NET via unattend setupVARs file. Use default if not provided.
 		if [ -z "$pivpnNET" ]; then
-			pivpnNET="10.6.0.0"
+			pivpnNET="$(generateRandomSubnet)"
 		fi
-		vpnGw="${pivpnNET/.0.0/.0.1}"
+		vpnGw="$(cut -d '.' -f 1-3 <<< "${pivpnNET}").1"
 		# Allow custom allowed IPs via unattend setupVARs file. Use default if not provided.
 		if [ -z "$ALLOWED_IPS" ]; then
 			# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
@@ -1233,9 +1258,8 @@ installOpenVPN(){
 		updatePackageCache
 	fi
 
-	# grepcidr is used to redact IPs in the debug log whereas expect is used
-	# to feed easy-rsa with passwords
-	PIVPN_DEPS=(openvpn grepcidr expect)
+	# Expect is used to feed easy-rsa with passwords
+	PIVPN_DEPS=(openvpn expect)
 	installDependentPackages PIVPN_DEPS[@]
 }
 
