@@ -51,6 +51,12 @@ skipSpaceCheck=false
 reconfigure=false
 showUnsupportedNICs=false
 
+######## Some vars that might be empty
+# but need to be defined for checks
+pivpnPERSISTENTKEEPALIVE=""
+pivpnDNS2=""
+pivpnenableipv6=""
+
 ######## SCRIPT ########
 
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
@@ -90,6 +96,9 @@ main(){
 	preconfigurePackages
 	installDependentPackages BASE_DEPS[@]
 	welcomeDialogs
+	if [ -z "$pivpnenableipv6" ] || [ "$pivpnenableipv6" == "1" ]; then
+		checkipv6uplink
+	fi
 	chooseInterface
 	if [ "$PLAT" != "Raspbian" ]; then
 		avoidStaticIPv4Ubuntu
@@ -582,11 +591,11 @@ local firstloop=1
 
 if [[ "${showUnsupportedNICs}" == true ]]; then
 	# Show every network interface, could be useful for those who install PiVPN inside virtual machines
-	# or on Raspberry Pis with USB adapters (the loopback interfaces is still skipped)
-	availableInterfaces=$(ip -o link | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1 | grep -v -w 'lo')
+	# or on Raspberry Pis with USB adapters (the loopback and docker interfaces are still skipped)
+	availableInterfaces=$(ip -o link | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1 | grep -v -w 'lo' | grep -v '^docker')
 else
-	# Find network interfaces whose state is UP, so as to skip virtual interfaces and the loopback interface
-	availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1)
+	# Find network interfaces whose state is UP, so as to skip virtual, loopback and docker interfaces.
+	availableInterfaces=$(ip -o link | awk '/state UP/ {print $2}' | cut -d':' -f1 | cut -d'@' -f1 | grep -v -w 'lo' | grep -v '^docker')
 fi
 
 if [ -z "$availableInterfaces" ]; then
@@ -608,30 +617,55 @@ if [ "${runUnattended}" = 'true' ]; then
     if [ -z "$IPv4dev" ]; then
         if [ "$interfaceCount" -eq 1 ]; then
             IPv4dev="${availableInterfaces}"
-            echo "::: No interface specified, but only ${IPv4dev} is available, using it"
+            echo "::: No interface specified for IPv4, but only ${IPv4dev} is available, using it"
         else
-            echo "::: No interface specified and failed to determine one"
+            echo "::: No interface specified for IPv4 and failed to determine one"
             exit 1
         fi
     else
         if ip -o link | grep -qw "${IPv4dev}"; then
-            echo "::: Using interface: ${IPv4dev}"
+            echo "::: Using interface: ${IPv4dev} for IPv4"
         else
-          	echo "::: Interface ${IPv4dev} does not exist"
+          	echo "::: Interface ${IPv4dev} for IPv4 does not exist"
             exit 1
         fi
     fi
     echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
+	if [ "$pivpnenableipv6" == "1" ]; then
+		if [ -z "$IPv6dev" ]; then
+			if [ "$interfaceCount" -eq 1 ]; then
+				IPv6dev="${availableInterfaces}"
+				echo "::: No interface specified for IPv6, but only ${IPv6dev} is available, using it"
+			else
+				echo "::: No interface specified for IPv6 and failed to determine one"
+				exit 1
+			fi
+		else
+			if ip -o link | grep -qw "${IPv6dev}"; then
+				echo "::: Using interface: ${IPv6dev} for IPv6"
+			else
+				echo "::: Interface ${IPv6dev} for IPv6 does not exist"
+				exit 1
+			fi
+		fi
+	fi
+	if [ "$pivpnenableipv6" == "1" ] && [ -z "$IPv6dev" ]; then
+    	echo "IPv6dev=${IPv6dev}" >> ${tempsetupVarsFile}
+	fi
     return
 else
     if [ "$interfaceCount" -eq 1 ]; then
         IPv4dev="${availableInterfaces}"
         echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
-        return
+		if [ "$pivpnenableipv6" == "1" ]; then
+			IPv6dev="${availableInterfaces}"
+			echo "IPv6dev=${IPv6dev}" >> ${tempsetupVarsFile}
+    	fi
+		return
     fi
 fi
 
-chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An interface (press space to select):" "${r}" "${c}" "${interfaceCount}")
+chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An interface for IPv4 (press space to select):" "${r}" "${c}" "${interfaceCount}")
 if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty) ; then
     for desiredInterface in ${chooseInterfaceOptions}; do
         IPv4dev=${desiredInterface}
@@ -641,6 +675,19 @@ if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2
 else
     echo "::: Cancel selected, exiting...."
     exit 1
+fi
+if [ "$pivpnenableipv6" == "1" ]; then
+	chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An interface for IPv6, usually the same as used by IPv4 (press space to select):" "${r}" "${c}" "${interfaceCount}")
+	if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty) ; then
+		for desiredInterface in ${chooseInterfaceOptions}; do
+			IPv6dev=${desiredInterface}
+			echo "::: Using interface: $IPv6dev"
+			echo "IPv6dev=${IPv6dev}" >> ${tempsetupVarsFile}
+		done
+	else
+		echo "::: Cancel selected, exiting...."
+		exit 1
+	fi
 fi
 }
 
@@ -688,6 +735,19 @@ validIPAndNetmask(){
 		stat=$?
 	fi
 	return $stat
+}
+
+checkipv6uplink(){
+	curl --max-time 3 --connect-timeout 3 --silent --fail -6 http://google.com > /dev/null
+	curlv6testres=$?
+	if [ "$curlv6testres" != "0" ]; then
+		echo "::: IPv6 test connections to google.com have failed. Disabling IPv6 support. (The curl test failed with code: $curlv6testres)"
+		pivpnenableipv6="0"
+	else
+		echo "::: IPv6 test connections to google.com successful. Enabling IPv6 support."
+		pivpnenableipv6="1"
+	fi
+	return 
 }
 
 getStaticIPv4Settings() {
@@ -1085,6 +1145,9 @@ setVPNDefaultVars(){
 	if [ -z "$subnetClass" ]; then
 		subnetClass="24"
 	fi
+	if [ -z "$subnetClassv6" ]; then
+		subnetClassv6="64"
+	fi
 }
 
 setOpenVPNDefaultVars(){
@@ -1105,12 +1168,22 @@ setWireguardDefaultVars(){
 		if [ -z "$pivpnNET" ]; then
 			pivpnNET="10.6.0.0"
 		fi
+		if [ "$pivpnenableipv6" == "1" ] && [ -z "$pivpnNETv6" ]; then
+			pivpnNETv6="fd11:5ee:bad:c0de::"
+		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
+		if [ "$pivpnenableipv6" == "1" ]; then
+			vpnGwv6="${pivpnNETv6}1"
+		fi
 		# Allow custom allowed IPs via unattend setupVARs file. Use default if not provided.
 		if [ -z "$ALLOWED_IPS" ]; then
 			# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
 			# the user after the installation.
-			ALLOWED_IPS="0.0.0.0/0, ::0/0"
+			if [ "$pivpnenableipv6" == "1" ]; then
+				ALLOWED_IPS="0.0.0.0/0, ::0/0"
+			else
+				ALLOWED_IPS="0.0.0.0/0"
+			fi
 		fi
 		# The default MTU should be fine for most users but we allow to set a
 		# custom MTU via unattend setupVARs file. Use default if not provided.
@@ -1127,6 +1200,13 @@ writeVPNTempVarsFile(){
 	echo "pivpnDEV=${pivpnDEV}"
 	echo "pivpnNET=${pivpnNET}"
 	echo "subnetClass=${subnetClass}"
+	if [ "$pivpnenableipv6" == "1" ]; then
+		echo "pivpnenableipv6=1"
+		echo "pivpnNETv6=\"${pivpnNETv6}\""
+		echo "subnetClassv6=${subnetClassv6}"
+	else
+		echo "pivpnenableipv6=0"
+	fi
 	echo "ALLOWED_IPS=\"${ALLOWED_IPS}\""
 	} >> ${tempsetupVarsFile}
 }
@@ -1138,7 +1218,7 @@ writeWireguardTempVarsFile(){
 	# Write PERSISTENTKEEPALIVE if provided via unattended file
 	# May also be added manually to /etc/pivpn/wireguard/setupVars.conf
 	# post installation to be used for client profile generation
-	if [ "$pivpnPERSISTENTKEEPALIVE" ]; then
+	if [ -n "${pivpnPERSISTENTKEEPALIVE}" ]; then
 		echo "pivpnPERSISTENTKEEPALIVE=${pivpnPERSISTENTKEEPALIVE}" >> ${tempsetupVarsFile}
 	fi
 }
@@ -2052,17 +2132,33 @@ confWireGuard(){
 
 	echo "::: Server Keys have been generated."
 
+	if [ "$pivpnenableipv6" == "1" ]; then
+
+	echo "[Interface]
+PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
+Address = ${vpnGw}/${subnetClass},${vpnGwv6}/${subnetClassv6}
+MTU = ${pivpnMTU}
+ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
+
+	else
+
 	echo "[Interface]
 PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
 Address = ${vpnGw}/${subnetClass}
 MTU = ${pivpnMTU}
 ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
+
+	fi
 	echo "::: Server config generated."
 }
 
 confNetwork(){
 	# Enable forwarding of internet traffic
 	$SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
+	if [ "$pivpnenableipv6" == "1" ]; then
+		$SUDO sed -i '/net.ipv6.conf.all.forwarding=1/s/^#//g' /etc/sysctl.conf
+		$SUDO echo "net.ipv6.conf.${IPv6dev}.accept_ra=2" > /etc/sysctl.d/99-pivpn.conf
+	fi
 	$SUDO sysctl -p > /dev/null
 
 	if [ "$USING_UFW" -eq 1 ]; then
@@ -2077,18 +2173,37 @@ confNetwork(){
 			echo "$0: ERR: Sorry, won't touch empty file \"/etc/ufw/before.rules\".";
 			exit 1;
 		fi
+		if test -s /etc/ufw/before6.rules; then
+			$SUDO cp -f /etc/ufw/before6.rules /etc/ufw/before6.rules.pre-pivpn
+		else
+			echo "$0: ERR: Sorry, won't touch empty file \"/etc/ufw/before6.rules\".";
+			exit 1;
+		fi
 		### If there is already a "*nat" section just add our POSTROUTING MASQUERADE
 		if $SUDO grep -q "*nat" /etc/ufw/before.rules; then
-			### Onyl add the NAT rule if it isn't already there
+			### Onyl add the IPv4 NAT rule if it isn't already there
 			if ! $SUDO grep -q "${VPN}-nat-rule" /etc/ufw/before.rules; then
 				$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/}" -i /etc/ufw/before.rules
 			fi
 		else
 			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before.rules
 		fi
+		if [ "$pivpnenableipv6" == "1" ]; then
+			if $SUDO grep -q "*nat" /etc/ufw/before6.rules; then
+				### Onyl add the IPv6 NAT rule if it isn't already there
+				if ! $SUDO grep -q "${VPN}-nat-rule" /etc/ufw/before6.rules; then
+					$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNETv6}\/${subnetClassv6} -o ${IPv6dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/}" -i /etc/ufw/before6.rules
+				fi
+			else
+				$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNETv6}\/${subnetClassv6} -o ${IPv6dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before6.rules
+			fi
+		fi
 		# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
 		$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" comment allow-${VPN} >/dev/null
 		$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
+		if [ "$pivpnenableipv6" == "1" ]; then
+			$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNETv6}/${subnetClassv6}" out on "${IPv6dev}" to any >/dev/null
+		fi
 
 		$SUDO ufw reload >/dev/null
 		echo "::: UFW configuration completed."
@@ -2101,7 +2216,11 @@ confNetwork(){
 		if ! $SUDO iptables -t nat -S | grep -q "${VPN}-nat-rule"; then
 			$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
 		fi
-
+		if [ "$pivpnenableipv6" == "1" ]; then
+			if ! $SUDO ip6tables -t nat -S | grep -q "${VPN}-nat-rule"; then
+				$SUDO ip6tables -t nat -I POSTROUTING -s "${pivpnNETv6}/${subnetClassv6}" -o "${IPv6dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
+			fi
+		fi
 		# Count how many rules are in the INPUT and FORWARD chain. When parsing input from
 		# iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
 		# installed but not enabled).
@@ -2110,9 +2229,15 @@ confNetwork(){
 		# for this reasons we use '|| true' to force exit code 0
 		INPUT_RULES_COUNT="$($SUDO iptables -S INPUT | grep -vcE '(^-P|ufw-)')"
 		FORWARD_RULES_COUNT="$($SUDO iptables -S FORWARD | grep -vcE '(^-P|ufw-)')"
-
 		INPUT_POLICY="$($SUDO iptables -S INPUT | grep '^-P' | awk '{print $3}')"
 		FORWARD_POLICY="$($SUDO iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
+
+		if [ "$pivpnenableipv6" == "1" ]; then
+			INPUT_RULES_COUNTv6="$($SUDO ip6tables -S INPUT | grep -vcE '(^-P|ufw-)')"
+			FORWARD_RULES_COUNTv6="$($SUDO ip6tables -S FORWARD | grep -vcE '(^-P|ufw-)')"
+			INPUT_POLICYv6="$($SUDO ip6tables -S INPUT | grep '^-P' | awk '{print $3}')"
+			FORWARD_POLICYv6="$($SUDO ip6tables -S FORWARD | grep '^-P' | awk '{print $3}')"
+		fi
 
 		# If rules count is not zero, we assume we need to explicitly allow traffic. Same conclusion if
 		# there are no rules and the policy is not ACCEPT. Note that rules are being added to the top of the
@@ -2129,6 +2254,19 @@ confNetwork(){
 			INPUT_CHAIN_EDITED=0
 		fi
 
+		if [ "$pivpnenableipv6" == "1" ]; then
+			if [ "$INPUT_RULES_COUNTv6" -ne 0 ] || [ "$INPUT_POLICYv6" != "ACCEPT" ]; then
+				if $SUDO ip6tables -S | grep -q "${VPN}-input-rule"; then
+					INPUT_CHAIN_EDITEDv6=0
+				else
+					$SUDO ip6tables -I INPUT 1 -i "${IPv6dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule"
+				fi
+				INPUT_CHAIN_EDITEDv6=1
+			else
+				INPUT_CHAIN_EDITEDv6=0
+			fi
+		fi
+
 		if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
 			if $SUDO iptables -S | grep -q "${VPN}-forward-rule"; then
 				FORWARD_CHAIN_EDITED=0
@@ -2141,15 +2279,38 @@ confNetwork(){
 			FORWARD_CHAIN_EDITED=0
 		fi
 
+		if [ "$pivpnenableipv6" == "1" ]; then
+			if [ "$FORWARD_RULES_COUNTv6" -ne 0 ] || [ "$FORWARD_POLICYv6" != "ACCEPT" ]; then
+				if $SUDO ip6tables -S | grep -q "${VPN}-forward-rule"; then
+					FORWARD_CHAIN_EDITEDv6=0
+				else
+					$SUDO ip6tables -I FORWARD 1 -d "${pivpnNETv6}/${subnetClassv6}" -i "${IPv6dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"
+					$SUDO ip6tables -I FORWARD 2 -s "${pivpnNETv6}/${subnetClassv6}" -i "${pivpnDEV}" -o "${IPv6dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule"
+				fi
+				FORWARD_CHAIN_EDITEDv6=1
+			else
+				FORWARD_CHAIN_EDITEDv6=0
+			fi
+		fi
+
 		case ${PLAT} in
 			Debian|Raspbian|Ubuntu)
 				$SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
 			;;
 		esac
 
-		echo "INPUT_CHAIN_EDITED=${INPUT_CHAIN_EDITED}" >> ${tempsetupVarsFile}
-		echo "FORWARD_CHAIN_EDITED=${FORWARD_CHAIN_EDITED}" >> ${tempsetupVarsFile}
+		case ${PLAT} in
+			Debian|Raspbian|Ubuntu)
+				$SUDO ip6tables-save | $SUDO tee /etc/iptables/rules.v6 > /dev/null
+			;;
+		esac
 
+		{
+		echo "INPUT_CHAIN_EDITED=${INPUT_CHAIN_EDITED}"
+		echo "FORWARD_CHAIN_EDITED=${FORWARD_CHAIN_EDITED}"
+		echo "INPUT_CHAIN_EDITEDv6=${INPUT_CHAIN_EDITEDv6}"
+		echo "FORWARD_CHAIN_EDITEDv6=${FORWARD_CHAIN_EDITEDv6}"
+		} >> ${tempsetupVarsFile}
 	fi
 }
 
