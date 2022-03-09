@@ -23,7 +23,9 @@ jobs:
   include:
     - stage: lint
       name: "Shellcheck lint"
-      dist: linux
+      dist: focal
+      virt: vm
+      arch: amd64
       script:
         - shellcheck auto_install/install.sh
         - find scripts/ -type f | xargs shellcheck
@@ -31,9 +33,12 @@ jobs:
     - stage: test
       name: "OpenVPN Xenial & Commands"
       dist: xenial
+      virt: vm
+      arch: amd64
       before_script: 
         - cat /etc/os-release
         - uname -a
+        - ip a
         - sudo chmod +x ciscripts/startup.sh
         - ./ciscripts/startup.sh -o
       script:
@@ -54,9 +59,12 @@ jobs:
     - stage: test
       name: "Wireguard Xenial & Commands"
       dist: xenial
+      virt: vm
+      arch: amd64
       before_script: 
         - cat /etc/os-release
         - uname -a
+        - ip a
         - sudo chmod +x ciscripts/startup.sh
         - ./ciscripts/startup.sh -w
       script: 
@@ -76,9 +84,12 @@ jobs:
     - stage: test
       name: "OpenVPN Bionic & Commands"
       dist: bionic
+      virt: vm
+      arch: amd64
       before_script: 
         - cat /etc/os-release
         - uname -a
+        - ip a
         - sudo chmod +x ciscripts/startup.sh
         - ./ciscripts/startup.sh -o
       script:
@@ -98,9 +109,12 @@ jobs:
     - stage: test
       name: "Wireguard Bionic & Commands"
       dist: bionic
+      virt: vm
+      arch: amd64
       before_script: 
         - cat /etc/os-release
         - uname -a
+        - ip a
         - sudo apt update -y
         - sudo chmod +x ciscripts/startup.sh
         - ./ciscripts/startup.sh -w
@@ -120,9 +134,12 @@ jobs:
     - stage: test
       name: "OpenVPN Focal & Commands"
       dist: focal
+      virt: vm
+      arch: amd64
       before_script: 
         - cat /etc/os-release
         - uname -a
+        - ip a
         - sudo chmod +x ciscripts/startup.sh
         - ./ciscripts/startup.sh -o
       script:
@@ -142,9 +159,12 @@ jobs:
     - stage: test
       name: "Wireguard Focal & Commands"
       dist: focal
+      virt: vm
+      arch: amd64
       before_script: 
         - cat /etc/os-release
         - uname -a
+        - ip a
         - sudo chmod +x ciscripts/startup.sh
         - ./ciscripts/startup.sh -w
       script: 
