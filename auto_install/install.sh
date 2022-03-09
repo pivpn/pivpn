@@ -466,7 +466,9 @@ preconfigurePackages(){
 		# On Debian (and Ubuntu), we can only reliably assume the headers package for amd64: linux-image-amd64
 		[[ $PLAT == 'Debian' && $DPKG_ARCH == 'amd64' ]] ||
 		# On Ubuntu, additionally the WireGuard package needs to be available, since we didn't test mixing Ubuntu repositories.
-		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'amd64' && -n $AVAILABLE_WIREGUARD ]]
+		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'amd64' && -n $AVAILABLE_WIREGUARD ]] ||
+		# Ubuntu focal has wireguard support
+		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'arm64' && $OSCN == 'focal' && -n $AVAILABLE_WIREGUARD ]]
 	then
 		WIREGUARD_SUPPORT=1
 	fi
