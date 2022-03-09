@@ -87,6 +87,33 @@ bash pivpn/auto_install/install.sh
 curl -L https://test.pivpn.io | TESTING= bash
 ```
 
+### To install from custom git url and branch (for DEV)
+
+This is inteded to be used when testing changes during
+development and **not** for standard installations.
+Without this the script will always checkout the master branch.
+
+- Git repo can be pivpn or any other git repo (e.g. a fork).
+- Git branch can be specified as required
+
+```shell
+# Syntax
+git clone < customgitrepourl >
+bash pivpn/auto_install/install.sh --giturl < customgitrepourl > --gitbranch < customgitbranch >
+
+# Example
+git clone https://github.com/userthatforked/pivpn.git
+bash pivpn/auto_install/install.sh --giturl https://github.com/userthatforked/pivpn.git --gitbranch myfeaturebranch
+```
+
+The unattended setup config also supports a custom giturl and branch.
+
+```shell
+pivpnGitUrl="https://github.com/userthatforked/pivpn.git"
+pivpnGitBranch="myfeaturebranch"
+```
+
+
 ## How it works
 
 The script will first update your APT repositories, upgrade packages, and install WireGuard (default) or OpenVPN, which will take some time.
