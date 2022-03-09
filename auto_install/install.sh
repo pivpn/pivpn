@@ -993,7 +993,7 @@ updateRepo(){
 		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 		cd "${1}" || exit 1
 		echo " done!"
-		if [ ! -z "${pivpnGitBranch}" ]; then
+		if [ -n "${pivpnGitBranch}" ]; then
 			echo ":::     Checkout branch '${pivpnGitBranch}' from ${2} in ${1}..."
 			${SUDOE} git checkout -q ${pivpnGitBranch}
 			echo ":::     Custom branch checkout done!"
@@ -1021,7 +1021,7 @@ makeRepo(){
 	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 	cd "${1}" || exit 1
 	echo " done!"
-	if [ ! -z "${pivpnGitBranch}" ]; then
+	if [ -n "${pivpnGitBranch}" ]; then
 		echo ":::     Checkout branch '${pivpnGitBranch}' from ${2} in ${1}..."
 		${SUDOE} git checkout -q ${pivpnGitBranch}
 		echo ":::     Custom branch checkout done!"
