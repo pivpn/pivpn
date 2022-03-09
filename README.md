@@ -62,32 +62,32 @@ even more conveniently.
 
 ## Installation
 
-**Method 1**
+### Method 1 (standard)
 
 ```Shell
 curl -L https://install.pivpn.io | bash
 ```
 
-**Method 2 (direct link)**
+### Method 2 (direct link)
 
 ```Shell
 curl https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh | bash
 ```
 
-**Method 3 (clone repo)**
+### Method 3 (clone repo)
 
 ```Shell
 git clone https://github.com/pivpn/pivpn.git
 bash pivpn/auto_install/install.sh
 ```
 
-**To install from Test/Development branch**
+### To install from Test/Development branch
 
 ```shell
 curl -L https://test.pivpn.io | TESTING= bash
 ```
 
-### How it works
+## How it works
 
 The script will first update your APT repositories, upgrade packages, and install WireGuard (default) or OpenVPN, which will take some time.
 
