@@ -47,7 +47,7 @@ else
 fi
 
 printf "=============================================\n"
-echo -e ":::: \t\e[4mRecursive list of files in\e[0m\t ::::\n::::\e\t[4m/etc/wireguard shown below\e[0m\t ::::"
+echo -e ":::: \t\e[4mRecursive list of files in\e[0m\t ::::\n::::\t\e[4m/etc/wireguard shown below\e[0m\t ::::"
 ls -LR /etc/wireguard
 printf "=============================================\n"
 echo -e "::::\t\t\e[4mSelf check\e[0m\t\t ::::"

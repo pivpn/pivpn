@@ -134,7 +134,7 @@ for (( ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     if [ -n "$CONFIRM" ]; then
         REPLY="y"
     else
-        read -r -p "Do you really want to revoke '${CERTS_TO_REVOKE[ii]}'? [Y/n] "
+        read -r -p "Do you really want to revoke '${CERTS_TO_REVOKE[ii]}'? [y/N] "
     fi
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         printf "\n::: Revoking certificate '%s'. \n" "${CERTS_TO_REVOKE[ii]}"
