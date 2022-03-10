@@ -13,7 +13,8 @@
 
 ######## VARIABLES #########
 pivpnGitUrl="https://github.com/pivpn/pivpn.git"
-#pivpnGitUrl="/home/pi/repos/pivpn"
+# Uncomment to checkout a custom branch for local pivpn files
+#pivpnGitBranch="custombranchtocheckout"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn"
 tempsetupVarsFile="/tmp/setupVars.conf"
@@ -159,6 +160,8 @@ flagsCheck(){
 			"--unattended"              ) runUnattended=true; unattendedConfig="${!j}";;
 			"--reconfigure"             ) reconfigure=true;;
 			"--show-unsupported-nics"   ) showUnsupportedNICs=true;;
+			"--giturl"                  ) pivpnGitUrl="${!j}";;
+			"--gitbranch"               ) pivpnGitBranch="${!j}";;
 		esac
 	done
 
@@ -1040,7 +1043,7 @@ updateRepo(){
 		echo "::: Repairing an existing installation, not downloading/updating local repos"
 	else
 		# Pull the latest commits
-		echo -n ":::     Updating repo in $1..."
+		echo -n ":::     Updating repo in ${1} from ${2} ..."
 		### FIXME: Never call rm -rf with a plain variable. Never again as SU!
 		#$SUDO rm -rf "${1}"
 		if test -n "$1"; then
@@ -1051,18 +1054,24 @@ updateRepo(){
 		cd /usr/local/src && \
 		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 		cd "${1}" || exit 1
-		if [ -z "${TESTING+x}" ]; then
+		echo " done!"
+		if [ -n "${pivpnGitBranch}" ]; then
+			echo ":::     Checkout branch '${pivpnGitBranch}' from ${2} in ${1}..."
+			${SUDOE} git checkout -q ${pivpnGitBranch}
+			echo ":::     Custom branch checkout done!"
+		elif [ -z "${TESTING+x}" ]; then
 			:
 		else
-			${SUDOE} git checkout test
+			echo ":::     Checkout branch 'test' from ${2} in ${1}..."
+			${SUDOE} git checkout -q test
+			echo ":::     'test' branch checkout done!"
 		fi
-		echo " done!"
 	fi
 }
 
 makeRepo(){
 	# Remove the non-repos interface and clone the interface
-	echo -n ":::    Cloning $2 into $1..."
+	echo -n ":::    Cloning ${2} into ${1} ..."
 	### FIXME: Never call rm -rf with a plain variable. Never again as SU!
 	#$SUDO rm -rf "${1}"
 	if test -n "$1"; then
@@ -1073,12 +1082,18 @@ makeRepo(){
 	cd /usr/local/src && \
 	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
 	cd "${1}" || exit 1
-	if [ -z "${TESTING+x}" ]; then
+	echo " done!"
+	if [ -n "${pivpnGitBranch}" ]; then
+		echo ":::     Checkout branch '${pivpnGitBranch}' from ${2} in ${1}..."
+		${SUDOE} git checkout -q ${pivpnGitBranch}
+		echo ":::     Custom branch checkout done!"
+	elif [ -z "${TESTING+x}" ]; then
 		:
 	else
-		${SUDOE} git checkout test
+		echo ":::     Checkout branch 'test' from ${2} in ${1}..."
+		${SUDOE} git checkout -q test
+		echo ":::     'test' branch checkout done!"
 	fi
-	echo " done!"
 }
 
 getGitFiles(){

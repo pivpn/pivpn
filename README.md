@@ -62,32 +62,59 @@ even more conveniently.
 
 ## Installation
 
-**Method 1**
+### Method 1 (standard)
 
 ```Shell
 curl -L https://install.pivpn.io | bash
 ```
 
-**Method 2 (direct link)**
+### Method 2 (direct link)
 
 ```Shell
 curl https://raw.githubusercontent.com/pivpn/pivpn/master/auto_install/install.sh | bash
 ```
 
-**Method 3 (clone repo)**
+### Method 3 (clone repo)
 
 ```Shell
 git clone https://github.com/pivpn/pivpn.git
 bash pivpn/auto_install/install.sh
 ```
 
-**To install from Test/Development branch**
+### To install from Test/Development branch
 
 ```shell
 curl -L https://test.pivpn.io | TESTING= bash
 ```
 
-### How it works
+### To install from custom git url and branch (for DEV)
+
+This is inteded to be used when testing changes during
+development and **not** for standard installations.
+Without this the script will always checkout the master branch.
+
+- Git repo can be pivpn or any other git repo (e.g. a fork).
+- Git branch can be specified as required
+
+```shell
+# Syntax
+git clone < customgitrepourl >
+bash pivpn/auto_install/install.sh --giturl < customgitrepourl > --gitbranch < customgitbranch >
+
+# Example
+git clone https://github.com/userthatforked/pivpn.git
+bash pivpn/auto_install/install.sh --giturl https://github.com/userthatforked/pivpn.git --gitbranch myfeaturebranch
+```
+
+The unattended setup config also supports a custom giturl and branch.
+
+```shell
+pivpnGitUrl="https://github.com/userthatforked/pivpn.git"
+pivpnGitBranch="myfeaturebranch"
+```
+
+
+## How it works
 
 The script will first update your APT repositories, upgrade packages, and install WireGuard (default) or OpenVPN, which will take some time.
 
