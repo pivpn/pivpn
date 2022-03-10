@@ -741,7 +741,7 @@ validIPAndNetmask(){
 }
 
 checkipv6uplink(){
-	curl --max-time 3 --connect-timeout 3 --silent --fail -6 http://google.com > /dev/null
+	curl --max-time 3 --connect-timeout 3 --silent --fail -6 https://google.com > /dev/null
 	curlv6testres=$?
 	if [ "$curlv6testres" != "0" ]; then
 		echo "::: IPv6 test connections to google.com have failed. Disabling IPv6 support. (The curl test failed with code: $curlv6testres)"
