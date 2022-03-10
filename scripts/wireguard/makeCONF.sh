@@ -1,5 +1,10 @@
 #!/bin/bash
 
+######## Some vars that might be empty
+# but need to be defined for checks
+pivpnPERSISTENTKEEPALIVE=""
+pivpnDNS2=""
+
 setupVars="/etc/pivpn/wireguard/setupVars.conf"
 
 if [ ! -f "${setupVars}" ]; then
@@ -105,9 +110,15 @@ done
 NET_REDUCED="${pivpnNET::-2}"
 
 # shellcheck disable=SC2154
+if [ "$pivpnenableipv6" == "1" ]; then
+echo "[Interface]
+PrivateKey = $(cat "keys/${CLIENT_NAME}_priv")
+Address = ${NET_REDUCED}.${COUNT}/${subnetClass},${pivpnNETv6}${COUNT}/${subnetClassv6}" > "configs/${CLIENT_NAME}.conf"
+else
 echo "[Interface]
 PrivateKey = $(cat "keys/${CLIENT_NAME}_priv")
 Address = ${NET_REDUCED}.${COUNT}/${subnetClass}" > "configs/${CLIENT_NAME}.conf"
+fi
 
 # shellcheck disable=SC2154
 echo -n "DNS = ${pivpnDNS1}" >> "configs/${CLIENT_NAME}.conf"
@@ -130,16 +141,29 @@ if [ -n "${pivpnPERSISTENTKEEPALIVE}" ]; then
 fi
 echo "::: Client config generated"
 
+if [ "$pivpnenableipv6" == "1" ]; then
+echo "### begin ${CLIENT_NAME} ###
+[Peer]
+PublicKey = $(cat "keys/${CLIENT_NAME}_pub")
+PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
+AllowedIPs = ${NET_REDUCED}.${COUNT}/32,${pivpnNETv6}${COUNT}/128
+### end ${CLIENT_NAME} ###" >> wg0.conf
+else
 echo "### begin ${CLIENT_NAME} ###
 [Peer]
 PublicKey = $(cat "keys/${CLIENT_NAME}_pub")
 PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")
 AllowedIPs = ${NET_REDUCED}.${COUNT}/32
 ### end ${CLIENT_NAME} ###" >> wg0.conf
+fi
+
 echo "::: Updated server config"
 
 if [ -f /etc/pivpn/hosts.wireguard ]; then
     echo "${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn" >> /etc/pivpn/hosts.wireguard
+    if [ "$pivpnenableipv6" == "1" ]; then
+        echo "${pivpnNETv6}${COUNT} ${CLIENT_NAME}.pivpn" >> /etc/pivpn/hosts.wireguard
+    fi
     if killall -SIGHUP pihole-FTL; then
         echo "::: Updated hosts file for Pi-hole"
     else
