@@ -2196,7 +2196,7 @@ confNetwork(){
 	$SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
 	if [ "$pivpnenableipv6" == "1" ]; then
 		$SUDO sed -i '/net.ipv6.conf.all.forwarding=1/s/^#//g' /etc/sysctl.conf
-		$SUDO echo "net.ipv6.conf.${IPv6dev}.accept_ra=2" > /etc/sysctl.d/99-pivpn.conf
+		echo "net.ipv6.conf.${IPv6dev}.accept_ra=2" | $SUDO tee /etc/sysctl.d/99-pivpn.conf > /dev/null
 	fi
 	$SUDO sysctl -p > /dev/null
 
