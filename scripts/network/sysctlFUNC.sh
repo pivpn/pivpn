@@ -20,7 +20,7 @@ checkSysctl(){
 	[ "$(</proc/sys/net/ipv4/ip_forward)" -eq 1 ] || return 1
 
 	if [ "${pivpnenableipv6}" -eq 1 ]; then
-		[ "$(</proc/sys/net/ipv6/ip_forward)" -eq 1 ] || return 1
+		[ "$(</proc/sys/net/ipv6/conf/all/forwarding)" -eq 1 ] || return 1
 		[ "$(<"/proc/sys/net/ipv6/conf/${IPv6dev}/accept_ra")" -eq 2 ] || return 1
 	fi
 }
