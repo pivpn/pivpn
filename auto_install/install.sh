@@ -2241,7 +2241,7 @@ if \$programname == 'ovpn-pivpn' then stop" | $SUDO tee /etc/rsyslog.d/30-ovpn-p
 	postrotate
 		invoke-rc.d rsyslog rotate >/dev/null 2>&1 || true
 	endscript
-}" | $SUDO tee /etc/logrotate.d/openvpn > /dev/null
+}" | $SUDO tee /etc/logrotate.d/ovpn-pivpn > /dev/null
 
 	# Restart the logging service
 	case ${PLAT} in
