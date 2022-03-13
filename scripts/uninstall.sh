@@ -94,41 +94,7 @@ removeAll(){
 
 	# Removing firewall rules.
 	echo "::: Removing firewall rules..."
-
-	if [ "$USING_UFW" -eq 1 ]; then
-
-    ### Ignoring SC2154, value sourced from setupVars file
-		# shellcheck disable=SC2154
-		ufw delete allow "${pivpnPORT}"/"${pivpnPROTO}" > /dev/null
-    ### Ignoring SC2154, value sourced from setupVars file
-		# shellcheck disable=SC2154
-		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any > /dev/null
-		ufw delete allow in on "${pivpnDEV}" to any port 53 from "${pivpnNET}/${subnetClass}" >/dev/null
-		sed "/-I POSTROUTING -s ${pivpnNET}\\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/d" -i /etc/ufw/before.rules
-		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
-		ufw reload &> /dev/null
-
-	elif [ "$USING_UFW" -eq 0 ]; then
-
-		if [ "$INPUT_CHAIN_EDITED" -eq 1 ]; then
-			iptables -D INPUT -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule"
-		fi
-
-		if [ "$FORWARD_CHAIN_EDITED" -eq 1 ]; then
-			iptables -D FORWARD -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"
-			iptables -D FORWARD -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule"
-		fi
-
-		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
-		iptables-save > /etc/iptables/rules.v4
-
-	fi
-
-	# Disable IPv4 forwarding
-	if [ "${vpnStillExists}" -eq 0 ]; then
-		sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
-		sysctl -p
-	fi
+	${pivpnScriptDir}/network/networkCONF.sh "${VPN}" reset
 
 	# Purge dependencies
 	echo "::: Purge dependencies..."
@@ -149,9 +115,9 @@ removeAll(){
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 
-							if [ -f /etc/systemd/system/wg-quick@.service.d/override.conf ]; then
-								rm -f /etc/systemd/system/wg-quick@.service.d/override.conf
-							fi
+							rm -f /etc/systemd/system/wg-quick@.service.d/override.conf
+							rm -f /etc/systemd/system/wg-quick@wg0.service.d/override.conf
+							systemctl daemon-reload
 
 						elif [ "${i}" = "unattended-upgrades" ]; then
 

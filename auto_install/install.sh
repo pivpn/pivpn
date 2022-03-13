@@ -117,7 +117,6 @@ main(){
 	else
 		exit 1
 	fi
-	restartServices
 	# Ask if unattended-upgrades will be enabled
 	askUnattendedUpgrades
 	if [ "$UNATTUPG" -eq 1 ]; then
@@ -125,6 +124,7 @@ main(){
 	fi
 	writeConfigFiles
 	installScripts
+	restartServices
 	displayFinalMessage
 	echo ":::"
 }
@@ -490,8 +490,8 @@ preconfigurePackages(){
 		exit 1
 	fi
 
-	# if ufw is enabled, configure that.
-	# running as root because sometimes the executable is not in the user's $PATH
+	# If ufw is enabled, configure that. Running as root because sometimes the executable
+	# is not in the user's $PATH.
 	if $SUDO bash -c 'command -v ufw' > /dev/null; then
 		if $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
@@ -502,13 +502,37 @@ preconfigurePackages(){
 		USING_UFW=0
 	fi
 
-	if [ "$USING_UFW" -eq 0 ]; then
-		BASE_DEPS+=(iptables-persistent)
-		echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
-		echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
+	# If ufw is not enabled or used, check if iptables is present. If it is, check if it's
+	# actually used (for a loose definition of used: any rule is currently set). In case it is used,
+	# configure iptables, otherwise, configure nftables (TODO).
+	if [ "${USING_UFW}" -eq 0 ]; then
+		if $SUDO bash -c 'command -v iptables' > /dev/null; then
+
+			IPTABLES_RULES_COUNT="$($SUDO iptables -S | grep -vcE '(^-P|ufw-)')"
+			IP6TABLES_RULES_COUNT="$($SUDO ip6tables -S | grep -vcE '(^-P|ufw-)')"
+
+			if [ "${IPTABLES_RULES_COUNT}" -gt 0 ] || [ "${IP6TABLES_RULES_COUNT}" -gt 0 ]; then
+				USING_IPTABLES=1
+			else
+				USING_IPTABLES=0
+			fi
+		else
+			USING_IPTABLES=0
+		fi
 	fi
 
-	echo "USING_UFW=${USING_UFW}" >> ${tempsetupVarsFile}
+	if [ "${USING_UFW}" = 1 ]; then
+		FIREWALL_FRONTEND='ufw'
+	elif [ "${USING_IPTABLES}" = 1 ]; then
+		FIREWALL_FRONTEND='iptables'
+	elif [ "${USING_IPTABLES}" = 0 ]; then
+		# It will be nftables later.
+		FIREWALL_FRONTEND='iptables'
+	fi
+
+	echo "::: ${FIREWALL_FRONTEND} will be used as the firewall frontend."
+
+	echo "FIREWALL_FRONTEND=${FIREWALL_FRONTEND}" >> ${tempsetupVarsFile}
 }
 
 installDependentPackages(){
@@ -1137,7 +1161,6 @@ installPiVPN(){
 		askEncryption
 		confOpenVPN
 		confOVPN
-		confNetwork
 		confLogging
 
 	elif [ "$VPN" = "wireguard" ]; then
@@ -1148,7 +1171,6 @@ installPiVPN(){
 		askClientDNS
 		askPublicIPOrDNS
 		confWireGuard
-		confNetwork
 		writeWireguardTempVarsFile
 
 	fi
@@ -1594,11 +1616,7 @@ askClientDNS(){
 
 			echo "pivpnDNS1=${pivpnDNS1}" >> ${tempsetupVarsFile}
 			echo "pivpnDNS2=${pivpnDNS2}" >> ${tempsetupVarsFile}
-
-			# Allow incoming DNS requests through UFW.
-			if [ "$USING_UFW" -eq 1 ]; then
-				$SUDO ufw insert 1 allow in on "${pivpnDEV}" to any port 53 from "${pivpnNET}/${subnetClass}" >/dev/null
-			fi
+			echo "USING_PIHOLE=1" >> ${tempsetupVarsFile}
 
 			return
 		fi
@@ -2125,9 +2143,14 @@ confWireGuard(){
 	# Reload job type is not yet available in wireguard-tools shipped with Ubuntu 20.04
 	if ! grep -q 'ExecReload' /lib/systemd/system/wg-quick@.service; then
 		echo "::: Adding additional reload job type for wg-quick unit"
-		$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@.service.d/override.conf /etc/systemd/system/wg-quick@.service.d/override.conf
+		$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@.service.d/reload-job.conf /etc/systemd/system/wg-quick@.service.d/override.conf
 		$SUDO systemctl daemon-reload
 	fi
+
+	# Install systemd override to automatically setup firewall and sysctl before starting
+	# wireguard and reset them after wireguard is stopped
+	$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@wg0.service.d/pre-post-jobs.conf /etc/systemd/system/wg-quick@wg0.service.d/override.conf
+	$SUDO systemctl daemon-reload
 
 	if [ -d /etc/wireguard ]; then
 		# Backup the wireguard folder
@@ -2191,168 +2214,6 @@ ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
 	echo "::: Server config generated."
 }
 
-confNetwork(){
-	# Enable forwarding of internet traffic
-	$SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
-	if [ "$pivpnenableipv6" == "1" ]; then
-		$SUDO sed -i '/net.ipv6.conf.all.forwarding=1/s/^#//g' /etc/sysctl.conf
-		echo "net.ipv6.conf.${IPv6dev}.accept_ra=2" | $SUDO tee /etc/sysctl.d/99-pivpn.conf > /dev/null
-	fi
-	$SUDO sysctl -p > /dev/null
-
-	if [ "$USING_UFW" -eq 1 ]; then
-
-		echo "::: Detected UFW is enabled."
-		echo "::: Adding UFW rules..."
-		### Basic safeguard: if file is empty, there's been something weird going on.
-		### Note: no safeguard against imcomplete content as a result of previous failures.
-		if test -s /etc/ufw/before.rules; then
-			$SUDO cp -f /etc/ufw/before.rules /etc/ufw/before.rules.pre-pivpn
-		else
-			echo "$0: ERR: Sorry, won't touch empty file \"/etc/ufw/before.rules\".";
-			exit 1;
-		fi
-		if test -s /etc/ufw/before6.rules; then
-			$SUDO cp -f /etc/ufw/before6.rules /etc/ufw/before6.rules.pre-pivpn
-		else
-			echo "$0: ERR: Sorry, won't touch empty file \"/etc/ufw/before6.rules\".";
-			exit 1;
-		fi
-		### If there is already a "*nat" section just add our POSTROUTING MASQUERADE
-		if $SUDO grep -q "*nat" /etc/ufw/before.rules; then
-			### Onyl add the IPv4 NAT rule if it isn't already there
-			if ! $SUDO grep -q "${VPN}-nat-rule" /etc/ufw/before.rules; then
-				$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/}" -i /etc/ufw/before.rules
-			fi
-		else
-			$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNET}\/${subnetClass} -o ${IPv4dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before.rules
-		fi
-		if [ "$pivpnenableipv6" == "1" ]; then
-			if $SUDO grep -q "*nat" /etc/ufw/before6.rules; then
-				### Onyl add the IPv6 NAT rule if it isn't already there
-				if ! $SUDO grep -q "${VPN}-nat-rule" /etc/ufw/before6.rules; then
-					$SUDO sed "/^*nat/{n;s/\(:POSTROUTING ACCEPT .*\)/\1\n-I POSTROUTING -s ${pivpnNETv6}\/${subnetClassv6} -o ${IPv6dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule/}" -i /etc/ufw/before6.rules
-				fi
-			else
-				$SUDO sed "/delete these required/i *nat\n:POSTROUTING ACCEPT [0:0]\n-I POSTROUTING -s ${pivpnNETv6}\/${subnetClassv6} -o ${IPv6dev} -j MASQUERADE -m comment --comment ${VPN}-nat-rule\nCOMMIT\n" -i /etc/ufw/before6.rules
-			fi
-		fi
-		# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
-		$SUDO ufw insert 1 allow "${pivpnPORT}"/"${pivpnPROTO}" comment allow-${VPN} >/dev/null
-		$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any >/dev/null
-		if [ "$pivpnenableipv6" == "1" ]; then
-			$SUDO ufw route insert 1 allow in on "${pivpnDEV}" from "${pivpnNETv6}/${subnetClassv6}" out on "${IPv6dev}" to any >/dev/null
-		fi
-
-		$SUDO ufw reload >/dev/null
-		echo "::: UFW configuration completed."
-
-	elif [ "$USING_UFW" -eq 0 ]; then
-
-		# Now some checks to detect which rules we need to add. On a newly installed system all policies
-		# should be ACCEPT, so the only required rule would be the MASQUERADE one.
-
-		if ! $SUDO iptables -t nat -S | grep -q "${VPN}-nat-rule"; then
-			$SUDO iptables -t nat -I POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
-		fi
-		if [ "$pivpnenableipv6" == "1" ]; then
-			if ! $SUDO ip6tables -t nat -S | grep -q "${VPN}-nat-rule"; then
-				$SUDO ip6tables -t nat -I POSTROUTING -s "${pivpnNETv6}/${subnetClassv6}" -o "${IPv6dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
-			fi
-		fi
-		# Count how many rules are in the INPUT and FORWARD chain. When parsing input from
-		# iptables -S, '^-P' skips the policies and 'ufw-' skips ufw chains (in case ufw was found
-		# installed but not enabled).
-
-		# Grep returns non 0 exit code where there are no matches, however that would make the script exit,
-		# for this reasons we use '|| true' to force exit code 0
-		INPUT_RULES_COUNT="$($SUDO iptables -S INPUT | grep -vcE '(^-P|ufw-)')"
-		FORWARD_RULES_COUNT="$($SUDO iptables -S FORWARD | grep -vcE '(^-P|ufw-)')"
-		INPUT_POLICY="$($SUDO iptables -S INPUT | grep '^-P' | awk '{print $3}')"
-		FORWARD_POLICY="$($SUDO iptables -S FORWARD | grep '^-P' | awk '{print $3}')"
-
-		if [ "$pivpnenableipv6" == "1" ]; then
-			INPUT_RULES_COUNTv6="$($SUDO ip6tables -S INPUT | grep -vcE '(^-P|ufw-)')"
-			FORWARD_RULES_COUNTv6="$($SUDO ip6tables -S FORWARD | grep -vcE '(^-P|ufw-)')"
-			INPUT_POLICYv6="$($SUDO ip6tables -S INPUT | grep '^-P' | awk '{print $3}')"
-			FORWARD_POLICYv6="$($SUDO ip6tables -S FORWARD | grep '^-P' | awk '{print $3}')"
-		fi
-
-		# If rules count is not zero, we assume we need to explicitly allow traffic. Same conclusion if
-		# there are no rules and the policy is not ACCEPT. Note that rules are being added to the top of the
-		# chain (using -I).
-
-		if [ "$INPUT_RULES_COUNT" -ne 0 ] || [ "$INPUT_POLICY" != "ACCEPT" ]; then
-			if $SUDO iptables -S | grep -q "${VPN}-input-rule"; then
-				INPUT_CHAIN_EDITED=0
-			else
-				$SUDO iptables -I INPUT 1 -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule"
-			fi
-			INPUT_CHAIN_EDITED=1
-		else
-			INPUT_CHAIN_EDITED=0
-		fi
-
-		if [ "$pivpnenableipv6" == "1" ]; then
-			if [ "$INPUT_RULES_COUNTv6" -ne 0 ] || [ "$INPUT_POLICYv6" != "ACCEPT" ]; then
-				if $SUDO ip6tables -S | grep -q "${VPN}-input-rule"; then
-					INPUT_CHAIN_EDITEDv6=0
-				else
-					$SUDO ip6tables -I INPUT 1 -i "${IPv6dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule"
-				fi
-				INPUT_CHAIN_EDITEDv6=1
-			else
-				INPUT_CHAIN_EDITEDv6=0
-			fi
-		fi
-
-		if [ "$FORWARD_RULES_COUNT" -ne 0 ] || [ "$FORWARD_POLICY" != "ACCEPT" ]; then
-			if $SUDO iptables -S | grep -q "${VPN}-forward-rule"; then
-				FORWARD_CHAIN_EDITED=0
-			else
-				$SUDO iptables -I FORWARD 1 -d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"
-				$SUDO iptables -I FORWARD 2 -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule"
-			fi
-			FORWARD_CHAIN_EDITED=1
-		else
-			FORWARD_CHAIN_EDITED=0
-		fi
-
-		if [ "$pivpnenableipv6" == "1" ]; then
-			if [ "$FORWARD_RULES_COUNTv6" -ne 0 ] || [ "$FORWARD_POLICYv6" != "ACCEPT" ]; then
-				if $SUDO ip6tables -S | grep -q "${VPN}-forward-rule"; then
-					FORWARD_CHAIN_EDITEDv6=0
-				else
-					$SUDO ip6tables -I FORWARD 1 -d "${pivpnNETv6}/${subnetClassv6}" -i "${IPv6dev}" -o "${pivpnDEV}" -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT -m comment --comment "${VPN}-forward-rule"
-					$SUDO ip6tables -I FORWARD 2 -s "${pivpnNETv6}/${subnetClassv6}" -i "${pivpnDEV}" -o "${IPv6dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule"
-				fi
-				FORWARD_CHAIN_EDITEDv6=1
-			else
-				FORWARD_CHAIN_EDITEDv6=0
-			fi
-		fi
-
-		case ${PLAT} in
-			Debian|Raspbian|Ubuntu)
-				$SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
-			;;
-		esac
-
-		case ${PLAT} in
-			Debian|Raspbian|Ubuntu)
-				$SUDO ip6tables-save | $SUDO tee /etc/iptables/rules.v6 > /dev/null
-			;;
-		esac
-
-		{
-		echo "INPUT_CHAIN_EDITED=${INPUT_CHAIN_EDITED}"
-		echo "FORWARD_CHAIN_EDITED=${FORWARD_CHAIN_EDITED}"
-		echo "INPUT_CHAIN_EDITEDv6=${INPUT_CHAIN_EDITEDv6}"
-		echo "FORWARD_CHAIN_EDITEDv6=${FORWARD_CHAIN_EDITEDv6}"
-		} >> ${tempsetupVarsFile}
-	fi
-}
-
 confLogging() {
 	# Pre-create rsyslog/logrotate config directories if missing, to assure logs are handled as expected when those are installed at a later time
 	$SUDO mkdir -p /etc/{rsyslog,logrotate}.d
@@ -2378,23 +2239,6 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
 			$SUDO systemctl -q is-active rsyslog.service && $SUDO systemctl restart rsyslog.service
-		;;
-	esac
-}
-
-
-restartServices(){
-	# Start services
-	echo "::: Restarting services..."
-	case ${PLAT} in
-		Debian|Raspbian|Ubuntu)
-			if [ "$VPN" = "openvpn" ]; then
-				$SUDO systemctl enable openvpn.service &> /dev/null
-				$SUDO systemctl restart openvpn.service
-			elif [ "$VPN" = "wireguard" ]; then
-				$SUDO systemctl enable wg-quick@wg0.service &> /dev/null
-				$SUDO systemctl restart wg-quick@wg0.service
-			fi
 		;;
 	esac
 }
@@ -2514,6 +2358,22 @@ installScripts(){
 	fi
 
 	echo " done."
+}
+
+restartServices(){
+	# Start services
+	echo "::: Restarting services..."
+	case ${PLAT} in
+		Debian|Raspbian|Ubuntu)
+			if [ "$VPN" = "openvpn" ]; then
+				$SUDO systemctl enable openvpn.service &> /dev/null
+				$SUDO systemctl restart openvpn.service
+			elif [ "$VPN" = "wireguard" ]; then
+				$SUDO systemctl enable wg-quick@wg0.service &> /dev/null
+				$SUDO systemctl restart wg-quick@wg0.service
+			fi
+		;;
+	esac
 }
 
 displayFinalMessage(){
