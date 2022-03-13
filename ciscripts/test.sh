@@ -1,6 +1,6 @@
 #!/bin/bash
 
-systemctl status openvpn
+systemctl status openvpn-server@pivpn.service
 pivpn add -n foo
 pivpn -qr foo
 pivpn -bk

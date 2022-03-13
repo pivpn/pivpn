@@ -44,7 +44,7 @@ jobs:
       script:
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
       after_script:
-        - systemctl status openvpn
+        - systemctl status openvpn-server@pivpn.service
         - pivpn add -n foo nopass -d 180
         - pivpn add -p "$RANDOM$RANDOM" -n bar -d 180
         - pivpn add -o -n foo
@@ -94,7 +94,7 @@ jobs:
         - ./ciscripts/startup.sh -o
       script:
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
-        - systemctl status openvpn
+        - systemctl status openvpn-server@pivpn.service
         - pivpn add -n foo nopass -d 180
         - pivpn add -p "$RANDOM$RANDOM" -n bar -d 180
         - pivpn add -o -n foo
@@ -144,7 +144,7 @@ jobs:
         - ./ciscripts/startup.sh -o
       script:
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
-        - systemctl status openvpn
+        - systemctl status openvpn-server@pivpn.service
         - pivpn add -n foo nopass -d 180
         - pivpn add -p "$RANDOM$RANDOM" -n bar -d 180
         - pivpn add -o -n foo

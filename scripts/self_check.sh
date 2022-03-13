@@ -20,7 +20,7 @@ if [ "$VPN" = "wireguard" ]; then
 	VPN_SERVICE="wg-quick@wg0"
 	VPN_PRETTY_NAME="WireGuard"
 elif [ "$VPN" = "openvpn" ]; then
-	VPN_SERVICE="openvpn"
+	VPN_SERVICE="openvpn-server@pivpn.service"
 	VPN_PRETTY_NAME="OpenVPN"
 fi
 

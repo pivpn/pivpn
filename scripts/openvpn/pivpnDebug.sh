@@ -23,7 +23,7 @@ echo -e "::::\t    \e[4mInstallation settings\e[0m    \t ::::"
 sed "s/$pivpnHOST/REDACTED/" < ${setupVars}
 printf "=============================================\n"
 echo -e "::::  \e[4mServer configuration shown below\e[0m   ::::"
-cat /etc/openvpn/server.conf
+cat /etc/openvpn/server/pivpn.conf
 printf "=============================================\n"
 echo -e "::::  \e[4mClient template file shown below\e[0m   ::::"
 sed "s/$pivpnHOST/REDACTED/" < /etc/openvpn/easy-rsa/pki/Default.txt

@@ -88,8 +88,8 @@ removeAll(){
 		systemctl stop wg-quick@wg0
 		systemctl disable wg-quick@wg0 &> /dev/null
 	elif [ "$VPN" = "openvpn" ]; then
-		systemctl stop openvpn
-		systemctl disable openvpn &> /dev/null
+		systemctl stop openvpn-server@pivpn.service
+		systemctl disable openvpn-server@pivpn.service &> /dev/null
 	fi
 
 	# Removing firewall rules.
@@ -173,7 +173,7 @@ removeAll(){
 		rm -rf "$install_home/configs"
 	elif [ "$VPN" = "openvpn" ]; then
 		rm -rf /var/log/*openvpn*
-		rm -f /etc/openvpn/server.conf
+		rm -f /etc/openvpn/server/pivpn.conf
 		rm -f /etc/openvpn/crl.pem
 		rm -rf /etc/openvpn/easy-rsa
 		rm -rf /etc/openvpn/ccd

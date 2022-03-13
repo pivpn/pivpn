@@ -1942,6 +1942,11 @@ cidrToMask(){
 }
 
 confOpenVPN(){
+	# Install systemd override to automatically setup firewall and sysctl before starting
+	# openvpn and reset them after openvpn is stopped
+	$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/openvpn-server@pivpn.service.d/pre-post-jobs.conf /etc/systemd/system/openvpn-server@pivpn.service.d/override.conf
+	$SUDO systemctl daemon-reload
+
 	# Grab the existing Hostname
 	host_name=$(hostname -s)
 	# Generate a random UUID for this server so that we can use verify-x509-name later that is unique for this server installation.
@@ -1957,8 +1962,8 @@ confOpenVPN(){
 	$SUDO tar czf "/etc/${OPENVPN_BACKUP}" /etc/openvpn &> /dev/null
 	umask "$CURRENT_UMASK"
 
-	if [ -f /etc/openvpn/server.conf ]; then
-		$SUDO rm /etc/openvpn/server.conf
+	if [ -f /etc/openvpn/server/pivpn.conf ]; then
+		$SUDO rm /etc/openvpn/server/pivpn.conf
 	fi
 
 	if [ -d /etc/openvpn/ccd ]; then
@@ -2061,60 +2066,60 @@ set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
   ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
-	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
+	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server/pivpn.conf
 
 	# Apply client DNS settings
-	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'"${pivpnDNS1}"'\"/' /etc/openvpn/server.conf
+	${SUDOE} sed -i '0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1'"${pivpnDNS1}"'\"/' /etc/openvpn/server/pivpn.conf
 
 	if [ -z "${pivpnDNS2}" ]; then
-		${SUDOE} sed -i '/\(dhcp-option DNS \)/{n;N;d}' /etc/openvpn/server.conf
+		${SUDOE} sed -i '/\(dhcp-option DNS \)/{n;N;d}' /etc/openvpn/server/pivpn.conf
 	else
-		${SUDOE} sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'"${pivpnDNS2}"'\"/' /etc/openvpn/server.conf
+		${SUDOE} sed -i '0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1'"${pivpnDNS2}"'\"/' /etc/openvpn/server/pivpn.conf
 	fi
 
 	# Set the user encryption key size
-	$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server.conf
+	$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server/pivpn.conf
 
 	if [ "$pivpnTLSPROT" = "tls-crypt" ]; then
 		#If they enabled 2.4 use tls-crypt instead of tls-auth to encrypt control channel
-		$SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server.conf
+		$SUDO sed -i "s/tls-auth \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/tls-crypt \/etc\/openvpn\/easy-rsa\/pki\/ta.key/" /etc/openvpn/server/pivpn.conf
 	fi
 
 	if [ "$pivpnCERT" = "ec" ]; then
 		#If they enabled 2.4 disable dh parameters and specify the matching curve from the ECDSA certificate
-		$SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none\necdh-curve ${ECDSA_MAP["${pivpnENCRYPT}"]}/" /etc/openvpn/server.conf
+		$SUDO sed -i "s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh none\necdh-curve ${ECDSA_MAP["${pivpnENCRYPT}"]}/" /etc/openvpn/server/pivpn.conf
 	elif [ "$pivpnCERT" = "rsa" ]; then
 		# Otherwise set the user encryption key size
-		$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server.conf
+		$SUDO sed -i "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" /etc/openvpn/server/pivpn.conf
 	fi
 
 	# if they modified VPN network put value in server.conf
 	if [ "$pivpnNET" != "10.8.0.0" ]; then
-		$SUDO sed -i "s/10.8.0.0/${pivpnNET}/g" /etc/openvpn/server.conf
+		$SUDO sed -i "s/10.8.0.0/${pivpnNET}/g" /etc/openvpn/server/pivpn.conf
 	fi
 
 	# if they modified VPN subnet class put value in server.conf
 	if [ "$(cidrToMask "$subnetClass")" != "255.255.255.0" ]; then
-		$SUDO sed -i "s/255.255.255.0/$(cidrToMask "$subnetClass")/g" /etc/openvpn/server.conf
+		$SUDO sed -i "s/255.255.255.0/$(cidrToMask "$subnetClass")/g" /etc/openvpn/server/pivpn.conf
 	fi
 
 	# if they modified port put value in server.conf
 	if [ "$pivpnPORT" != 1194 ]; then
-		$SUDO sed -i "s/1194/${pivpnPORT}/g" /etc/openvpn/server.conf
+		$SUDO sed -i "s/1194/${pivpnPORT}/g" /etc/openvpn/server/pivpn.conf
 	fi
 
 	# if they modified protocol put value in server.conf
 	if [ "$pivpnPROTO" != "udp" ]; then
-		$SUDO sed -i "s/proto udp/proto tcp/g" /etc/openvpn/server.conf
+		$SUDO sed -i "s/proto udp/proto tcp/g" /etc/openvpn/server/pivpn.conf
 	fi
 
 	if [ -n "$pivpnSEARCHDOMAIN" ]; then
-		$SUDO sed -i "0,/\\(.*dhcp-option.*\\)/s//push \"dhcp-option DOMAIN ${pivpnSEARCHDOMAIN}\" \\n&/" /etc/openvpn/server.conf
+		$SUDO sed -i "0,/\\(.*dhcp-option.*\\)/s//push \"dhcp-option DOMAIN ${pivpnSEARCHDOMAIN}\" \\n&/" /etc/openvpn/server/pivpn.conf
 	fi
 
 	# write out server certs to conf file
-	$SUDO sed -i "s#\\(key /etc/openvpn/easy-rsa/pki/private/\\).*#\\1${SERVER_NAME}.key#" /etc/openvpn/server.conf
-	$SUDO sed -i "s#\\(cert /etc/openvpn/easy-rsa/pki/issued/\\).*#\\1${SERVER_NAME}.crt#" /etc/openvpn/server.conf
+	$SUDO sed -i "s#\\(key /etc/openvpn/easy-rsa/pki/private/\\).*#\\1${SERVER_NAME}.key#" /etc/openvpn/server/pivpn.conf
+	$SUDO sed -i "s#\\(cert /etc/openvpn/easy-rsa/pki/issued/\\).*#\\1${SERVER_NAME}.crt#" /etc/openvpn/server/pivpn.conf
 }
 
 confOVPN(){
@@ -2368,8 +2373,8 @@ restartServices(){
 	case ${PLAT} in
 		Debian|Raspbian|Ubuntu)
 			if [ "$VPN" = "openvpn" ]; then
-				$SUDO systemctl enable openvpn.service &> /dev/null
-				$SUDO systemctl restart openvpn.service
+				$SUDO systemctl enable openvpn-server@pivpn.service &> /dev/null
+				$SUDO systemctl restart openvpn-server@pivpn.service
 			elif [ "$VPN" = "wireguard" ]; then
 				$SUDO systemctl enable wg-quick@wg0.service &> /dev/null
 				$SUDO systemctl restart wg-quick@wg0.service
