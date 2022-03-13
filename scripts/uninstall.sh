@@ -137,6 +137,9 @@ removeAll(){
 							rm -f /etc/rsyslog.d/30-openvpn.conf
 							rm -f /etc/logrotate.d/openvpn
 
+							rm -f /etc/systemd/system/openvpn-server@pivpn.service.d/override.conf
+							systemctl daemon-reload
+
 						fi
 						printf ":::\\tRemoving %s..." "$i"; $PKG_MANAGER -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\\n";
 						break
