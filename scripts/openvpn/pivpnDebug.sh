@@ -38,7 +38,7 @@ echo -e ":::: Having trouble connecting? Take a look at the FAQ:"
 echo -e ":::: \e[1mhttps://docs.pivpn.io/faq\e[0m"
 printf "=============================================\n"
 echo -e "::::      \e[4mSnippet of the server log\e[0m      ::::"
-OVPNLOG="$(tail -n 20 /var/log/openvpn.log)"
+OVPNLOG="$(tail -n 20 /var/log/openvpn/pivpn.log)"
 
 # Regular expession taken from https://superuser.com/a/202835, it will match invalid IPs
 # like 123.456.789.012 but it's fine since the log only contains valid ones.

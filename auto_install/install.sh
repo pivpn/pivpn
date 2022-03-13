@@ -2224,11 +2224,12 @@ ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
 confLogging() {
 	# Pre-create rsyslog/logrotate config directories if missing, to assure logs are handled as expected when those are installed at a later time
 	$SUDO mkdir -p /etc/{rsyslog,logrotate}.d
+	$SUDO mkdir -p /var/log/openvpn
 
-	echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
-if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
+	echo "if \$programname == 'ovpn-pivpn' then /var/log/openvpn/pivpn.log
+if \$programname == 'ovpn-pivpn' then stop" | $SUDO tee /etc/rsyslog.d/30-ovpn-pivpn.conf > /dev/null
 
-	echo "/var/log/openvpn.log
+	echo "/var/log/openvpn/pivpn.log
 {
 	rotate 4
 	weekly
