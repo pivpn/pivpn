@@ -132,6 +132,7 @@ else
 fi
 
 # grep -w (whole word) is used so port 11940 won't match when looking for 1194
+# shellcheck disable=SC2154
 if netstat -antu | grep -wqE "${pivpnPROTO}.*${pivpnPORT}"; then
 	echo ":: [OK] ${VPN_PRETTY_NAME} is listening on port ${pivpnPORT}/${pivpnPROTO}"
 else

@@ -1614,9 +1614,11 @@ askClientDNS(){
 			# Use the Raspberry Pi VPN IP as DNS server.
 			pivpnDNS1="$vpnGw"
 
-			echo "pivpnDNS1=${pivpnDNS1}" >> ${tempsetupVarsFile}
-			echo "pivpnDNS2=${pivpnDNS2}" >> ${tempsetupVarsFile}
-			echo "USING_PIHOLE=1" >> ${tempsetupVarsFile}
+			{
+				echo "pivpnDNS1=${pivpnDNS1}";
+				echo "pivpnDNS2=${pivpnDNS2}";
+				echo "USING_PIHOLE=1";
+			} >> ${tempsetupVarsFile}
 
 			return
 		fi
