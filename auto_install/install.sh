@@ -790,9 +790,7 @@ askforcedipv6route(){
 		return
 	fi
 
-	whiptail --msgbox --backtitle "Privacy setting" --title "IPv6 leak" "Since this server doesn't seem to have a working IPv6 connection or IPv6 was disabled on purpose, it is still recommended you force all IPv6 connections through the vpn.\\nThis will prevent an IPv6 client leak.\\nIt might cause the client to have slow reponse when browsing the web though.\\nDisable when you having trouble with this." ${r} ${c}
-
-	if (whiptail --backtitle "Privacy setting" --title "IPv6 leak" --yesno "Do you want to disable forced IPv6 route?" ${r} ${c}); then
+	if (whiptail --backtitle "Privacy setting" --title "IPv6 leak" --yesno "Although this server doesn't seem to have a working IPv6 connection or IPv6 was disabled on purpose, it is still recommended you force all IPv6 connections through the VPN.\\n\\nThis will prevent the client from bypassing the tunnel and leaking its real IPv6 address to servers, though it might cause the client to have slow response when browsing the web on IPv6 networks.\\n\\nDo you want to force routing IPv6 to block the leakage?" ${r} ${c}); then
 		pivpnforceipv6route="1"
 	else
 		pivpnforceipv6route="0"
