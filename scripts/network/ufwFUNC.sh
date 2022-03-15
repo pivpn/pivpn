@@ -4,13 +4,13 @@
 addUfwInputRules(){
 	# Allow incoming DNS requests through UFW.
 	if [ "${USING_PIHOLE}" = 1 ]; then
-		ufw insert 1 "${ufwPiholeUdpArgs[@]}"
-		ufw insert 1 "${ufwPiholeTcpArgs[@]}"
+		ufw prepend "${ufwPiholeUdpArgs[@]}"
+		ufw prepend "${ufwPiholeTcpArgs[@]}"
 	fi
 
 	# Insert rules at the beginning of the chain (in case there are other rules that may drop the traffic)
-	ufw insert 1 "${ufwInputArgs[@]}"
-	ufw insert 1 "${ufw6InputArgs[@]}"
+	ufw prepend "${ufwInputArgs[@]}"
+	ufw prepend "${ufw6InputArgs[@]}"
 }
 
 checkUfwInputRules(){
@@ -34,9 +34,9 @@ removeUfwInputRules(){
 }
 
 addUfwForwardRules(){
-	ufw route insert 1 "${ufwForwardArgs[@]}"
+	ufw route prepend "${ufwForwardArgs[@]}"
 	if [ "$pivpnenableipv6" == "1" ]; then
-		ufw route insert 1 "${ufw6ForwardArgs[@]}"
+		ufw route prepend "${ufw6ForwardArgs[@]}"
 	fi
 }
 
