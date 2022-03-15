@@ -15,29 +15,28 @@ scriptDir="/opt/pivpn"
 
 # shellcheck disable=SC2034
 loadFirewallRulesArrays(){
-	iptablesNatArgs=( -s "${pivpnNET}/${subnetClass}"     -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule")
-	ip6tablesNatArgs=(-s "${pivpnNETv6}/${subnetClassv6}" -o "${IPv6dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule")
-
 	iptablesPiholeUdpArgs=(-i "${pivpnDEV}" -p udp --dport 53 --source "${pivpnNET}/${subnetClass}" -j ACCEPT --comment "${VPN}-pihole-udp-rule")
 	iptablesPiholeTcpArgs=(-i "${pivpnDEV}" -p tcp --dport 53 --source "${pivpnNET}/${subnetClass}" -j ACCEPT --comment "${VPN}-pihole-tcp-rule")
-
-	iptablesInputArgs=( -i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule")
-	ip6tablesInputArgs=(-i "${IPv6dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule")
-
-	iptablesForwardEstabArgs=(-d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}"  -o "${pivpnDEV}" -m conntrack --ctstate "RELATED,ESTABLISHED" -j ACCEPT -m comment --comment "${VPN}-forward-estab-rule")
-	iptablesForwardArgs=(     -s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}"                                               -j ACCEPT -m comment --comment "${VPN}-forward-rule")
-
-	ip6tablesForwardEstabArgs=(-d "${pivpnNETv6}/${subnetClassv6}" -i "${IPv6dev}"  -o "${pivpnDEV}" -m conntrack --ctstate "RELATED,ESTABLISHED" -j ACCEPT -m comment --comment "${VPN}-forward-estab-rule")
-	ip6tablesForwardArgs=(     -s "${pivpnNETv6}/${subnetClassv6}" -i "${pivpnDEV}" -o "${IPv6dev}"                                               -j ACCEPT -m comment --comment "${VPN}-forward-rule")
 
 	ufwPiholeUdpArgs=(allow in on "${pivpnDEV}" to any port 53 proto udp from "${pivpnNET}/${subnetClass}" comment "${VPN}-pihole-udp-rule")
 	ufwPiholeTcpArgs=(allow in on "${pivpnDEV}" to any port 53 proto tcp from "${pivpnNET}/${subnetClass}" comment "${VPN}-pihole-udp-rule")
 
-	ufwInputArgs=( allow in on "${IPv4dev}" to any "${pivpnPORT}"/"${pivpnPROTO}" comment "${VPN}-input-rule")
-	ufw6InputArgs=(allow in on "${IPv4dev}" to any "${pivpnPORT}"/"${pivpnPROTO}" comment "${VPN}-input-rule")
+	iptablesNatArgs=(-s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule")
+	iptablesInputArgs=(-i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule")
+	iptablesForwardEstabArgs=(-d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate "RELATED,ESTABLISHED" -j ACCEPT -m comment --comment "${VPN}-forward-estab-rule")
+	iptablesForwardArgs=(-s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule")
+	ufwInputArgs=(allow in on "${IPv4dev}" to any "${pivpnPORT}"/"${pivpnPROTO}" comment "${VPN}-input-rule")
+	ufwForwardArgs=(allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any comment "${VPN}-forward-rule")
 
-	ufwForwardArgs=( allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}"     out on "${IPv4dev}" to any comment "${VPN}-forward-rule")
-	ufw6ForwardArgs=(allow in on "${pivpnDEV}" from "${pivpnNETv6}/${subnetClassv6}" out on "${IPv6dev}" to any comment "${VPN}-forward-rule")
+	# shellcheck disable=SC2154
+	if [ "$pivpnenableipv6" == "1" ]; then
+		ip6tablesNatArgs=(-s "${pivpnNETv6}/${subnetClassv6}" -o "${IPv6dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule")
+		ip6tablesInputArgs=(-i "${IPv6dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule")
+		ip6tablesForwardEstabArgs=(-d "${pivpnNETv6}/${subnetClassv6}" -i "${IPv6dev}" -o "${pivpnDEV}" -m conntrack --ctstate "RELATED,ESTABLISHED" -j ACCEPT -m comment --comment "${VPN}-forward-estab-rule")
+		ip6tablesForwardArgs=(-s "${pivpnNETv6}/${subnetClassv6}" -i "${pivpnDEV}" -o "${IPv6dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule")
+		ufw6InputArgs=(allow in on "${IPv4dev}" to any "${pivpnPORT}"/"${pivpnPROTO}" comment "${VPN}-input-rule")
+		ufw6ForwardArgs=(allow in on "${pivpnDEV}" from "${pivpnNETv6}/${subnetClassv6}" out on "${IPv6dev}" to any comment "${VPN}-forward-rule")
+	fi
 }
 
 # shellcheck disable=SC1091
