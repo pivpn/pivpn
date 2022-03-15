@@ -73,12 +73,15 @@ case "$option" in
 				applySysctl
 				;;
 			*)
+				echo "::: Enabling IP forwarding"
 				applySysctl
 				if [ "${FIREWALL_FRONTEND}" = 'iptables' ]; then
+					echo "::: Adding iptables rules"
 					addIptablesNatRules
 					addIptablesInputRules
 					addIptablesForwardRules
 				elif [ "${FIREWALL_FRONTEND}" = 'ufw' ]; then
+					echo "::: Adding UFW rules"
 					addIptablesNatRules
 					addUfwInputRules
 					addUfwForwardRules
@@ -141,12 +144,15 @@ case "$option" in
 				resetSysctl
 				;;
 			*)
+				echo "::: Disabling IP forwarding"
 				resetSysctl
 				if [ "${FIREWALL_FRONTEND}" = 'iptables' ]; then
+					echo "::: Removing iptables rules"
 					removeIptablesNatRules
 					removeIptablesInputRules
 					removeIptablesForwardRules
 				elif [ "${FIREWALL_FRONTEND}" = 'ufw' ]; then
+					echo "::: Removing UFW rules"
 					removeIptablesNatRules
 					removeUfwInputRules
 					removeUfwForwardRules
