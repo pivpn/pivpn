@@ -92,10 +92,6 @@ removeAll(){
 		systemctl disable openvpn-server@pivpn.service &> /dev/null
 	fi
 
-	# Removing firewall rules.
-	echo "::: Removing firewall rules..."
-	${pivpnScriptDir}/network/networkCONF.sh "${VPN}" reset
-
 	# Purge dependencies
 	echo "::: Purge dependencies..."
 
