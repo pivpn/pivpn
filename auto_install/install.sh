@@ -56,7 +56,25 @@ showUnsupportedNICs=false
 # but need to be defined for checks
 pivpnPERSISTENTKEEPALIVE=""
 pivpnDNS2=""
+
+######## IPv6 related config
+# cli parameter "--noipv6" allows to disable IPv6 which also prevents forced IPv6 route
+# cli parameter "--ignoreipv6leak" allows to skip the forced IPv6 route if required (not recommended)
+
+## Force IPv6 through VPN even if IPv6 is not supported by the server
+## This will prevent an IPv6 leak on the client site but might cause
+## issues on the client site accessing IPv6 addresses.
+## This option is useless if routes are set manually.
+## It's also irrelevant when IPv6 is (forced) enabled.
+pivpnforceipv6route="1"
+
+## Enable or disable IPv6.
+## Leaving it empty or set to "1" will trigger an IPv6 uplink check
 pivpnenableipv6=""
+
+## Enable to skip IPv6 connectivity check and also force client IPv6 traffic through wireguard
+## regardless if there is a working IPv6 route on the server.
+pivpnforceipv6="0"
 
 ######## SCRIPT ########
 
@@ -97,9 +115,19 @@ main(){
 	preconfigurePackages
 	installDependentPackages BASE_DEPS[@]
 	welcomeDialogs
-	if [ -z "$pivpnenableipv6" ] || [ "$pivpnenableipv6" == "1" ]; then
-		checkipv6uplink
+
+	if [ "$pivpnforceipv6" == "1" ]; then
+		echo "::: Forced IPv6 config, skipping IPv6 uplink check!"
+		pivpnenableipv6="1"
+	else
+		if [ -z "$pivpnenableipv6" ] || [ "$pivpnenableipv6" == "1" ]; then
+			checkipv6uplink
+		fi
+		if [ "$pivpnenableipv6" == "0" ] && [ "$pivpnforceipv6route" == "1" ]; then
+			askforcedipv6route
+		fi
 	fi
+	
 	chooseInterface
 	if [ "$PLAT" != "Raspbian" ]; then
 		avoidStaticIPv4Ubuntu
@@ -162,6 +190,8 @@ flagsCheck(){
 			"--show-unsupported-nics"   ) showUnsupportedNICs=true;;
 			"--giturl"                  ) pivpnGitUrl="${!j}";;
 			"--gitbranch"               ) pivpnGitBranch="${!j}";;
+			"--noipv6"                  ) pivpnforceipv6="0"; pivpnenableipv6="0"; pivpnforceipv6route="0";;
+			"--ignoreipv6leak"          ) pivpnforceipv6route="0";;
 		esac
 	done
 
@@ -753,6 +783,22 @@ checkipv6uplink(){
 	return 
 }
 
+askforcedipv6route(){
+	if [ "${runUnattended}" = 'true' ]; then
+		echo "::: Enable forced IPv6 route with no IPv6 uplink on server."
+		echo "pivpnforceipv6route=${pivpnforceipv6route}" >> ${tempsetupVarsFile}
+		return
+	fi
+
+	if (whiptail --backtitle "Privacy setting" --title "IPv6 leak" --yesno "Although this server doesn't seem to have a working IPv6 connection or IPv6 was disabled on purpose, it is still recommended you force all IPv6 connections through the VPN.\\n\\nThis will prevent the client from bypassing the tunnel and leaking its real IPv6 address to servers, though it might cause the client to have slow response when browsing the web on IPv6 networks.\\n\\nDo you want to force routing IPv6 to block the leakage?" ${r} ${c}); then
+		pivpnforceipv6route="1"
+	else
+		pivpnforceipv6route="0"
+	fi
+
+	echo "pivpnforceipv6route=${pivpnforceipv6route}" >> ${tempsetupVarsFile}
+}
+
 getStaticIPv4Settings() {
 	# Find the gateway IP used to route to outside world
 	CurrentIPv4gw="$(ip -o route get 192.0.2.1 | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | awk 'NR==2')"
@@ -1219,7 +1265,7 @@ setWireguardDefaultVars(){
 		if [ -z "$ALLOWED_IPS" ]; then
 			# Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
 			# the user after the installation.
-			if [ "$pivpnenableipv6" == "1" ]; then
+			if [ "$pivpnenableipv6" == "1" ] || [ "$pivpnforceipv6route" == "1" ]; then
 				ALLOWED_IPS="0.0.0.0/0, ::0/0"
 			else
 				ALLOWED_IPS="0.0.0.0/0"
