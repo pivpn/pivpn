@@ -1,6 +1,17 @@
 #!/bin/bash
 
 # shellcheck disable=SC2154
+
+# Ufw does not store comments using the iptables' comment module, so when checking if the rule esists
+# with "iptables -C chain rule_array", the arguments composing a comment in rule_array must be removed,
+# otherwise there won't be a match.
+removeIptablesComments(){
+	local arr=( "$@" )
+	local len="${#arr[@]}"
+	local new=( "${arr[@]:0:(($len-4))}" )
+	echo "${new[@]}"
+}
+
 addUfwInputRules(){
 	# Allow incoming DNS requests through UFW.
 	if [ "${USING_PIHOLE}" = 1 ]; then
@@ -15,12 +26,20 @@ addUfwInputRules(){
 
 checkUfwInputRules(){
 	if [ "${USING_PIHOLE}" = 1 ]; then
-		iptables -C ufw-user-input "${iptablesPiholeUdpArgs[@]}" &> /dev/null || return 1
-		iptables -C ufw-user-input "${iptablesPiholeTcpArgs[@]}" &> /dev/null || return 1
+		read -r -a _iptablesPiholeUdpArgs < <(removeIptablesComments "${iptablesPiholeUdpArgs[@]}")
+		iptables -C ufw-user-input "${_iptablesPiholeUdpArgs[@]}" &> /dev/null || return 1
+
+		read -r -a _iptablesPiholeTcpArgs < <(removeIptablesComments "${iptablesPiholeTcpArgs[@]}")
+		iptables -C ufw-user-input "${_iptablesPiholeTcpArgs[@]}" &> /dev/null || return 1
 	fi
 
-	iptables -C ufw-user-input "${iptablesInputArgs[@]}" &> /dev/null || return 1
-	ip6tables -C ufw-user-input "${ip6tablesInputArgs[@]}" &> /dev/null || return 1
+	read -r -a _iptablesInputArgs < <(removeIptablesComments "${iptablesInputArgs[@]}")
+	iptables -C ufw-user-input "${_iptablesInputArgs[@]}" &> /dev/null || return 1
+
+	if [ "$pivpnenableipv6" == "1" ]; then
+		read -r -a _ip6tablesInputArgs < <(removeIptablesComments "${ip6tablesInputArgs[@]}")
+		ip6tables -C ufw6-user-input "${_ip6tablesInputArgs[@]}" &> /dev/null || return 1
+	fi
 }
 
 removeUfwInputRules(){
@@ -41,9 +60,12 @@ addUfwForwardRules(){
 }
 
 checkUfwForwardRules(){
-	iptables -C ufw-user-forward "${iptablesForwardArgs[@]}" &> /dev/null || return 1
+	read -r -a _iptablesForwardArgs < <(removeIptablesComments "${iptablesForwardArgs[@]}")
+	iptables -C ufw-user-forward "${_iptablesForwardArgs[@]}" &> /dev/null || return 1
+
 	if [ "$pivpnenableipv6" == "1" ]; then
-		ip6tables -C ufw-user-forward "${ip6tablesForwardArgs[@]}" &> /dev/null || return 1
+		read -r -a _ip6tablesForwardArgs < <(removeIptablesComments "${ip6tablesForwardArgs[@]}")
+		ip6tables -C ufw6-user-forward "${_ip6tablesForwardArgs[@]}" &> /dev/null || return 1
 	fi
 }
 
