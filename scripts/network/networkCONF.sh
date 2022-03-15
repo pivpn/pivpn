@@ -25,7 +25,7 @@ loadFirewallRulesArrays(){
 	iptablesInputArgs=(-i "${IPv4dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule")
 	iptablesForwardEstabArgs=(-d "${pivpnNET}/${subnetClass}" -i "${IPv4dev}" -o "${pivpnDEV}" -m conntrack --ctstate "RELATED,ESTABLISHED" -j ACCEPT -m comment --comment "${VPN}-forward-estab-rule")
 	iptablesForwardArgs=(-s "${pivpnNET}/${subnetClass}" -i "${pivpnDEV}" -o "${IPv4dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule")
-	ufwInputArgs=(allow in on "${IPv4dev}" to any "${pivpnPORT}"/"${pivpnPROTO}" comment "${VPN}-input-rule")
+	ufwInputArgs=(allow in on "${IPv4dev}" to any port "${pivpnPORT}" proto "${pivpnPROTO}" comment "${VPN}-input-rule")
 	ufwForwardArgs=(allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any comment "${VPN}-forward-rule")
 
 	# shellcheck disable=SC2154
@@ -34,7 +34,7 @@ loadFirewallRulesArrays(){
 		ip6tablesInputArgs=(-i "${IPv6dev}" -p "${pivpnPROTO}" --dport "${pivpnPORT}" -j ACCEPT -m comment --comment "${VPN}-input-rule")
 		ip6tablesForwardEstabArgs=(-d "${pivpnNETv6}/${subnetClassv6}" -i "${IPv6dev}" -o "${pivpnDEV}" -m conntrack --ctstate "RELATED,ESTABLISHED" -j ACCEPT -m comment --comment "${VPN}-forward-estab-rule")
 		ip6tablesForwardArgs=(-s "${pivpnNETv6}/${subnetClassv6}" -i "${pivpnDEV}" -o "${IPv6dev}" -j ACCEPT -m comment --comment "${VPN}-forward-rule")
-		ufw6InputArgs=(allow in on "${IPv4dev}" to any "${pivpnPORT}"/"${pivpnPROTO}" comment "${VPN}-input-rule")
+		ufw6InputArgs=(allow in on "${IPv6dev}" to any port "${pivpnPORT}" proto "${pivpnPROTO}" comment "${VPN}-input-rule")
 		ufw6ForwardArgs=(allow in on "${pivpnDEV}" from "${pivpnNETv6}/${subnetClassv6}" out on "${IPv6dev}" to any comment "${VPN}-forward-rule")
 	fi
 }
