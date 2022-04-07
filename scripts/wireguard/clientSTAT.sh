@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # PiVPN: client status script
-
 CLIENTS_FILE="/etc/wireguard/configs/clients.txt"
 
 if [ ! -s "$CLIENTS_FILE" ]; then
@@ -27,6 +26,7 @@ scriptusage(){
     echo ":::  [none]              List clients with human readable format"
     echo ":::  -b, bytes           List clients with dotted decimal notation"
     echo ":::  -h, help            Show this usage dialog"
+    echo ":::  -co, --config       Use a custom setupVar config"
 }
 
 hr(){
@@ -83,8 +83,27 @@ if [[ $# -eq 0 ]]; then
     HR=1
     listClients
 else
-    while true; do
-        case "$1" in
+    # Parse input arguments
+    while test $# -gt 0; do
+        _key="$1"
+        case "$_key" in
+            -co|--conf|--config)
+                _val="${_key##--conf=}"
+                if test "$_val" = "$_key"; then
+                    test $# -lt 2 && echo "::: Missing value for the optional argument '$_key'." && exit 1
+                    _val="$2"
+                    shift
+                fi
+                setupVars="$_val"
+                if [ ! -f "${setupVars}" ]; then
+                    echo "::: Missing setup vars file!"
+                    exit 1
+                fi
+
+                # shellcheck disable=SC1090
+                source "${setupVars}"
+                continue
+                ;;
             -b|bytes)
                 HR=0
                 listClients
@@ -100,5 +119,7 @@ else
                 exit 0
                 ;;
         esac
+        shift
     done
 fi
+

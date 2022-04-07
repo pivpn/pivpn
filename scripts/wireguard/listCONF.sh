@@ -8,6 +8,12 @@ fi
 
 setupVars="/etc/pivpn/wireguard/setupVars.conf"
 
+case "$1" in
+    -co|--conf|--config)
+        setupVars="$2"
+        ;;
+esac
+
 if [ ! -f "${setupVars}" ]; then
     echo "::: Missing setup vars file!"
     exit 1

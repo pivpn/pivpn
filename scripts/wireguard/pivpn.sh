@@ -26,8 +26,9 @@ listConnected(){
 }
 
 debug(){
+    shift
     echo "::: Generating Debug Output"
-    $SUDO ${scriptdir}/${vpn}/pivpnDEBUG.sh | tee /tmp/debug.log
+    $SUDO ${scriptdir}/${vpn}/pivpnDEBUG.sh "$@" | tee /tmp/debug.log
     echo "::: "
     echo "::: Debug output completed above."
     echo "::: Copy saved to /tmp/debug.log"
@@ -36,7 +37,8 @@ debug(){
 }
 
 listClients(){
-    $SUDO ${scriptdir}/${vpn}/listCONF.sh
+    shift
+    $SUDO ${scriptdir}/${vpn}/listCONF.sh "$@"
     exit "$?"
 }
 
@@ -83,8 +85,11 @@ backup(){
 showHelp(){
     echo "::: Control all PiVPN specific functions!"
     echo ":::"
-    echo "::: Usage: pivpn <command> [option]"
-    echo ":::"
+    echo "::: Usage: pivpn [config] <command> [option]"
+    echo -e ":::\n"
+    echo "::: Config:"
+    echo ":::    -co, --config        Use a custom setupVar config."
+    echo -e ":::    Uses /etc/pivpn/wireguard/setupVars.conf by default.\n"
     echo "::: Commands:"
     echo ":::    -a, add              Create a client conf profile"
     echo ":::    -c, clients          List any connected clients to the server"
@@ -105,19 +110,29 @@ if [ $# = 0 ]; then
     showHelp
 fi
 
+# Handle custom config
+case "$1" in
+"-co"|"--conf"|"--config")
+    CUSTOM_CONFIG="--config $2"
+    echo "Using Custom config $2"
+    shift 2
+;;
+esac
+
 # Handle redirecting to specific functions based on arguments
 case "$1" in
-"-a"   | "add"                ) makeConf "$@";;
-"-c"   | "clients"            ) listConnected "$@";;
-"-d"   | "debug"              ) debug;;
-"-l"   | "list"               ) listClients;;
-"-qr"  | "qrcode"             ) showQrcode "$@";;
-"-r"   | "remove"             ) removeClient "$@";;
-"-off" | "off"                ) disableClient "$@";;
-"-on"  | "on"                 ) enableClient "$@";;
+
+"-a"   | "add"                ) makeConf "$@" $CUSTOM_CONFIG;;
+"-c"   | "clients"            ) listConnected "$@" $CUSTOM_CONFIG;;
+"-d"   | "debug"              ) debug "$@" $CUSTOM_CONFIG;;
+"-l"   | "list"               ) listClients "$@" $CUSTOM_CONFIG;;
+"-qr"  | "qrcode"             ) showQrcode "$@" $CUSTOM_CONFIG;;
+"-r"   | "remove"             ) removeClient "$@" $CUSTOM_CONFIG;;
+"-off" | "off"                ) disableClient "$@" $CUSTOM_CONFIG;;
+"-on"  | "on"                 ) enableClient "$@" $CUSTOM_CONFIG;;
 "-h"   | "help"               ) showHelp;;
 "-u"   | "uninstall"          ) uninstallServer;;
-"-up"  | "update"             ) updateScripts "$@" ;;
+"-up"  | "update"             ) updateScripts "$@" $CUSTOM_CONFIG ;;
 "-bk"  | "backup"             ) backup ;;
 *                             ) showHelp;;
 esac
