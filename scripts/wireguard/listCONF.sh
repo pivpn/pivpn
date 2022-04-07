@@ -6,6 +6,16 @@ if [ ! -s clients.txt ]; then
     exit 1
 fi
 
+setupVars="/etc/pivpn/wireguard/setupVars.conf"
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+# shellcheck disable=SC1090
+source "${setupVars}"
+
 printf "\e[1m::: Clients Summary :::\e[0m\n"
 
 # Present the user with a summary of the clients, fetching info from dates.
@@ -30,4 +40,4 @@ done < clients.txt
 
 cd /etc/wireguard || return
 echo "::: Disabled clients :::"
-grep '\[disabled\] ### begin' wg0.conf | sed 's/#//g; s/begin//'
+grep '\[disabled\] ### begin' "$pivpnDEV".conf | sed 's/#//g; s/begin//'

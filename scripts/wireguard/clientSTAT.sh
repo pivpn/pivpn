@@ -8,6 +8,16 @@ if [ ! -s "$CLIENTS_FILE" ]; then
     exit 0
 fi
 
+setupVars="/etc/pivpn/wireguard/setupVars.conf"
+
+if [ ! -f "${setupVars}" ]; then
+    echo "::: Missing setup vars file!"
+    exit 1
+fi
+
+# shellcheck disable=SC1090
+source "${setupVars}"
+
 scriptusage(){
     echo "::: List any connected clients to the server"
     echo ":::"
@@ -24,7 +34,7 @@ hr(){
 }
 
 listClients(){
-    if DUMP="$(wg show wg0 dump)"; then
+    if DUMP="$(wg show "$pivpnDEV" dump)"; then
         DUMP="$(tail -n +2 <<< "$DUMP")"
     else
         exit 1
@@ -65,7 +75,7 @@ listClients(){
 
     cd /etc/wireguard || return
     echo "::: Disabled clients :::"
-    grep '\[disabled\] ### begin' wg0.conf | sed 's/#//g; s/begin//'
+    grep '\[disabled\] ### begin' "$pivpnDEV".conf | sed 's/#//g; s/begin//'
 
 }
 

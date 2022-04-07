@@ -97,7 +97,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
             sed "\#${CLIENT_NAME} ${PUBLIC_KEY} ${CREATION_DATE} ${COUNT}#d" -i configs/clients.txt
 
             # Remove the peer section from the server config
-            sed "/### begin ${CLIENT_NAME} ###/,/### end ${CLIENT_NAME} ###/d" -i wg0.conf
+            sed "/### begin ${CLIENT_NAME} ###/,/### end ${CLIENT_NAME} ###/d" -i "$pivpnDEV".conf
             echo "::: Updated server config"
 
             rm "configs/${CLIENT_NAME}.conf"
@@ -144,7 +144,7 @@ done
 
 # Restart WireGuard only if some clients were actually deleted
 if [ "${DELETED_COUNT}" -gt 0 ]; then
-    if systemctl reload wg-quick@wg0; then
+    if systemctl reload wg-quick@"$pivpnDEV"; then
         echo "::: WireGuard reloaded"
     else
         echo "::: Failed to reload WireGuard"
