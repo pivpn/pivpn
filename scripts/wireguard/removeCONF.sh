@@ -126,7 +126,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
             # shellcheck disable=SC2154
             if [ -f /etc/pivpn/hosts.wireguard ]; then
                 NET_REDUCED="${pivpnNET::-2}"
-                sed "\#${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn#d" -i /etc/pivpn/hosts.wireguard
+                sed -e "\#${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn#d" -e "\#${pivpnNETv6}${COUNT} ${CLIENT_NAME}.pivpn#d" -i /etc/pivpn/hosts.wireguard
                 if killall -SIGHUP pihole-FTL; then
                     echo "::: Updated hosts file for Pi-hole"
                 else
