@@ -9,7 +9,9 @@ while [ -z "$pivpnNET" ]; do
 		else
 			whiptail --msgbox --backtitle "Setup PiVPN" --title "Installation Mode" "$answer is not a valid IP! Please try again." 8 78
 			continue
+		fi
 	else
 		whiptail --msgbox --title "DEFAULT" "Great! Using the default IP of 10.6.0.0" 8 78
 		pivpnNET="10.6.0.0"
+	fi
 done

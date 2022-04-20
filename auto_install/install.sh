@@ -1100,21 +1100,20 @@ setWireguardDefaultVars(){
 		pivpnPROTO="udp"
 		pivpnDEV="wg0"
 		# Allow user to select a custom IP network for the setupVARS file, wg0. They can select optional, if they would like, or use the default of 10.6.0.0.
+		# Allow user to select a custom IP network for the setupVARS file, wg0. They can select optional, if they would like, or use the default of 10.6.0.0.
 		while [ -z "$pivpnNET" ]; do
-			if ( whiptail --yesno --backtitle "Setup PiVPN" --title "Installation Mode" "Would you like to select your own IP network for your VPN? Format must be x.x.0.0. WARNING: Choosing your own may cause disruptions with your current network and is for advanced users only." --yes-box "Select my own" --no-box "Use Default" 20 78 ); then 
-				answer=$(whiptail --backtitle "Setup PiVPN" --title "Installation Mode" --inputbox "Please Choose your IP Gateway Address" 8 78 3>&1 1>&2 2>&3) 
-					if [[ $answer =~ ^([0-9]{1,3}\.){2}[0]{1,3}\.[0]{1,3}$ ]]; then
-						whiptail --msgbox --backtitle "Setup PiVPN" --title "Installation Mode" "$answer is a valid IP!" 8 78
-						pivpnNET=$answer
-					else
-						if ( whiptail --yesno --backtitle "Setup PiVPN" --title "Installation Mode" "$answer is not a valid IP! Select yes to Try again, no to use the default of 10.6.0.0" 8 78); then
-							continue	
-						else	
-							whiptail --msgbox --title "DEFAULT" "Great! Using the default IP of 10.6.0.0" 8 78
-							pivpnNET="10.6.0.0"
-						fi
-			else 
-				continue
+			if ( whiptail --yesno --backtitle "Setup PiVPN" --title "Installation Mode" "Would you like to select your own IP network for your VPN? \n Format must be x.x.0.0. \n\n WARNING: Choosing your own may cause disruptions with your current network and is for advanced users only." --yes-button "Select my own" --no-button "Use Default" 20 78 ); then 
+				answer=$(whiptail --backtitle "Setup PiVPN" --title "Installation Mode" --inputbox "Please Choose your IP Gateway Address" 8 78 3>&1 1>&2 2>&3)
+				if [[ $answer =~ ^([0-9]{1,3}\.){2}[0]{1,3}\.[0]{1,3}$ ]]; then
+					whiptail --msgbox --backtitle "Setup PiVPN" --title "Installation Mode" "$answer is a valid IP." 8 78
+					pivpnNET=$answer
+				else
+					whiptail --msgbox --backtitle "Setup PiVPN" --title "Installation Mode" "$answer is not a valid IP. Please try again." 8 78
+					continue
+				fi
+			else
+				whiptail --msgbox --title "DEFAULT" "Great! Using the default IP of 10.6.0.0" 8 78
+				pivpnNET="10.6.0.0"
 			fi
 		done		
 		vpnGw="${pivpnNET/.0.0/.0.1}"
