@@ -1103,7 +1103,6 @@ setOpenVPNDefaultVars(){
 				pivpnNET="10.8.0.0"
 			fi
 		done	
-		fi
 		vpnGw="${pivpnNET/.0.0/.0.1}"
 }
 
