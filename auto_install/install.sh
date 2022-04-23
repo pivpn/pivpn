@@ -915,7 +915,7 @@ chooseUser(){
 	fi
 
 	# Explain the local user
-	whiptail --msgbox --backtitle "Parsing User List" --title "Local Users" "Choose a local user that will hold your ovpn configurations." ${r} ${c}
+	whiptail --msgbox --backtitle "Parsing User List" --title "Local Users" "Choose a local user that will hold your vpn account configurations." ${r} ${c}
 	# First, let's check if there is a user available.
 	numUsers=$(awk -F':' 'BEGIN {count=0} $3>=1000 && $3<=60000 { count++ } END{ print count }' /etc/passwd)
 	if [ "$numUsers" -eq 0 ]
