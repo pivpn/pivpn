@@ -1,8 +1,8 @@
 ---
-name: Support Request
-about: Request support from PiVPN comunity
-title: "[Support] Your Issue here"
-labels: ''
+name: PiVPN Report 
+about: Report issues to PiVPN comunity
+title: "Short description of Your Issue here"
+labels: 'Needs Investigation'
 assignees: ''
 
 ---
@@ -23,16 +23,52 @@ For any output requested below, you may alternatively post it on https://pastebi
 `{please fill the checkboxes, e.g: [X]}`
 
 - [] I have read the [documentation](https://docs.pivpn.io)
+- [] Is it a feature request? please consider opening a [Discussion] (https://github.com/pivpn/pivpn/discussions/new)
 - [] I have read and understood the [contributors guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md).
-- [] The issue I am reporting can be *replicated*.
-- [] The issue I am reporting can be *is* directly related to the pivpn installer script.
+- [] The issue I am reporting can be *replicated*. <!-- READ COMMENT BELOW--> 
+- [] The issue I am reporting *is* directly related to the pivpn installer script.<!--READ COMMENT BELOW-->
+- [] The issue I am reporting isn't a duplicate (see [FAQs](https://github.com/pivpn/pivpn/wiki/FAQ), [closed issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aclosed), and [open issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen)).
 
-### Have you searched for similar issues and solutions?
-    (yes/no / which issues?)
+<!--
+  Replicated: can you force the issue to happen again?    For example, does it happen again if you run PiVPN on a new and clean system?
+
+  Related to the installer script: can you directly relate to the code? ex: pinpoint a specific function or line of code. 
+
+  feel free not to mark it if you cannot mention the steps to replicate this in another clean system or if you cannot make a direct relation to any of the scripts.
+-->
 
 ### Has your install failed? 
 ```
 yes/no
+```
+
+### Describe the issue
+<!-- Please explain your issue. Feel free to format your text -->
+
+**Expected behavior**
+A clear and concise description of what you expected to happen.
+
+**Screenshots**
+If applicable, add screenshots to help explain your problem.
+
+### Can you replicate the issue? Describe the steps below
+<!-- Please explain your issue. Feel free to format your text -->
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Click on '....'
+3. Scroll down to '....'
+4. See error
+
+### Have you searched for similar issues and solutions?
+    (yes/no / which issues?)
+
+
+**Additional context**
+Add any other context about the problem here.
+
+### Have you taken any steps towards solving your issue?
+```
+  which?
 ```
 
 ### Please provide your system information
@@ -66,10 +102,6 @@ Virtual machine
   PASTE THE OUTPUT INSIDE THE BACK-TICKS
 ```
 
-### Issue
-<!-- Please explain your issue. Feel free to format your text -->
-
-
 ### Console output of      `curl -L install.pivpn.io | bash`
 ```
   OUTPUT HERE
@@ -91,8 +123,4 @@ Virtual machine
   OUTPUT HERE
   DO NOT DELETE THE BACK-TICKS 
   PASTE THE OUTPUT INSIDE THE BACK-TICKS
-```
-### Have you taken any steps towards solving your issue?
-```
-  which?
 ```
