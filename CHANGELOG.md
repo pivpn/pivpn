@@ -1,5 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
+
+## April 24th 2022
+
+- Code quality improvementss
+  - Multiple typos and general syntax fixes
+- New Features
+  - Install script now generates random subnets to avoid common known subnets [#1424](#1324) & [#133](#133)
+  - Supports installation from custom git URL [#1464](#1464)
+  - Basic Wireguard IPv6 Support[#1455](#1455)
+- OS Support
+  - Added suport for Ubuntu Focal and arm64
+
 ## December 03rd 2021
 
 - Code quality improvements
