@@ -129,14 +129,15 @@ main(){
 	fi
 	
 	chooseInterface
-	if [ "$PLAT" != "Raspbian" ]; then
-		avoidStaticIPv4Ubuntu
-	else
+	if checkStaticIpSupported; then
 		getStaticIPv4Settings
 		if [ -z "$dhcpReserv" ] || [ "$dhcpReserv" -ne 1 ]; then
 			setStaticIPv4
 		fi
+	else
+		staticIpNotSupported
 	fi
+
 	chooseUser
 	cloneOrUpdateRepos
 	# Install
@@ -453,8 +454,8 @@ preconfigurePackages(){
 		fi
 	fi
 
-	# We set static IP only on Raspbian
-	if [ "$PLAT" = "Raspbian" ]; then
+	# We set static IP only on Raspberry Pi OS
+	if checkStaticIpSupported; then
 		BASE_DEPS+=(dhcpcd5)
 	fi
 
@@ -724,14 +725,26 @@ if [ "$pivpnenableipv6" == "1" ]; then
 fi
 }
 
-avoidStaticIPv4Ubuntu() {
+checkStaticIpSupported(){
+	# Not really robust and correct, we should actually check for dhcpcd, not the distro, but works on Raspbian and Debian.
+	if [ "$PLAT" = "Raspbian" ]; then
+		return 0
+	# If we are on 'Debian' but the raspi.list file is present, then we actually are on 64-bit Raspberry Pi OS.
+	elif [ "$PLAT" = "Debian" ] && [ -s /etc/apt/sources.list.d/raspi.list ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+staticIpNotSupported() {
 	if [ "${runUnattended}" = 'true' ]; then
-		echo "::: Since we think you are not using Raspbian, we will not configure a static IP for you."
+		echo "::: Since we think you are not using Raspberry Pi OS, we will not configure a static IP for you."
 		return
 	fi
 
 	# If we are in Ubuntu then they need to have previously set their network, so just use what you have.
-	whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are not using Raspbian, we will not configure a static IP for you.
+	whiptail --msgbox --backtitle "IP Information" --title "IP Information" "Since we think you are not using Raspberry Pi OS, we will not configure a static IP for you.
 If you are in Amazon then you can not configure a static IP anyway. Just ensure before this installer started you had set an elastic IP on your instance." ${r} ${c}
 }
 
