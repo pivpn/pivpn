@@ -43,8 +43,8 @@ BASE_DEPS=(git tar curl grep dnsutils grepcidr whiptail net-tools bsdmainutils b
 INSTALLED_PACKAGES=()
 
 ######## URLs ########
-easyrsaVer="3.0.7"
-easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
+easyrsaCommit="8d1be1c9cf2333a8eee63c86191d27b2e5b63e8b"
+easyrsaUrl="https://github.com/OpenVPN/easy-rsa/tarball/${easyrsaCommit}"
 
 ######## Undocumented Flags. Shhh ########
 runUnattended=false
@@ -2013,7 +2013,7 @@ confOpenVPN(){
 	fi
 
 	# Get easy-rsa
-	curl -sSfL "${easyrsaRel}" | $SUDO tar xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
+	curl -sSfL "${easyrsaUrl}" | $SUDO tar xz OpenVPN-easy-rsa-"${easyrsaCommit:0:7}"/easyrsa3 --one-top-level=/etc/openvpn/easy-rsa --strip-components 2
 	if ! test -s /etc/openvpn/easy-rsa/easyrsa; then
 		echo "$0: ERR: Failed to download EasyRSA."
 		exit 1
@@ -2034,26 +2034,27 @@ confOpenVPN(){
 		pivpnTLSPROT="tls-auth"
 	fi
 
-	# Write out new vars file
-	echo "if [ -z \"\$EASYRSA_CALLER\" ]; then
-	echo \"Nope.\" >&2
-	return 1
-fi
-set_var EASYRSA            \"/etc/openvpn/easy-rsa\"
-set_var EASYRSA_PKI        \"\$EASYRSA/pki\"
-set_var EASYRSA_CRL_DAYS   3650
-set_var EASYRSA_ALGO       ${pivpnCERT}" | $SUDO tee vars >/dev/null
-
-	# Set certificate type
-	if [ "$pivpnENCRYPT" -ge 2048 ]; then
-		echo "set_var EASYRSA_KEY_SIZE   ${pivpnENCRYPT}" | $SUDO tee -a vars >/dev/null
-	else
-		declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
-		echo "set_var EASYRSA_CURVE      ${ECDSA_MAP["${pivpnENCRYPT}"]}" | $SUDO tee -a vars >/dev/null
-	fi
-
 	# Remove any previous keys
 	${SUDOE} ./easyrsa --batch init-pki
+
+	# Copy template vars file
+	${SUDOE} cp vars.example pki/vars
+
+	# Set elliptic curve certificate or traditional rsa certificates
+	${SUDOE} sed -i 's/#set_var EASYRSA_ALGO.*/set_var EASYRSA_ALGO '"${pivpnCERT}"'/' pki/vars
+
+	# Set expiration for the CRL to 10 years
+	${SUDOE} sed -i 's/#set_var EASYRSA_CRL_DAYS.*/set_var EASYRSA_CRL_DAYS 3650/' pki/vars
+
+	if [ "$pivpnENCRYPT" -ge 2048 ]; then
+		# Set custom key size if different from the default
+		${SUDOE} sed -i 's/#set_var EASYRSA_KEY_SIZE.*/set_var EASYRSA_KEY_SIZE '"${pivpnENCRYPT}"'/' pki/vars
+	else
+		# If less than 2048, then it must be 521 or lower, which means elliptic curve certificate was selected.
+		# We set the curve in this case.
+		declare -A ECDSA_MAP=(["256"]="prime256v1" ["384"]="secp384r1" ["521"]="secp521r1")
+		${SUDOE} sed -i 's/#set_var EASYRSA_CURVE.*/set_var EASYRSA_CURVE '"${ECDSA_MAP["${pivpnENCRYPT}"]}"'/' pki/vars
+	fi
 
 	# Build the certificate authority
 	printf "::: Building CA...\\n"
