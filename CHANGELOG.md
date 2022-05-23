@@ -1,6 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## May 23rd 2022
+
+- Code quality and improvements
+  - Fix static IP support on 64-bit Raspberry Pi OS
+  - Use easy-rsa commit 8d1be1c instead of release 3.0.7 for OpenSSL 3 support
+
 ## April 24th 2022
 
 - Code quality improvementss
