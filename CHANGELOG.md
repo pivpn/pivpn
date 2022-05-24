@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## May 24th 2022
+
+- Code quality and improvements
+  - Updated EasyRSA to version 3.1.0
+
 ## May 23rd 2022
 
 - Code quality and improvements
