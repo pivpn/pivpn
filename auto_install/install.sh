@@ -43,8 +43,8 @@ BASE_DEPS=(git tar curl grep dnsutils grepcidr whiptail net-tools bsdmainutils b
 INSTALLED_PACKAGES=()
 
 ######## URLs ########
-easyrsaCommit="8d1be1c9cf2333a8eee63c86191d27b2e5b63e8b"
-easyrsaUrl="https://github.com/OpenVPN/easy-rsa/tarball/${easyrsaCommit}"
+easyrsaVer="3.1.0"
+easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
 ######## Undocumented Flags. Shhh ########
 runUnattended=false
@@ -2013,7 +2013,7 @@ confOpenVPN(){
 	fi
 
 	# Get easy-rsa
-	curl -sSfL "${easyrsaUrl}" | $SUDO tar xz OpenVPN-easy-rsa-"${easyrsaCommit:0:7}"/easyrsa3 --one-top-level=/etc/openvpn/easy-rsa --strip-components 2
+	curl -sSfL "${easyrsaRel}" | $SUDO tar xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
 	if ! test -s /etc/openvpn/easy-rsa/easyrsa; then
 		echo "$0: ERR: Failed to download EasyRSA."
 		exit 1
