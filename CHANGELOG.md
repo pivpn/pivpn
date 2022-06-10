@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## June 10th 2022
+
+- Bug fixes & Improvements
+  - Add support for builtin WireGuard module [#1548](#1548) [#1549](#1549)
+
 ## May 23rd 2022
 
 - Code quality and improvements
