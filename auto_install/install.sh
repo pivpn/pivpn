@@ -492,7 +492,7 @@ preconfigurePackages(){
 	# and not part of the .deb).
 	# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
 	WIREGUARD_BUILTIN=0
-	for i in /lib/modules/**/wireguard.ko; do
+	for i in /lib/modules/**/wireguard.ko{,.xz}; do
 		[[ -f $i ]] || continue
 		dpkg-query -S "$i" &> /dev/null || continue
 		WIREGUARD_BUILTIN=1
