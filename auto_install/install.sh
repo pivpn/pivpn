@@ -93,9 +93,6 @@ c=$(( c < 70 ? 70 : c ))
 # Override localization settings so the output is in English language.
 export LC_ALL=C
 
-# Enable recursive globbing to find wireguard.ko in /lib/modules.
-shopt -s globstar
-
 main(){
 	# Pre install checks and configs
 	rootCheck
@@ -492,12 +489,9 @@ preconfigurePackages(){
 	# and not part of the .deb).
 	# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
 	WIREGUARD_BUILTIN=0
-	for i in /lib/modules/**/wireguard.ko; do
-		[[ -f $i ]] || continue
-		dpkg-query -S "$i" &> /dev/null || continue
+	if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null || modinfo wireguard 2> /dev/null | grep -q '^filename:[[:blank:]]*(builtin)$'; then
 		WIREGUARD_BUILTIN=1
-		break
-	done
+	fi
 
 	if
 		# If the module is builtin and the package available, we only need to install wireguard-tools.
