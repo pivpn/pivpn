@@ -1105,7 +1105,7 @@ updateRepo(){
 		# Go back to /usr/local/src otherwise git will complain when the current working
 		# directory has just been deleted (/usr/local/src/pivpn).
 		cd /usr/local/src && \
-		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
+		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null && spinner $!
 		cd "${1}" || exit 1
 		echo " done!"
 		if [ -n "${pivpnGitBranch}" ]; then
