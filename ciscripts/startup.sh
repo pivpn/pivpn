@@ -1,47 +1,71 @@
 #!/bin/sh
 
-interface=$(ip -o link | awk '{print $2}' | cut -d':' -f1 | cut -d'@' -f1 | grep -v -w 'lo' | head -1)
-ipaddress=$(ip addr show "$interface" | grep -o -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}/[0-9]{2}")
-gateway=$(ip route show | awk '/default/ {print $3}')
-hostname="pivpn.test"
+interface=$(ip -o link | \
+    awk '{print $2}' | \
+    cut -d ':' -f 1 | \
+    cut -d '@' -f 1 | \
+    grep -vwsEe 'lo' | \
+    head -1)
+ipaddress=$(ip addr show "${interface}" | \
+    grep -osEe '([0-9]{1,3}\.){3}[0-9]{1,3}\/[0-9]{1,2}')
+gateway=$(ip route show | \
+    awk '/default/ {print $3}')
+hostname='pivpn.test'
 
-common(){
-    sed -i "s/INTERFACE/$interface/g" "$vpnconfig"
-    sed -i "s|IPADDRESS|$ipaddress|g" "$vpnconfig"
-    sed -i "s/GATEWAY/$gateway/g" "$vpnconfig"
+common() {
+    sed -iEe "s/INTERFACE/${interface}/g" "${vpnconfig}"
+    sed -iEe "s/IPADDRESS/${ipaddress}/g" "${vpnconfig}"
+    sed -iEe "s/GATEWAY/${gateway}/g" "${vpnconfig}"
 }
  
-openvpn(){
-    vpnconfig="ciscripts/ci_openvpn.conf"
-    twofour=1
+openvpn() {
+    local vpnconfig
+
+    vpnconfig='ciscripts/ci_openvpn.conf'
+
     common
-    sed -i "s/2POINT4/$twofour/g" "$vpnconfig"
-    cat $vpnconfig
+
+    sed -iEe 's/2POINT4/1/g' "${vpnconfig}"
+
+    cat "${vpnconfig}"
     exit 0
 }
 
-wireguard(){
-    vpnconfig="ciscripts/ci_wireguard.conf"
+wireguard() {
+    local vpnconfig
+
+    vpnconfig='ciscripts/ci_wireguard.conf'
+
     common
-    cat $vpnconfig
+
+    cat "${vpnconfig}"
     exit 0
 }
 
-if [ $# -lt 1 ]; then
-    echo "specifiy a VPN protocol to prepare"
+if [ $# -lt 1 ]
+then
+    echo 'specifiy a VPN protocol to prepare'
     exit 1
 else
     chmod +x auto_install/install.sh
-    sudo hostnamectl set-hostname $hostname
+
+    sudo hostnamectl set-hostname "${hostname}"
+
     cat /etc/os-release
-    while true; do
+
+    while true
+    do
         case "$1" in
-            -o | --openvpn      ) openvpn 
-            ;;
-            -w | --wireguard    ) wireguard
-            ;;
-            *                   ) echo "unknown vpn protocol"; exit 1  
-            ;;
+            -o | --openvpn)
+                openvpn 
+                ;;
+            -w | --wireguard)
+                wireguard
+                ;;
+            *)
+                echo 'unknown vpn protocol'
+                exit 1  
+                ;;
         esac
     done
 fi
