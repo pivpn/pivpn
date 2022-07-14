@@ -1,24 +1,19 @@
 language: shell
-
 addons:
   hosts:
     - pivpn.test
   apt:
     packages:
       - shellcheck
-
 services:
   - docker
-
 stages:
   - lint
   - test
-
 branches:
   only:
     - test
     - master
-
 jobs:
   include:
     - stage: lint
@@ -29,7 +24,6 @@ jobs:
       script:
         - shellcheck auto_install/install.sh
         - find scripts/ -type f | xargs shellcheck
-
     - stage: test
       name: "OpenVPN Xenial & Commands"
       dist: xenial
@@ -55,7 +49,6 @@ jobs:
         - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
-
     - stage: test
       name: "Wireguard Xenial & Commands"
       dist: xenial
@@ -80,7 +73,6 @@ jobs:
         - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
-
     - stage: test
       name: "OpenVPN Bionic & Commands"
       dist: bionic
@@ -105,7 +97,6 @@ jobs:
         - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
-
     - stage: test
       name: "Wireguard Bionic & Commands"
       dist: bionic
@@ -130,7 +121,6 @@ jobs:
         - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
-
     - stage: test
       name: "OpenVPN Focal & Commands"
       dist: focal
@@ -155,7 +145,6 @@ jobs:
         - pivpn -r foo -y
       after_fail:
         - sudo journalctl -xe
-
     - stage: test
       name: "Wireguard Focal & Commands"
       dist: focal
