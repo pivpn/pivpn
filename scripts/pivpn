@@ -1,49 +1,49 @@
 #!/bin/bash
 
 # Must be root to use this tool
-if [ $EUID -ne 0 ];then
-  	if dpkg-query -s sudo &> /dev/null; then
-            export SUDO="sudo"
+if [ $EUID -ne 0 ]
+then
+  	if dpkg-query -s sudo &> /dev/null
+	then
+		export SUDO='sudo'
   	else
-    	    echo "::: Please install sudo or run this as root."
-    	    exit 1
-        fi
+		echo '::: Please install sudo or run this as root.'
+		exit 1
+	fi
 fi
 
-scriptDir="/opt/pivpn"
+scriptDir='/opt/pivpn'
 
-uninstallServer(){
-    $SUDO ${scriptDir}/uninstall.sh
-    exit "$?"
+showHelp() {
+	echo '::: To pass off to the pivpn command for each protocol'
+	echo ':::'
+	echo '::: Usage: pivpn wg  <command> [option]'
+	echo '::: Usage: pivpn ovpn <command> [option]'
+	echo ':::'
+	echo ':::  -h,  help             Show this help dialog'
+	echo ':::  -u,  uninstall        Uninstall pivpn from your system!'
+	echo ':::  -bk, backup           Backup VPN configs and user profiles'
+	exit 0
 }
 
-backup(){
-    $SUDO ${scriptDir}/backup.sh
-    exit "$?"
-}
-
-showHelp(){
-    echo "::: To pass off to the pivpn command for each protocol"
-    echo ":::"
-    echo "::: Usage: pivpn wg  <command> [option]"
-    echo "::: Usage: pivpn ovpn <command> [option]"
-    echo ":::"
-    echo ":::  -h,  help             Show this help dialog"
-    echo ":::  -u,  uninstall        Uninstall pivpn from your system!"
-    echo ":::  -bk, backup           Backup VPN configs and user profiles"
-    exit 0
-}
-
-if [ $# = 0 ]; then
-    showHelp
-fi
+[ $# -eq 0 ] && \
+	showHelp
 
 # Handle redirecting to specific functions based on arguments
 case "$1" in
-     wg                      ) "${scriptDir}/wireguard/pivpn.sh" "${@:2}";;
-     ovpn                    ) "${scriptDir}/openvpn/pivpn.sh"   "${@:2}";;
-"-h"  | "help"               ) showHelp;;
-"-u"  | "uninstall"          ) uninstallServer;;
-"-bk" | "backup"             ) backup ;;
-*                            ) showHelp;;
+	wg)
+		"${scriptDir}/wireguard/pivpn.sh" "${@:2}"
+		;;
+	ovpn)
+		"${scriptDir}/openvpn/pivpn.sh"   "${@:2}"
+		;;
+	-u | uninstall)
+		"${SUDO}" "${scriptDir}/uninstall.sh"
+		;;
+	-bk | backup)
+		"${SUDO}" "${scriptDir}/backup.sh"
+		;;
+	*)
+		showHelp
+		;;
 esac
