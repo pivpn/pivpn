@@ -1,6 +1,10 @@
 #!/bin/bash
 
-systemctl status openvpn
+command -v systemctl > /dev/null && \
+	systemctl status openvpn
+command -v rc-service > /dev/null && \
+	rc-service openvpn status
+
 pivpn add -n foo
 pivpn -qr foo
 pivpn -bk
