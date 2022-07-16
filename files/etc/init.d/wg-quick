@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+
+#################################################################################
+#	Filename:		files/etc/init.d/wg-quick   								#
+#	Purpose:		OpenRC service that starts WireGuard	        			#
+#	Authors:		Giulio Coa <34110430+giulioc008@users.noreply.github.com>	#
+#	License:		This file is licensed under the MIT.						#
+#################################################################################
+
+description="WireGuard - Quick version"
+
+depend() {
+    need localmount
+    need net
+}
+
+start() {
+    wg-quick up wg0
+}
+
+stop() {
+    wg-quick down wg0
+}
