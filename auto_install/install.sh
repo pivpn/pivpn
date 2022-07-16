@@ -378,6 +378,14 @@ distroCheck() {
 			BASE_DEPS=($(echo "${BASE_DEPS[@]}" | \
 				sed -Ee 's/bsdmainutils //'))
 
+			# add other dependencies
+			## install some utilities
+			BASE_DEPS+=(coreutils util-linux wget openssl)
+			## install docs and manuals
+			BASE_DEPS+=(docs man-pages mandoc mandoc-apropos)
+			## install a services manager
+			BASE_DEPS+=(openrc)
+
 			# install grepcidr manually
 			## install dependencies
 			"${PKG_INSTALL}" build-base make
