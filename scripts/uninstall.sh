@@ -21,11 +21,23 @@ c=$(( c < 70 ? 70 : c ))
 
 PKG_MANAGER='apt-get'
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
+PKG_REMOVE="${PKG_MANAGER} -y remove --purge"
 dnsmasqConfig='/etc/dnsmasq.d/02-pivpn.conf'
 setupVarsFile='setupVars.conf'
 setupConfigDir='/etc/pivpn'
 pivpnFilesDir='/usr/local/src/pivpn'
 pivpnScriptDir='/opt/pivpn'
+
+PLAT=$(cat /etc/os-release | \
+		grep -sEe '^NAME\=' | \
+		sed -Ee "s/NAME\=[\'\"]?([^ ]*).*/\1/")
+
+if [ "${PLAT}" == 'Alpine' ]
+then
+	PKG_MANAGER='apk'
+	UPDATE_PKG_CACHE="${PKG_MANAGER} update; ${PKG_MANAGER} upgrade --prune"
+	PKG_REMOVE="${PKG_MANAGER} --no-cache --purge del -r"
+fi
 
 if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ] && \
 	[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]
@@ -40,8 +52,8 @@ then
 		echo "::: Uninstalling VPN: ${VPN}"
 	else
 		chooseVPNCmd=(whiptail --backtitle 'Setup PiVPN' --title 'Uninstall' --separate-output --radiolist 'Both OpenVPN and WireGuard are installed, choose a VPN to uninstall (press space to select):' "${r}" "${c}" 2)
-		VPNChooseOptions=(WireGuard '' on
-							OpenVPN '' off)
+		VPNChooseOptions=(WireGuard '' on)
+		VPNChooseOptions+=(OpenVPN '' off)
 
 		if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 >/dev/tty)
 		then
@@ -87,7 +99,9 @@ spinner() {
 		local spinstr="${temp}${spinstr%$temp}"
 
 		printf ' [%c]  ' "${spinstr}"
+
 		sleep "${delay}"
+
 		printf '\\b\\b\\b\\b\\b\\b'
 	done
 
@@ -99,13 +113,24 @@ removeAll() {
 	# Stopping and disabling services
 	echo '::: Stopping and disabling services...'
 
-	[ "${VPN}" == 'wireguard' ] && \
-		service_name='wg-quick@wg0'
+	if [ "${VPN}" == 'wireguard' ]
+	then
+		[ "${PLAT}" == 'Alpine' ] && \
+			service_name='wg-quick' || \
+			service_name='wg-quick@wg0'
+	fi
+
 	[ "${VPN}" == 'openvpn' ] && \
 		service_name='openvpn'
 
-	systemctl stop "${service_name}"
-	systemctl disable "${service_name}" &> /dev/null
+	if [ "${PLAT}" == 'Alpine' ]
+	then
+		rc-service "${service_name}" stop
+		rc-update del "${service_name}" default &> /dev/null
+	else
+		systemctl stop "${service_name}"
+		systemctl disable "${service_name}" &> /dev/null
+	fi
 
 	# Removing firewall rules.
 	echo '::: Removing firewall rules...'
@@ -119,8 +144,11 @@ removeAll() {
 		# shellcheck disable=SC2154
 		ufw route delete allow in on "${pivpnDEV}" from "${pivpnNET}/${subnetClass}" out on "${IPv4dev}" to any > /dev/null
 		ufw delete allow in on "${pivpnDEV}" to any port 53 from "${pivpnNET}/${subnetClass}" >/dev/null
+
 		sed -iEe "/\-I POSTROUTING \-s ${pivpnNET}\/${subnetClass} \-o ${IPv4dev} \-j MASQUERADE \-m comment \-\-comment ${VPN}\-nat\-rule/d" /etc/ufw/before.rules
+
 		iptables -t nat -D POSTROUTING -s "${pivpnNET}/${subnetClass}" -o "${IPv4dev}" -j MASQUERADE -m comment --comment "${VPN}-nat-rule"
+
 		ufw reload &> /dev/null
 	else
 		if [ $INPUT_CHAIN_EDITED -eq 1 ]
@@ -156,54 +184,57 @@ removeAll() {
 
 			case "${yn}" in
 				[Yy]*)
-					if [ "${i}" == 'wireguard-tools' ]
+					if [ "${PLAT}" != 'Alpine' ]
 					then
-						# The bullseye repo may not exist if wireguard was available at the
-						# time of installation.
-						if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]
+						if [ "${i}" == 'wireguard-tools' ]
 						then
-							echo '::: Removing Debian Bullseye repo...'
+							# The bullseye repo may not exist if wireguard was available at the
+							# time of installation.
+							if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]
+							then
+								echo '::: Removing Debian Bullseye repo...'
 
-							rm -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list
-							rm -f /etc/apt/preferences.d/pivpn-limit-bullseye
+								rm -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list
+								rm -f /etc/apt/preferences.d/pivpn-limit-bullseye
 
-							echo '::: Updating package cache...'
+								echo '::: Updating package cache...'
 
-							"${UPDATE_PKG_CACHE}" &> /dev/null && \
-								spinner "$!"
-						fi
+								"${UPDATE_PKG_CACHE}" &> /dev/null && \
+									spinner "$!"
+							fi
 
-						[ -f /etc/systemd/system/wg-quick@.service.d/override.conf ] && \
-							rm -f /etc/systemd/system/wg-quick@.service.d/override.conf
-					elif [ "${i}" == 'unattended-upgrades' ]
-					then
-						rm -rf /var/log/unattended-upgrades
-						rm -rf /etc/apt/apt.conf.d/*periodic
-						rm -rf /etc/apt/apt.conf.d/*unattended-upgrades
-					elif [ "${i}" == 'openvpn' ]
-					then
-						if [ -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list ]
+							[ -f /etc/systemd/system/wg-quick@.service.d/override.conf ] && \
+								rm -f /etc/systemd/system/wg-quick@.service.d/override.conf
+						elif [ "${i}" == 'unattended-upgrades' ]
 						then
-							echo '::: Removing OpenVPN software repo...'
+							rm -rf /var/log/unattended-upgrades
+							rm -rf /etc/apt/apt.conf.d/*periodic
+							rm -rf /etc/apt/apt.conf.d/*unattended-upgrades
+						elif [ "${i}" == 'openvpn' ]
+						then
+							if [ -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list ]
+							then
+								echo '::: Removing OpenVPN software repo...'
 
-							rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
+								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
 
-							echo '::: Updating package cache...'
+								echo '::: Updating package cache...'
 
-							"${UPDATE_PKG_CACHE}" &> /dev/null && \
-								spinner "$!"
+								"${UPDATE_PKG_CACHE}" &> /dev/null && \
+									spinner "$!"
+							fi
+
+							deluser openvpn
+
+							rm -f /etc/rsyslog.d/30-openvpn.conf
+							rm -f /etc/logrotate.d/openvpn
+
 						fi
-
-						deluser openvpn
-
-						rm -f /etc/rsyslog.d/30-openvpn.conf
-						rm -f /etc/logrotate.d/openvpn
-
 					fi
 
 					printf ':::\\tRemoving %s...' "${i}"
 
-					"${PKG_MANAGER}" -y remove --purge "${i}" &> /dev/null && \
+					"${PKG_REMOVE}" "${i}" &> /dev/null && \
 						spinner "$!"
 
 					printf 'done!\\n'
@@ -220,19 +251,22 @@ removeAll() {
 		done
 	done
 
-	# Take care of any additional package cleaning
-	printf '::: Auto removing remaining dependencies...'
+	if [ "${PLAT}" != 'Alpine' ]
+	then
+		# Take care of any additional package cleaning
+		printf '::: Auto removing remaining dependencies...'
 
-	"${PKG_MANAGER}" -y autoremove &> /dev/null && \
-		spinner "$!"
+		"${PKG_MANAGER}" -y autoremove &> /dev/null && \
+			spinner "$!"
 
-	printf 'done!\\n'
-	printf '::: Auto cleaning remaining dependencies...'
+		printf 'done!\\n'
+		printf '::: Auto cleaning remaining dependencies...'
 
-	"${PKG_MANAGER}" -y autoclean &> /dev/null && \
-		spinner "$!"
+		"${PKG_MANAGER}" -y autoclean &> /dev/null && \
+			spinner "$!"
 
-	printf 'done!\\n'
+		printf 'done!\\n'
+	fi
 
 	if [ -f "${dnsmasqConfig}" ]
 	then
@@ -305,7 +339,9 @@ askreboot() {
 
 		sleep 3
 
-		shutdown -r now
+		[ "${PLAT}" == 'Alpine' ] && \
+			reboot || \
+			shutdown -r now
 	fi
 }
 

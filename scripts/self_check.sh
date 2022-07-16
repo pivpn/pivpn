@@ -4,6 +4,9 @@
 VPN="$1"
 setupVars="/etc/pivpn/${VPN}/setupVars.conf"
 ERR=0
+PLAT=$(cat /etc/os-release | \
+		grep -sEe '^NAME\=' | \
+		sed -Ee "s/NAME\=[\'\"]?([^ ]*).*/\1/")
 
 if [ ! -f "${setupVars}" ]
 then
@@ -18,6 +21,10 @@ source "${setupVars}"
 if [ "${VPN}" == 'wireguard' ]
 then
 	VPN_SERVICE='wg-quick@wg0'
+
+	[ "${PLAT}" == 'Alpine' ] && \
+		VPN_SERVICE='wg-quick'
+
 	VPN_PRETTY_NAME='WireGuard'
 elif [ "$VPN" == 'openvpn' ]
 then
@@ -25,7 +32,7 @@ then
 	VPN_PRETTY_NAME='OpenVPN'
 fi
 
-if [ $(</proc/sys/net/ipv4/ip_forward) -eq 1 ]
+if [ $(< /proc/sys/net/ipv4/ip_forward) -eq 1 ]
 then
 	echo ':: [OK] IP forwarding is enabled'
 else
@@ -187,37 +194,80 @@ else
 
 fi
 
-if systemctl is-active -q "${VPN_SERVICE}"
+if [ "${PLAT}" == 'Alpine' ]
 then
-	echo ":: [OK] ${VPN_PRETTY_NAME} is running"
-else
-	ERR=1
-
-	read -r -p ":: [ERR] ${VPN_PRETTY_NAME} is not running, try to start now? [Y/n] " REPLY
-
-	if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
-		[ -z "${REPLY}" ]
+	if [ $(rc-service "${VPN_SERVICE}" status | \
+			sed -Ee 's/.*status\: (.*)/\1/') == 'started' ]
 	then
-		systemctl start "${VPN_SERVICE}"
+		echo ":: [OK] ${VPN_PRETTY_NAME} is running"
+	else
+		ERR=1
 
-		echo 'Done'
+		read -r -p ":: [ERR] ${VPN_PRETTY_NAME} is not running, try to start now? [Y/n] " REPLY
+
+		if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
+			[ -z "${REPLY}" ]
+		then
+			rc-service -N "${VPN_SERVICE}" start
+			rc-service -s "${VPN_SERVICE}" restart
+
+			echo 'Done'
+		fi
+	fi
+else
+	if systemctl is-active -q "${VPN_SERVICE}"
+	then
+		echo ":: [OK] ${VPN_PRETTY_NAME} is running"
+	else
+		ERR=1
+
+		read -r -p ":: [ERR] ${VPN_PRETTY_NAME} is not running, try to start now? [Y/n] " REPLY
+
+		if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
+			[ -z "${REPLY}" ]
+		then
+			systemctl start "${VPN_SERVICE}"
+
+			echo 'Done'
+		fi
 	fi
 fi
 
-if systemctl is-enabled -q "${VPN_SERVICE}"
+if [ "${PLAT}" == 'Alpine' ]
 then
-	echo ":: [OK] ${VPN_PRETTY_NAME} is enabled (it will automatically start on reboot)"
-else
-	ERR=1
-
-	read -r -p ":: [ERR] ${VPN_PRETTY_NAME} is not enabled, try to enable now? [Y/n] " REPLY
-
-	if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
-		[ -z "${REPLY}" ]
+	if rc-update show default | \
+		grep -sEe "\s*${VPN_SERVICE} .*" &> /dev/null
 	then
-		systemctl enable "${VPN_SERVICE}"
+		echo ":: [OK] ${VPN_PRETTY_NAME} is enabled (it will automatically start on reboot)"
+	else
+		ERR=1
 
-		echo 'Done'
+		read -r -p ":: [ERR] ${VPN_PRETTY_NAME} is not enabled, try to enable now? [Y/n] " REPLY
+
+		if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
+			[ -z "${REPLY}" ]
+		then
+			rc-update add "${VPN_SERVICE}" default
+
+			echo 'Done'
+		fi
+	fi
+else
+	if systemctl is-enabled -q "${VPN_SERVICE}"
+	then
+		echo ":: [OK] ${VPN_PRETTY_NAME} is enabled (it will automatically start on reboot)"
+	else
+		ERR=1
+
+		read -r -p ":: [ERR] ${VPN_PRETTY_NAME} is not enabled, try to enable now? [Y/n] " REPLY
+
+		if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
+			[ -z "${REPLY}" ]
+		then
+			systemctl enable "${VPN_SERVICE}"
+
+			echo 'Done'
+		fi
 	fi
 fi
 
@@ -234,7 +284,14 @@ else
 	if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
 		[ -z "${REPLY}" ]
 	then
-		systemctl restart "${VPN_SERVICE}"
+		if [[ "${REPLY}" =~ ^[Yy]$ ]] || \
+			[ -z "${REPLY}" ]
+		then
+			rc-service -N "${VPN_SERVICE}" start
+			rc-service -s "${VPN_SERVICE}" restart
+		else
+			systemctl restart "${VPN_SERVICE}"
+		fi
 
 		echo 'Done'
 	fi

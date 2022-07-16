@@ -21,6 +21,13 @@ date=$(date +%Y%m%d-%H%M%S)
 setupVarsFile='setupVars.conf'
 setupConfigDir='/etc/pivpn'
 
+CHECK_PKG_INSTALLED='dpkg-query -s'
+
+[ $(cat /etc/os-release | \
+		grep -sEe '^NAME\=' | \
+		sed -Ee "s/NAME\=[\'\"]?([^ ]*).*/\1/") == 'Alpine' ] && \
+	CHECK_PKG_INSTALLED='apk --no-cache info -e'
+
 if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ] && \
 	[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]
 then
@@ -32,8 +39,8 @@ then
 		echo "::: Backing up VPN: ${VPN}"
 	else
 		chooseVPNCmd=(whiptail --backtitle 'Setup PiVPN' --title 'Backup' --separate-output --radiolist 'Both OpenVPN and WireGuard are installed, choose a VPN to backup (press space to select):' "${r}" "${c}" 2)
-		VPNChooseOptions=(WireGuard '' on
-							OpenVPN '' off)
+		VPNChooseOptions=(WireGuard '' on)
+		VPNChooseOptions+=(OpenVPN '' off)
 
 		if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2> /dev/stdout > /dev/tty)
 		then
@@ -97,7 +104,7 @@ backup() {
 
 if [ $EUID -ne 0 ]
 then
-    if dpkg-query -s sudo
+    if "${CHECK_PKG_INSTALLED}" sudo
 	then
         export SUDO='sudo'
     else

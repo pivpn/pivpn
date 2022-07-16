@@ -27,8 +27,8 @@ echo "::: To keep the VPN (and the system) up to date, use 'apt update' and 'apt
 exit 0
 
 chooseVPNCmd=(whiptail --backtitle 'Setup PiVPN' --title 'Installation mode' --separate-output --radiolist 'Choose a VPN to update (press space to select):' "${r}" "${c}" 2)
-VPNChooseOptions=(WireGuard '' on
-					OpenVPN '' off)
+VPNChooseOptions=(WireGuard '' on)
+VPNChooseOptions+=(OpenVPN '' off)
 
 if VPN=$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2> /dev/stdout > /dev/tty)
 then
