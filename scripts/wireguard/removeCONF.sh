@@ -1,5 +1,9 @@
 #!/bin/bash
 
+PLAT=$(cat /etc/os-release | \
+		grep -sEe '^NAME\=' | \
+		sed -Ee "s/NAME\=[\'\"]?([^ ]*).*/\1/")
+
 setupVars='/etc/pivpn/wireguard/setupVars.conf'
 
 if [ ! -f "${setupVars}" ]
@@ -158,7 +162,14 @@ done
 # Restart WireGuard only if some clients were actually deleted
 if [ $DELETED_COUNT -gt 0 ]
 then
-    systemctl reload wg-quick@wg0 && \
-        echo '::: WireGuard reloaded' || \
-        echo '::: Failed to reload WireGuard'
+    if [ "${PLAT}" == 'Alpine' ]
+    then
+        rc-service wg-quick restart && \
+            echo '::: WireGuard reloaded' || \
+            echo '::: Failed to reload WireGuard'
+    else
+        systemctl reload wg-quick@wg0 && \
+            echo '::: WireGuard reloaded' || \
+            echo '::: Failed to reload WireGuard'
+    fi
 fi

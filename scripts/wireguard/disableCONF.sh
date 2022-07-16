@@ -1,5 +1,9 @@
 #!/bin/bash
 
+PLAT=$(cat /etc/os-release | \
+		grep -sEe '^NAME\=' | \
+		sed -Ee "s/NAME\=[\'\"]?([^ ]*).*/\1/")
+
 setupVars='/etc/pivpn/wireguard/setupVars.conf'
 
 if [ ! -f "${setupVars}" ]
@@ -57,7 +61,7 @@ fi
 
 if [ "${DISPLAY_DISABLED}" == true ]
 then
-	grep -sEe '[disabled] \#\#\# begin' wg0.conf | \
+	grep -sEe '\[disabled\] \#\#\# begin' wg0.conf | \
 		sed -Ee 's/\#//g; s/begin//'
 	exit 1
 fi
@@ -96,7 +100,7 @@ do
 	if ! grep -qsEe "^${CLIENT_NAME} " configs/clients.txt
 	then
 		echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
-	elif grep -qsEe "\#[disabled] \#\#\# begin ${CLIENT_NAME}" wg0.conf
+	elif grep -qsEe "\#\[disabled\] \#\#\# begin ${CLIENT_NAME}" wg0.conf
 	then
 		echo -e "::: \e[1m${CLIENT_NAME}\e[0m is already disabled"
 	else
@@ -109,7 +113,7 @@ do
 			# Disable the peer section from the server config
 			echo "${CLIENT_NAME}"
 
-			sed -iEe "/\#\#\# begin ${CLIENT_NAME}/,/end ${CLIENT_NAME}/ s/^/\#[disabled] /" wg0.conf
+			sed -iEe "/\#\#\# begin ${CLIENT_NAME}/,/end ${CLIENT_NAME}/ s/^/\#\[disabled\] /" wg0.conf
 
 			echo '::: Updated server config'
 
@@ -123,7 +127,14 @@ done
 # Restart WireGuard only if some clients were actually deleted
 if [ $CHANGED_COUNT -gt 0 ]
 then
-	systemctl reload wg-quick@wg0 && \
-		echo '::: WireGuard reloaded' || \
-		echo '::: Failed to reload WireGuard'
+	if [ "${PLAT}" == 'Alpine' ]
+	then
+		rc-service wg-quick restart && \
+			echo '::: WireGuard reloaded' || \
+			echo '::: Failed to reload WireGuard'
+	else
+		systemctl reload wg-quick@wg0 && \
+			echo '::: WireGuard reloaded' || \
+			echo '::: Failed to reload WireGuard'
+	fi
 fi

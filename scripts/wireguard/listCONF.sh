@@ -32,5 +32,5 @@ cd /etc/wireguard || \
     return
 
 echo '::: Disabled clients :::'
-grep -sEe '[disabled] \#\#\# begin' wg0.conf | \
+grep -sEe '\[disabled\] \#\#\# begin' wg0.conf | \
     sed -Ee 's/\#//g; s/begin//'

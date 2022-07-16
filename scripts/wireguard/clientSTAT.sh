@@ -47,24 +47,17 @@ listClients() {
                 CLIENT_NAME=$(grep -sEe "${PUBLIC_KEY}" "${CLIENTS_FILE}" | \
                     awk '{ print $1 }')
 
-                if [ $HR -eq 1 ]
-                then
-                    printf '%s  \t  %s  \t  %s  \t  %s  \t  %s  \t  ' "${CLIENT_NAME}" "${REMOTE_IP}" "${VIRTUAL_IP/\/32/}" $(hr "${BYTES_RECEIVED}") $(hr "${BYTES_SENT}")
+                printf '%s  \t  %s  \t  %s  \t  ' "${CLIENT_NAME}" "${REMOTE_IP}" "${VIRTUAL_IP/\/32/}" 
+                
+                [ $HR -eq 1 ] && \
+                    printf '%s  \t  %s  \t  ' $(hr "${BYTES_RECEIVED}") $(hr "${BYTES_SENT}") || \
+                    printf "%'d  \t  %'d  \t  " "${BYTES_RECEIVED}" "${BYTES_SENT}"
 
-                    [ $LAST_SEEN -ne 0 ] && \
-                        printf '%s' $(date -d @"${LAST_SEEN}" '+%b %d %Y - %T') || \
-                        printf '(not yet)'
+                [ $LAST_SEEN -ne 0 ] && \
+                    printf '%s' $(date -d @"${LAST_SEEN}" '+%b %d %Y - %T') || \
+                    printf '(not yet)'
 
-                    printf '\n'
-                else
-                    printf '%s  \t  %s  \t  %s  \t  %'d  \t  %'d  \t  ' "${CLIENT_NAME}" "${REMOTE_IP}" "${VIRTUAL_IP/\/32/}" "${BYTES_RECEIVED}" "${BYTES_SENT}"
-
-                    [ $LAST_SEEN -ne 0 ] && \
-                        printf '%s' $(date -d @"${LAST_SEEN}" '+%b %d %Y - %T') || \
-                        printf '(not yet)'
-
-                    printf '\n'
-                fi
+                printf '\n'
             fi
         done <<< "${DUMP}"
 
@@ -77,7 +70,7 @@ listClients() {
 
     echo '::: Disabled clients :::'
 
-    grep -sEe '[disabled] \#\#\# begin' wg0.conf | \
+    grep -sEe '\[disabled\] \#\#\# begin' wg0.conf | \
         sed -Ee 's/\#//g; s/begin//'
 }
 
@@ -89,10 +82,6 @@ else
     while true
     do
         case "$1" in
-            -b | bytes)
-                HR=0
-                listClients
-                ;;
             -h | help)
                 scriptusage
                 ;;

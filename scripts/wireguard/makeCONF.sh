@@ -1,5 +1,9 @@
 #!/bin/bash
 
+PLAT=$(cat /etc/os-release | \
+		grep -sEe '^NAME\=' | \
+		sed -Ee "s/NAME\=[\'\"]?([^ ]*).*/\1/")
+
 ######## Some vars that might be empty
 # but need to be defined for checks
 pivpnPERSISTENTKEEPALIVE=''
@@ -184,9 +188,16 @@ then
 		echo '::: Failed to reload pihole-FTL configuration'
 fi
 
-systemctl reload wg-quick@wg0 && \
-	echo '::: WireGuard reloaded' || \
-	echo '::: Failed to reload WireGuard'
+if [ "${PLAT}" == 'Alpine' ]
+then
+	rc-service wg-quick restart && \
+		echo '::: WireGuard reloaded' || \
+		echo '::: Failed to reload WireGuard'
+else
+	systemctl reload wg-quick@wg0 && \
+		echo '::: WireGuard reloaded' || \
+		echo '::: Failed to reload WireGuard'
+fi
 
 cp "configs/${CLIENT_NAME}.conf" "${install_home}/configs/${CLIENT_NAME}.conf"
 
