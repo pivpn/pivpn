@@ -104,9 +104,9 @@ do
 			then
 				iOS=1
 			else
-			   echo "Sorry, can't generate iOS-specific configs for ECDSA certificates"
-			   echo "Generate traditional certificates using 'pivpn -a' or reinstall PiVPN without opting in for OpenVPN 2.4 features"
-			   exit 1
+				echo "Sorry, can't generate iOS-specific configs for ECDSA certificates"
+				echo "Generate traditional certificates using 'pivpn -a' or reinstall PiVPN without opting in for OpenVPN 2.4 features"
+				exit 1
 			fi
 
 			;;
@@ -122,8 +122,22 @@ do
 			then
 				BITWARDEN=2
 			else
-			   echo 'Bitwarden not found, please install bitwarden'
-			   exit 1
+				echo 'Bitwarden not found, please install bitwarden'
+
+				if [ $(cat /etc/os-release | \
+					grep -sEe '^NAME\=' | \
+					sed -Ee "s/NAME\=[\'\"]?([^ ]*).*/\1/") == 'Alpine' ]
+				then
+					echo 'You can download it through the following commands:'
+					echo $'\t' 'wget -o /dev/null -O bitwarden.zip --no-cache https://github.com/bitwarden/clients/releases/download/cli-v2022.6.2/bw-linux-2022.6.2.zip'
+					echo $'\t' 'apk --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing/ add atool'
+					echo $'\t' 'aunpack -F zip bitwarden.zip'
+					echo $'\t' 'mv bw /opt/bw'
+					echo $'\t' 'chmod 755 /opt/bw'
+					echo $'\t' 'rm bitwarden.zip'
+				fi
+
+				exit 1
 			fi
 
 			;;

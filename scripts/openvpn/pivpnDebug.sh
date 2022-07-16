@@ -24,7 +24,7 @@ printf '=============================================\n'
 echo -e '::::\t    \e[4mInstallation settings\e[0m    \t ::::'
 
 # shellcheck disable=SC2154
-sed "s/${pivpnHOST}/REDACTED/" < "${setupVars}"
+sed -Ee "s/${pivpnHOST}/REDACTED/" < "${setupVars}"
 
 printf '=============================================\n'
 echo -e '::::  \e[4mServer configuration shown below\e[0m   ::::'
