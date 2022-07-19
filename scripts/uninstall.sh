@@ -17,12 +17,21 @@ r=$(( r < 20 ? 20 : r ))
 c=$(( c < 70 ? 70 : c ))
 
 PKG_MANAGER="apt-get"
-UPDATE_PKG_CACHE="${PKG_MANAGER} update"
+PKG_REMOVE="${PKG_MANAGER} -y remove --purge"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn"
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
+
+PLAT=$(grep -sEe '^NAME\=' /etc/os-release | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")
+
+if [ "${PLAT}" == 'Alpine' ]; then
+	PKG_MANAGER='apk'
+	PKG_REMOVE="${PKG_MANAGER} --no-cache --purge del -r"
+fi
+
+UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 
 if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ] && [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
 	vpnStillExists=1
@@ -84,12 +93,22 @@ removeAll(){
 	# Stopping and disabling services
 	echo "::: Stopping and disabling services..."
 
-	if [ "$VPN" = "wireguard" ]; then
-		systemctl stop wg-quick@wg0
-		systemctl disable wg-quick@wg0 &> /dev/null
-	elif [ "$VPN" = "openvpn" ]; then
-		systemctl stop openvpn
-		systemctl disable openvpn &> /dev/null
+	if [ "${PLAT}" == 'Alpine' ]; then
+		if [ "${VPN}" = "wireguard" ]; then
+			rc-service wg-quick stop
+			rc-update del wg-quick default &> /dev/null
+		elif [ "${VPN}" = "openvpn" ]; then
+			rc-service openvpn stop
+			rc-update del openvpn default &> /dev/null
+		fi
+	else
+		if [ "${VPN}" = "wireguard" ]; then
+			systemctl stop wg-quick@wg0
+			systemctl disable wg-quick@wg0 &> /dev/null
+		elif [ "${VPN}" = "openvpn" ]; then
+			systemctl stop openvpn
+			systemctl disable openvpn &> /dev/null
+		fi
 	fi
 
 	# Removing firewall rules.
@@ -137,58 +156,80 @@ removeAll(){
 		while true; do
 			read -rp "::: Do you wish to remove $i from your system? [Y/n]: " yn
 			case $yn in
-				[Yy]* ) if [ "${i}" = "wireguard-tools" ]; then
-
+				[Yy]* )
+					if [ "${PLAT}" == 'Alpine' ]; then
+						if [ "${i}" == 'openvpn' ]; then
+							deluser openvpn
+							rm -f /etc/rsyslog.d/30-openvpn.conf /etc/logrotate.d/openvpn
+						fi
+					else
+						if [ "${i}" == "wireguard-tools" ]; then
 							# The bullseye repo may not exist if wireguard was available at the
 							# time of installation.
 							if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]; then
 								echo "::: Removing Debian Bullseye repo..."
+
 								rm -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list
 								rm -f /etc/apt/preferences.d/pivpn-limit-bullseye
+
 								echo "::: Updating package cache..."
+
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
 
 							if [ -f /etc/systemd/system/wg-quick@.service.d/override.conf ]; then
 								rm -f /etc/systemd/system/wg-quick@.service.d/override.conf
 							fi
-
 						elif [ "${i}" = "unattended-upgrades" ]; then
-
-							rm -rf /var/log/unattended-upgrades
-							rm -rf /etc/apt/apt.conf.d/*periodic
+							rm -rf /var/log/unattended-upgrades /etc/apt/apt.conf.d/*periodic
 							rm -rf /etc/apt/apt.conf.d/*unattended-upgrades
-
 						elif [ "${i}" = "openvpn" ]; then
-
 							if [ -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list ]; then
 								echo "::: Removing OpenVPN software repo..."
+
 								rm -f /etc/apt/sources.list.d/pivpn-openvpn-repo.list
+
 								echo "::: Updating package cache..."
+
 								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
 							fi
-							deluser openvpn
-							rm -f /etc/rsyslog.d/30-openvpn.conf
-							rm -f /etc/logrotate.d/openvpn
 
+							deluser openvpn
+							rm -f /etc/rsyslog.d/30-openvpn.conf /etc/logrotate.d/openvpn
 						fi
-						printf ":::\\tRemoving %s..." "$i"; $PKG_MANAGER -y remove --purge "$i" &> /dev/null & spinner $!; printf "done!\\n";
-						break
-						;;
-				[Nn]* ) printf ":::\\tSkipping %s\\n" "$i";
-						break
-						;;
-				* ) printf "::: You must answer yes or no!\\n";;
+					fi
+
+					printf ":::\\tRemoving %s..." "$i"
+
+					"${PKG_REMOVE}" "$i" &> /dev/null & spinner $!
+
+					printf "done!\\n";
+					break
+				;;
+				[Nn]* )
+					printf ":::\\tSkipping %s\\n" "$i";
+					break
+				;;
+				* )
+					printf "::: You must answer yes or no!\\n"
+				;;
 			esac
 		done
 	done
 
-	# Take care of any additional package cleaning
-	printf "::: Auto removing remaining dependencies..."
-	$PKG_MANAGER -y autoremove &> /dev/null & spinner $!; printf "done!\\n";
-	printf "::: Auto cleaning remaining dependencies..."
-	$PKG_MANAGER -y autoclean &> /dev/null & spinner $!; printf "done!\\n";
+	if [ "${PLAT}" != 'Alpine' ]; then
+		# Take care of any additional package cleaning
+		printf "::: Auto removing remaining dependencies..."
 
+		"${PKG_MANAGER}" -y autoremove &> /dev/null & spinner $!
+
+		printf "done!\\n";
+		printf "::: Auto cleaning remaining dependencies..."
+
+		"${PKG_MANAGER}" -y autoclean &> /dev/null & spinner $!
+
+		printf "done!\\n";
+	fi
 
 	if [ -f "$dnsmasqConfig" ]; then
 		rm -f "$dnsmasqConfig"
@@ -255,7 +296,7 @@ askreboot(){
 	if [[ ${REPLY} =~ ^[Yy]$ ]]; then
 		printf "\\nRebooting system...\\n"
 		sleep 3
-		shutdown -r now
+		reboot
 	fi
 }
 

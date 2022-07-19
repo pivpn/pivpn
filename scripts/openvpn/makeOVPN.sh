@@ -42,14 +42,12 @@ if [ -z "$HELP_SHOWN" ]; then
 fi
 
 # Parse input arguments
-while test $# -gt 0
-do
+while test $# -gt 0; do
     _key="$1"
     case "$_key" in
         -n|--name|--name=*)
             _val="${_key##--name=}"
-            if test "$_val" = "$_key"
-            then
+            if test "$_val" = "$_key"; then
                 test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
                 _val="$2"
                 shift
@@ -58,8 +56,7 @@ do
             ;;
         -p|--password|--password=*)
             _val="${_key##--password=}"
-            if test "$_val" = "$_key"
-            then
+            if test "$_val" = "$_key"; then
                 test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
                 _val="$2"
                 shift
@@ -68,8 +65,7 @@ do
             ;;
         -d|--days|--days=*)
             _val="${_key##--days=}"
-            if test "$_val" = "$_key"
-            then
+            if test "$_val" = "$_key"; then
                 test $# -lt 2 && echo "Missing value for the optional argument '$_key'." && exit 1
                 _val="$2"
                 shift
@@ -96,8 +92,20 @@ do
             if command -v bw > /dev/null; then
                 BITWARDEN="2"
             else
-               echo "Bitwarden not found, please install bitwarden"
-               exit 1
+               echo 'Bitwarden not found, please install bitwarden'
+
+				if [ "${PLAT}" == 'Alpine' ]; then
+					echo 'You can download it through the following commands:'
+					echo $'\t' 'curl -fLo bitwarden.zip --no-cache https://github.com/bitwarden/clients/releases/download/cli-v2022.6.2/bw-linux-2022.6.2.zip'
+					echo $'\t' 'apk --no-cache -X https://dl-cdn.alpinelinux.org/alpine/edge/testing/ add atool'
+					echo $'\t' 'aunpack -F zip bitwarden.zip'
+					echo $'\t' 'mv bw /opt/bw'
+					echo $'\t' 'chmod 755 /opt/bw'
+					echo $'\t' 'rm bitwarden.zip'
+					echo $'\t' 'apk --no-cache --purge del -r atool'
+				fi
+
+				exit 1
             fi
 
             ;;
@@ -144,8 +152,7 @@ function useBitwarden() {
     read -r NAME
 
     # check name
-    until [[ "$NAME" =~ ^[a-zA-Z0-9.@_-]+$ && ${NAME::1} != "." && ${NAME::1} != "-"  ]]
-    do
+    until [[ "$NAME" =~ ^[a-zA-Z0-9.@_-]+$ && ${NAME::1} != "." && ${NAME::1} != "-"  ]]; do
       	echo "Name can only contain alphanumeric characters and these characters (.-@_). The name also cannot start with a dot (.) or a dash (-). Please try again."
       	# ask user for username again
       	printf "Enter the username: "
@@ -158,8 +165,7 @@ function useBitwarden() {
     read -r LENGTH
 
     # check length
-    until [[ "$LENGTH" -gt 11 && "$LENGTH" -lt 129 ]]
-    do
+    until [[ "$LENGTH" -gt 11 && "$LENGTH" -lt 129 ]]; do
       	echo "Password must be between from 12 to 128 characters, please try again."
       	# ask user for length of password
       	printf "Enter the length of characters you want your password to be (minimum 12): "
@@ -179,8 +185,7 @@ function keyPASS() {
 
     if [[ -z "${PASSWD}" ]]; then
         stty -echo
-        while true
-        do
+        while true; do
             printf "Enter the password for the client:  "
             read -r PASSWD
             printf "\n"
@@ -198,8 +203,7 @@ function keyPASS() {
             exit 1
         fi
     fi
-    if [ ${#PASSWD} -lt 4 ] || [ ${#PASSWD} -gt 1024 ]
-    then
+    if [ ${#PASSWD} -lt 4 ] || [ ${#PASSWD} -gt 1024 ]; then
         echo "Password must be between from 4 to 1024 characters"
         exit 1
     fi
@@ -362,7 +366,7 @@ if [ "$iOS" = "1" ]; then
 
     #Next append the client Public Cert
     echo "<cert>"
-    sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
+    sed -n -e '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
     echo "</cert>"
 
     #Finally, append the tls Private Key
@@ -401,7 +405,7 @@ else
 
     #Next append the client Public Cert
     echo "<cert>"
-    sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
+    sed -n -e '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' < "issued/${NAME}${CRT}"
     echo "</cert>"
 
     #Then, append the client Private Key

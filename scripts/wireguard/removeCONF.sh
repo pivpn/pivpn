@@ -144,9 +144,17 @@ done
 
 # Restart WireGuard only if some clients were actually deleted
 if [ "${DELETED_COUNT}" -gt 0 ]; then
-    if systemctl reload wg-quick@wg0; then
-        echo "::: WireGuard reloaded"
+    if [ "${PLAT}" == 'Alpine' ]; then
+        if rc-service wg-quick restart; then
+            echo "::: WireGuard reloaded"
+        else
+            echo "::: Failed to reload WireGuard"
+        fi
     else
-        echo "::: Failed to reload WireGuard"
+        if systemctl reload wg-quick@wg0; then
+            echo "::: WireGuard reloaded"
+        else
+            echo "::: Failed to reload WireGuard"
+        fi
     fi
 fi

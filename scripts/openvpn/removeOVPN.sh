@@ -25,8 +25,7 @@ helpFunc() {
 }
 
 # Parse input arguments
-while test $# -gt 0
-do
+while test $# -gt 0; do
     _key="$1"
     case "$_key" in
         -h|--help)

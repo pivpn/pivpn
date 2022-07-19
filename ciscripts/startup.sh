@@ -10,7 +10,7 @@ common(){
     sed -i "s|IPADDRESS|$ipaddress|g" "$vpnconfig"
     sed -i "s/GATEWAY/$gateway/g" "$vpnconfig"
 }
- 
+
 openvpn(){
     vpnconfig="ciscripts/ci_openvpn.conf"
     twofour=1
@@ -36,11 +36,11 @@ else
     cat /etc/os-release
     while true; do
         case "$1" in
-            -o | --openvpn      ) openvpn 
+            -o | --openvpn      ) openvpn
             ;;
             -w | --wireguard    ) wireguard
             ;;
-            *                   ) echo "unknown vpn protocol"; exit 1  
+            *                   ) echo "unknown vpn protocol"; exit 1
             ;;
         esac
     done
