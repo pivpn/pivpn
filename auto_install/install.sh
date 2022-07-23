@@ -317,31 +317,6 @@ distroCheck(){
 		PKG_INSTALL="${PKG_MANAGER} --no-cache add"
 		PKG_COUNT="${PKG_MANAGER} --no-cache upgrade -s | grep -sEe ' [0-9]+ packages' | sed -E -e 's/.* ([0-9]+) packages/\1/' || true"
 		CHECK_PKG_INSTALLED="${PKG_MANAGER} --no-cache info -e"
-
-		# install grepcidr manually, if not present
-		if ! command -v grepcidr &> /dev/null; then
-			## install dependencies
-			${PKG_INSTALL} build-base make curl tar
-
-			## download binaeries
-			curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
-			tar -xzf master.tar.gz
-
-			## personalize binaries
-			sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' grepcidr-master/Makefile
-
-			## install
-			(
-				cd grepcidr-master || exit
-
-				make
-				make install
-			)
-
-			## remove useless files
-			rm master.tar.gz
-			rm -rf grepcidr-master
-		fi
 		;;
 		*)
 		noOSSupport
@@ -607,6 +582,31 @@ preconfigurePackages(){
 		BASE_DEPS+=(iptables-persistent)
 		echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
 		echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
+	fi
+
+	# install grepcidr manually, if not present
+	if [[ "${PLAT}" == 'Alpine' ]] && ! command -v grepcidr &> /dev/null; then
+		## install dependencies
+		${PKG_INSTALL} build-base make curl tar
+
+		## download binaeries
+		curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
+		tar -xzf master.tar.gz
+
+		## personalize binaries
+		sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' grepcidr-master/Makefile
+
+		## install
+		(
+			cd grepcidr-master || exit
+
+			make
+			make install
+		)
+
+		## remove useless files
+		rm master.tar.gz
+		rm -rf grepcidr-master
 	fi
 
 	echo "USING_UFW=${USING_UFW}" >> ${tempsetupVarsFile}
