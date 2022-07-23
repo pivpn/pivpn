@@ -2667,41 +2667,53 @@ askUnattendedUpgrades(){
 
 confUnattendedUpgrades(){
 	local PIVPN_DEPS
-	PIVPN_DEPS=(unattended-upgrades)
-	installDependentPackages PIVPN_DEPS[@]
-	aptConfDir="/etc/apt/apt.conf.d"
 
-	if [ "$PLAT" = "Ubuntu" ]; then
-		# Ubuntu 50unattended-upgrades should already just have security enabled
-		# so we just need to configure the 10periodic file
-		echo "APT::Periodic::Update-Package-Lists \"1\";
-	APT::Periodic::Download-Upgradeable-Packages \"1\";
-	APT::Periodic::AutocleanInterval \"5\";
-	APT::Periodic::Unattended-Upgrade \"1\";" | $SUDO tee "${aptConfDir}/10periodic" > /dev/null
-	else
+	if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
+		PIVPN_DEPS=(unattended-upgrades)
+		installDependentPackages PIVPN_DEPS[@]
+		aptConfDir="/etc/apt/apt.conf.d"
 
-		# Raspbian's unattended-upgrades package downloads Debian's config, so we copy over the proper config
-		# Source: https://github.com/mvo5/unattended-upgrades/blob/master/data/50unattended-upgrades.Raspbian
-		if [ "$PLAT" = "Raspbian" ]; then
-			$SUDO install -m 644 "${pivpnFilesDir}/files${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
+		if [ "$PLAT" = "Ubuntu" ]; then
+			# Ubuntu 50unattended-upgrades should already just have security enabled
+			# so we just need to configure the 10periodic file
+			echo "APT::Periodic::Update-Package-Lists \"1\";
+		APT::Periodic::Download-Upgradeable-Packages \"1\";
+		APT::Periodic::AutocleanInterval \"5\";
+		APT::Periodic::Unattended-Upgrade \"1\";" | $SUDO tee "${aptConfDir}/10periodic" > /dev/null
+		else
+
+			# Raspbian's unattended-upgrades package downloads Debian's config, so we copy over the proper config
+			# Source: https://github.com/mvo5/unattended-upgrades/blob/master/data/50unattended-upgrades.Raspbian
+			if [ "$PLAT" = "Raspbian" ]; then
+				$SUDO install -m 644 "${pivpnFilesDir}/files${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
+			fi
+
+			# Add the remaining settings for all other distributions
+			echo "APT::Periodic::Enable \"1\";
+		APT::Periodic::Update-Package-Lists \"1\";
+		APT::Periodic::Download-Upgradeable-Packages \"1\";
+		APT::Periodic::Unattended-Upgrade \"1\";
+		APT::Periodic::AutocleanInterval \"7\";
+		APT::Periodic::Verbose \"0\";" | $SUDO tee "${aptConfDir}/02periodic" > /dev/null
 		fi
 
-		# Add the remaining settings for all other distributions
-		echo "APT::Periodic::Enable \"1\";
-	APT::Periodic::Update-Package-Lists \"1\";
-	APT::Periodic::Download-Upgradeable-Packages \"1\";
-	APT::Periodic::Unattended-Upgrade \"1\";
-	APT::Periodic::AutocleanInterval \"7\";
-	APT::Periodic::Verbose \"0\";" | $SUDO tee "${aptConfDir}/02periodic" > /dev/null
-	fi
-
-	# Enable automatic updates via the bullseye repository when installing from debian package
-	if [ "$VPN" = "wireguard" ]; then
-		if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]; then
-			if ! grep -q "\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"; then
-				$SUDO sed -i "/Unattended-Upgrade::Origins-Pattern {/a\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"
+		# Enable automatic updates via the bullseye repository when installing from debian package
+		if [ "$VPN" = "wireguard" ]; then
+			if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]; then
+				if ! grep -q "\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"; then
+					$SUDO sed -i "/Unattended-Upgrade::Origins-Pattern {/a\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"
+				fi
 			fi
 		fi
+	elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
+		echo 'https://dl-cdn.alpinelinux.org/alpine/edge/testing/' >> /etc/apk/repositories && apk -q update
+		${SUDO} install -m 0755 "${pivpnFilesDir}/files/etc/apk/personal_autoupdate.conf" /etc/apk/personal_autoupdate.conf
+
+		PIVPN_DEPS=(apk-autoupdate)
+
+		installDependentPackages PIVPN_DEPS[@]
+
+		${SUDO} apk-autoupdate /etc/apk/personal_autoupdate.conf
 	fi
 }
 
