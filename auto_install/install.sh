@@ -39,7 +39,7 @@ CHECK_PKG_INSTALLED='dpkg-query -s'
 BASE_DEPS=(git tar curl grep dnsutils grepcidr whiptail net-tools bsdmainutils bash-completion)
 
 BASE_DEPS_ALPINE=(git grep bind-tools newt net-tools bash-completion coreutils openssl)
-BASE_DEPS_ALPINE+=(util-linux openrc iptables ip6tables coreutils sed)
+BASE_DEPS_ALPINE+=(util-linux openrc iptables ip6tables coreutils sed perl)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
@@ -315,7 +315,7 @@ distroCheck(){
 		PKG_MANAGER='apk'
 		UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 		PKG_INSTALL="${PKG_MANAGER} --no-cache add"
-		PKG_COUNT="${PKG_MANAGER} --no-cache upgrade -s | grep -sEe ' [0-9]+ packages' | sed -E -e 's/.* ([0-9]+) packages/\1/' || true"
+		PKG_COUNT="${PKG_MANAGER} list -u | wc -l || true"
 		CHECK_PKG_INSTALLED="${PKG_MANAGER} --no-cache info -e"
 		;;
 		*)
@@ -584,25 +584,30 @@ preconfigurePackages(){
 		echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
 	fi
 
-	# install grepcidr manually, if not present
 	if [[ "${PLAT}" == 'Alpine' ]] && ! command -v grepcidr &> /dev/null; then
 		## install dependencies
-		${PKG_INSTALL} build-base make curl tar
+		# shellcheck disable=SC2086
+		${SUDO} ${PKG_INSTALL} build-base make curl tar
 
 		## download binaeries
 		curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
 		tar -xzf master.tar.gz
 
+		cd grepcidr-master || exit 1
+
 		## personalize binaries
-		sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' grepcidr-master/Makefile
+		sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' Makefile
 
 		## install
-		(
-			cd grepcidr-master || exit
+		make
+		${SUDO} make install
 
-			make
-			make install
-		)
+		if ! command -v grepcidr &> /dev/null; then
+			echo "::: Failed to compile and install grepcidr!"
+			exit 1
+		fi
+
+		cd ..
 
 		## remove useless files
 		rm master.tar.gz
@@ -1121,7 +1126,8 @@ chooseUser(){
 				echo "::: User ${install_user} does not exist, creating..."
 
 				if [ "${PLAT}" == 'Alpine' ]; then
-					${SUDO} adduser -s /bin/bash "${install_user}" wheel
+					${SUDO} adduser -s /bin/bash "${install_user}"
+					${SUDO} addgroup "${install_user}" wheel
 				else
 					${SUDO} useradd -ms /bin/bash "${install_user}"
 				fi
@@ -1148,9 +1154,11 @@ chooseUser(){
 			CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "${PASSWORD}")
 
 			if [ "${PLAT}" == 'Alpine' ]; then
-				if ${SUDO} adduser -Ds /bin/bash "${install_user}" wheel; then
-					passwd "${install_user}" <<< "${CRYPT}"
-					passwd -u "${install_user}"
+				if ${SUDO} adduser -Ds /bin/bash "${userToAdd}"; then
+					${SUDO} addgroup "${userToAdd}" wheel
+
+					${SUDO} passwd "${userToAdd}" <<< "${CRYPT}"
+					${SUDO} passwd -u "${userToAdd}"
 
 					echo "Succeeded"
 					((numUsers+=1))
@@ -2227,16 +2235,16 @@ confOpenVPN(){
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
 
 	if [ "${PLAT}" == 'Alpine' ]; then
-		if ! getent passwd openvpn; then
-			"${SUDOE}" adduser -SDh /var/lib/openvpn/ -s /bin/bash "${ovpnUserGroup%:*}"
+		if ! getent passwd "${ovpnUserGroup%:*}"; then
+			${SUDOE} adduser -SDh /var/lib/openvpn/ -s /sbin/nologin "${ovpnUserGroup%:*}"
 		fi
 	else
-		if ! getent passwd openvpn; then
-			"${SUDOE}" adduser --system --home /var/lib/openvpn/ --group --disabled-login "${ovpnUserGroup%:*}"
+		if ! getent passwd "${ovpnUserGroup%:*}"; then
+			${SUDOE} useradd --system --home /var/lib/openvpn/ --shell /usr/sbin/nologin "${ovpnUserGroup%:*}"
 		fi
 	fi
 
-	${SUDOE} chown "$ovpnUserGroup" /etc/openvpn/crl.pem
+	${SUDOE} chown "${ovpnUserGroup}" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
 	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
@@ -2401,18 +2409,14 @@ confWireGuard(){
 
 confNetwork(){
 	# Enable forwarding of internet traffic
-	if ! $SUDO sed -i -E -e 's/^#(net\.ipv4\.ip_forward)=.*/\1=1/g' /etc/sysctl.conf; then
-		echo 'net.ipv4.ip_forward=1' | $SUDO tee -a /etc/sysctl.conf > /dev/null
-	fi
+	echo 'net.ipv4.ip_forward=1' | $SUDO tee /etc/sysctl.d/99-pivpn.conf > /dev/null
 
 	if [ "$pivpnenableipv6" == "1" ]; then
-		if ! $SUDO sed -i -E -e 's/^#(net\.ipv6\.conf\.all\.forwarding)=.*/\1=1/g' /etc/sysctl.conf; then
-			echo 'net.ipv6.conf.all.forwarding=1' | $SUDO tee -a /etc/sysctl.conf > /dev/null
-		fi
-
-		echo "net.ipv6.conf.${IPv6dev}.accept_ra=2" | $SUDO tee /etc/sysctl.d/99-pivpn.conf > /dev/null
+		echo "net.ipv6.conf.all.forwarding=1
+net.ipv6.conf.${IPv6dev}.accept_ra=2" | $SUDO tee -a /etc/sysctl.d/99-pivpn.conf > /dev/null
 	fi
-	$SUDO sysctl -p > /dev/null
+
+	${SUDO} sysctl -p /etc/sysctl.d/99-pivpn.conf > /dev/null
 
 	if [ "$USING_UFW" -eq 1 ]; then
 
@@ -2733,9 +2737,8 @@ installScripts(){
 		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
 	else
 		# Check if bash_completion scripts dir exists and creates it if not
-		if [ ! -d "/etc/bash_completion.d" ]; then
-				mkdir -p /etc/bash_completion.d
-		fi
+		${SUDO} mkdir -p /etc/bash_completion.d
+
 		# Only one protocol is installed, symlink bash completion, the pivpn script
 		# and the script directory
 		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
