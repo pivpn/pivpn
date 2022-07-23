@@ -39,7 +39,7 @@ CHECK_PKG_INSTALLED='dpkg-query -s'
 BASE_DEPS=(git tar curl grep dnsutils grepcidr whiptail net-tools bsdmainutils bash-completion)
 
 BASE_DEPS_ALPINE=(git grep bind-tools newt net-tools bash-completion coreutils openssl)
-BASE_DEPS_ALPINE+=(util-linux openrc iptables ip6tables coreutils)
+BASE_DEPS_ALPINE+=(util-linux openrc iptables ip6tables coreutils sed)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
@@ -134,7 +134,7 @@ main(){
 			askforcedipv6route
 		fi
 	fi
-	
+
 	chooseInterface
 	if checkStaticIpSupported; then
 		getStaticIPv4Settings
@@ -318,28 +318,30 @@ distroCheck(){
 		PKG_COUNT="${PKG_MANAGER} --no-cache upgrade -s | grep -sEe ' [0-9]+ packages' | sed -E -e 's/.* ([0-9]+) packages/\1/' || true"
 		CHECK_PKG_INSTALLED="${PKG_MANAGER} --no-cache info -e"
 
-		# install grepcidr manually
-		## install dependencies
-		"${PKG_INSTALL}" build-base make curl tar
+		# install grepcidr manually, if not present
+		if ! command -v grepcidr &> /dev/null; then
+			## install dependencies
+			${PKG_INSTALL} build-base make curl tar
 
-		## download binaeries
-		curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
-		tar -xzf master.tar.gz
+			## download binaeries
+			curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
+			tar -xzf master.tar.gz
 
-		## personalize binaries
-		sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' grepcidr-master/Makefile
+			## personalize binaries
+			sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' grepcidr-master/Makefile
 
-		## install
-		cd grepcidr-master || exit
+			## install
+			(
+				cd grepcidr-master || exit
 
-		make
-		make install
+				make
+				make install
+			)
 
-		cd .. || exit
-
-		## remove useless files
-		rm master.tar.gz
-		rm -rf grepcidr-master
+			## remove useless files
+			rm master.tar.gz
+			rm -rf grepcidr-master
+		fi
 		;;
 		*)
 		noOSSupport
@@ -464,7 +466,8 @@ updatePackageCache(){
 		echo ":::"
 		echo -ne "::: Package Cache update is needed, running ${UPDATE_PKG_CACHE} ...\\n"
 		# shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null &
+		spinner $!
 		echo " done!"
 }
 
@@ -571,7 +574,9 @@ preconfigurePackages(){
 		# If the module is not builtin, on Raspbian we know the headers package: raspberrypi-kernel-headers
 		[[ $PLAT == 'Raspbian' ]] ||
 		# On Alpine, the kernel must be linux-lts or linux-virt if we want to load the kernel module
-		[[ "${PLAT}" == 'Alpine' && ! -f /.dockerenv && "$(uname -mrs)" =~ ^Linux\s+[0-9\.\-]+\-((lts)|(virt))\s+.*$ ]] ||
+		[[ "${PLAT}" == 'Alpine' && ! -f /.dockerenv && "$(uname -mrs)" =~ ^Linux\ +[0-9\.\-]+\-((lts)|(virt))\ +.*$ ]] ||
+		# On Alpine Docker Container, the responsibility to have a WireGuard module on the host system is at user side
+		[[ "${PLAT}" == 'Alpine' && -f /.dockerenv ]] ||
 		# On Debian (and Ubuntu), we can only reliably assume the headers package for amd64: linux-image-amd64
 		[[ $PLAT == 'Debian' && $DPKG_ARCH == 'amd64' ]] ||
 		# On Ubuntu, additionally the WireGuard package needs to be available, since we didn't test mixing Ubuntu repositories.
@@ -589,7 +594,7 @@ preconfigurePackages(){
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
 	if $SUDO bash -c 'command -v ufw' > /dev/null; then
-		if ! "${SUDO}" ufw status || $SUDO ufw status | grep -q inactive; then
+		if ! ${SUDO} ufw status || $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
 		else
 			USING_UFW=1
@@ -1116,9 +1121,9 @@ chooseUser(){
 				echo "::: User ${install_user} does not exist, creating..."
 
 				if [ "${PLAT}" == 'Alpine' ]; then
-					"${SUDO}" adduser -s /bin/bash "${install_user}" wheel
+					${SUDO} adduser -s /bin/bash "${install_user}" wheel
 				else
-					"${SUDO}" useradd -ms /bin/bash "${install_user}"
+					${SUDO} useradd -ms /bin/bash "${install_user}"
 				fi
 
 				echo "::: User created without a password, please do sudo passwd $install_user to create one"
@@ -1143,7 +1148,7 @@ chooseUser(){
 			CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "${PASSWORD}")
 
 			if [ "${PLAT}" == 'Alpine' ]; then
-				if "${SUDO}" adduser -Ds /bin/bash "${install_user}" wheel; then
+				if ${SUDO} adduser -Ds /bin/bash "${install_user}" wheel; then
 					passwd "${install_user}" <<< "${CRYPT}"
 					passwd -u "${install_user}"
 
@@ -1153,7 +1158,7 @@ chooseUser(){
 					exit 1
 				fi
 			else
-				if "${SUDO}" useradd -mp "${CRYPT}" -s /bin/bash "${userToAdd}"; then
+				if ${SUDO} useradd -mp "${CRYPT}" -s /bin/bash "${userToAdd}"; then
 					echo "Succeeded"
 					((numUsers+=1))
 				else
@@ -1214,7 +1219,8 @@ updateRepo(){
 		# Go back to /usr/local/src otherwise git will complain when the current working
 		# directory has just been deleted (/usr/local/src/pivpn).
 		cd /usr/local/src && \
-		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null && spinner $!
+		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null &
+		spinner $!
 		cd "${1}" || exit 1
 		echo " done!"
 		if [ -n "${pivpnGitBranch}" ]; then
@@ -1242,7 +1248,8 @@ makeRepo(){
 	# Go back to /usr/local/src otherwhise git will complain when the current working
 	# directory has just been deleted (/usr/local/src/pivpn).
 	cd /usr/local/src && \
-	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
+	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null &
+	spinner $!
 	cd "${1}" || exit 1
 	echo " done!"
 	if [ -n "${pivpnGitBranch}" ]; then
@@ -1337,7 +1344,7 @@ setVPNDefaultVars(){
 generateRandomSubnet() {
 	# Source: https://community.openvpn.net/openvpn/wiki/AvoidRoutingConflicts
 	declare -a SUBNET_EXCLUDE_LIST
-	
+
 	SUBNET_EXCLUDE_LIST=(10.0.0.0/24)
 	SUBNET_EXCLUDE_LIST+=(10.0.1.0/24)
 	SUBNET_EXCLUDE_LIST+=(10.1.1.0/24)
@@ -2286,6 +2293,12 @@ confOpenVPN(){
 	# write out server certs to conf file
 	$SUDO sed -i "s#\\(key /etc/openvpn/easy-rsa/pki/private/\\).*#\\1${SERVER_NAME}.key#" /etc/openvpn/server.conf
 	$SUDO sed -i "s#\\(cert /etc/openvpn/easy-rsa/pki/issued/\\).*#\\1${SERVER_NAME}.crt#" /etc/openvpn/server.conf
+
+	# On Alpine Linux, the default config file for OpenVPN is "/etc/openvpn/openvpn.conf"
+	# To avoid crash thorugh OpenRC, we symlink this file
+	if [[ "${PLAT}" == 'Alpine' ]]; then
+		${SUDO} ln -sfT /etc/openvpn/server.conf /etc/openvpn/openvpn.conf > /dev/null
+	fi
 }
 
 confOVPN(){
@@ -2317,7 +2330,7 @@ confWireGuard(){
 	if [ "${PLAT}" == 'Alpine' ]; then
 		echo '::: Adding wg-quick unit'
 
-		"${SUDO}" install -m 644 "${pivpnFilesDir}/files/etc/init.d/wg-quick" /etc/init.d/wg-quick
+		${SUDO} install -m 0755 "${pivpnFilesDir}/files/etc/init.d/wg-quick" /etc/init.d/wg-quick
 	else
 		if ! grep -q 'ExecReload' /lib/systemd/system/wg-quick@.service; then
 			echo "::: Adding additional reload job type for wg-quick unit"
@@ -2370,7 +2383,7 @@ confWireGuard(){
 
 	{
 		echo '[Interface]'
-		echo "PrivateKey = $("${SUDO}" cat /etc/wireguard/keys/server_priv)"
+		echo "PrivateKey = $(${SUDO} cat /etc/wireguard/keys/server_priv)"
 		echo -n "Address = ${vpnGw}/${subnetClass}"
 
 		if [ "$pivpnenableipv6" == "1" ]; then
@@ -2381,16 +2394,22 @@ confWireGuard(){
 
 		echo "MTU = ${pivpnMTU}"
 		echo "ListenPort = ${pivpnPORT}"
-	} | "${SUDO}" tee /etc/wireguard/wg0.conf &> /dev/null
+	} | ${SUDO} tee /etc/wireguard/wg0.conf &> /dev/null
 
 	echo "::: Server config generated."
 }
 
 confNetwork(){
 	# Enable forwarding of internet traffic
-	$SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
+	if ! $SUDO sed -i -E -e 's/^#(net\.ipv4\.ip_forward)=.*/\1=1/g' /etc/sysctl.conf; then
+		echo 'net.ipv4.ip_forward=1' | $SUDO tee -a /etc/sysctl.conf > /dev/null
+	fi
+
 	if [ "$pivpnenableipv6" == "1" ]; then
-		$SUDO sed -i '/net.ipv6.conf.all.forwarding=1/s/^#//g' /etc/sysctl.conf
+		if ! $SUDO sed -i -E -e 's/^#(net\.ipv6\.conf\.all\.forwarding)=.*/\1=1/g' /etc/sysctl.conf; then
+			echo 'net.ipv6.conf.all.forwarding=1' | $SUDO tee -a /etc/sysctl.conf > /dev/null
+		fi
+
 		echo "net.ipv6.conf.${IPv6dev}.accept_ra=2" | $SUDO tee /etc/sysctl.d/99-pivpn.conf > /dev/null
 	fi
 	$SUDO sysctl -p > /dev/null
@@ -2552,8 +2571,14 @@ confLogging() {
 	# Pre-create rsyslog/logrotate config directories if missing, to assure logs are handled as expected when those are installed at a later time
 	$SUDO mkdir -p /etc/{rsyslog,logrotate}.d
 
-	echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
-if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
+	if [ "${PLAT}" == 'Alpine' ]; then
+		program_name='openvpn'
+	else
+		program_name='ovpn-server'
+	fi
+
+	echo "if \$programname == '${program_name}' then /var/log/openvpn.log
+if \$programname == '${program_name}' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
 	echo "/var/log/openvpn.log
 {
@@ -2575,8 +2600,8 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 			$SUDO systemctl -q is-active rsyslog.service && $SUDO systemctl restart rsyslog.service
 		;;
 		Alpine)
-			"${SUDO}" rc-service -is rsyslog restart
-			"${SUDO}" rc-service -iN rsyslog start
+			${SUDO} rc-service -is rsyslog restart
+			${SUDO} rc-service -iN rsyslog start
 		;;
 	esac
 }
@@ -2597,13 +2622,13 @@ restartServices(){
 		;;
 		Alpine)
 			if [ "${VPN}" == 'openvpn' ]; then
-				"${SUDO}" rc-update add openvpn default &> /dev/null
-				"${SUDO}" rc-service -s openvpn restart
-				"${SUDO}" rc-service -N openvpn start
+				${SUDO} rc-update add openvpn default &> /dev/null
+				${SUDO} rc-service -s openvpn restart
+				${SUDO} rc-service -N openvpn start
 			elif [ "${VPN}" == 'wireguard' ]; then
-				"${SUDO}" rc-update add wg-quick default &> /dev/null
-				"${SUDO}" rc-service -s wg-quick restart
-				"${SUDO}" rc-service -N wg-quick start
+				${SUDO} rc-update add wg-quick default &> /dev/null
+				${SUDO} rc-service -s wg-quick restart
+				${SUDO} rc-service -N wg-quick start
 			fi
 		;;
 	esac
@@ -2751,7 +2776,7 @@ All incomplete posts or bug reports will be ignored or deleted.\\n\\nThank you f
 		printf "\\nRebooting system...\\n"
 		$SUDO sleep 3
 
-		"${SUDO}" reboot
+		${SUDO} reboot
 	fi
 }
 

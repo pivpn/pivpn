@@ -174,7 +174,8 @@ removeAll(){
 
 								echo "::: Updating package cache..."
 
-								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+								${UPDATE_PKG_CACHE} &> /dev/null &
+								spinner $!
 							fi
 
 							if [ -f /etc/systemd/system/wg-quick@.service.d/override.conf ]; then
@@ -191,7 +192,8 @@ removeAll(){
 
 								echo "::: Updating package cache..."
 
-								${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+								${UPDATE_PKG_CACHE} &> /dev/null &
+								spinner $!
 							fi
 
 							deluser openvpn
@@ -201,7 +203,8 @@ removeAll(){
 
 					printf ":::\\tRemoving %s..." "$i"
 
-					"${PKG_REMOVE}" "$i" &> /dev/null & spinner $!
+					"${PKG_REMOVE}" "$i" &> /dev/null &
+					spinner $!
 
 					printf "done!\\n";
 					break
@@ -221,12 +224,14 @@ removeAll(){
 		# Take care of any additional package cleaning
 		printf "::: Auto removing remaining dependencies..."
 
-		"${PKG_MANAGER}" -y autoremove &> /dev/null & spinner $!
+		"${PKG_MANAGER}" -y autoremove &> /dev/null &
+		spinner $!
 
 		printf "done!\\n";
 		printf "::: Auto cleaning remaining dependencies..."
 
-		"${PKG_MANAGER}" -y autoclean &> /dev/null & spinner $!
+		"${PKG_MANAGER}" -y autoclean &> /dev/null &
+		spinner $!
 
 		printf "done!\\n";
 	fi

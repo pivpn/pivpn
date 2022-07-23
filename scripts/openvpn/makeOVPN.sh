@@ -210,7 +210,7 @@ function keyPASS() {
 
     #Escape chars in PASSWD
     PASSWD_UNESCAPED="${PASSWD}"
-    PASSWD=$(echo -n "${PASSWD}" | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/\$/\\\$/g' -e 's/!/\\!/g' -e 's/\./\\\./g' -e "s/'/\\\'/g" -e 's/"/\\"/g' -e 's/\*/\\\*/g' -e 's/\@/\\\@/g' -e 's/\#/\\\#/g' -e 's/£/\\£/g' -e 's/%/\\%/g' -e 's/\^/\\\^/g' -e 's/\&/\\\&/g' -e 's/(/\\(/g' -e 's/)/\\)/g' -e 's/-/\\-/g' -e 's/_/\\_/g' -e 's/\+/\\\+/g' -e 's/=/\\=/g' -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/;/\\;/g' -e 's/:/\\:/g' -e 's/|/\\|/g' -e 's/</\\</g' -e 's/>/\\>/g' -e 's/,/\\,/g' -e 's/?/\\?/g' -e 's/~/\\~/g' -e 's/{/\\{/g' -e 's/}/\\}/g')
+    PASSWD=$(echo -n "${PASSWD}" | sed -E -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/\$/\\\$/g' -e 's/!/\\!/g' -e 's/\./\\\./g' -e "s/'/\\'/g" -e 's/"/\\"/g' -e 's/\*/\\\*/g' -e 's/@/\\@/g' -e 's/#/\\#/g' -e 's/£/\\£/g' -e 's/%/\\%/g' -e 's/\^/\\\^/g' -e 's/&/\\&/g' -e 's/\(/\\\(/g' -e 's/\)/\\\)/g' -e 's/\-/\\\-/g' -e 's/_/\\_/g' -e 's/\+/\\\+/g' -e 's/=/\\=/g' -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/;/\\;/g' -e 's/:/\\:/g' -e 's/\|/\\\|/g' -e 's/\</\\\</g' -e 's/\>/\\\>/g' -e 's/,/\\,/g' -e 's/\?/\\\?/g' -e 's/~/\\~/g' -e 's/\{/\\\{/g' -e 's/\}/\\\}/g')
 
     #Build the client key and then encrypt the key
 
