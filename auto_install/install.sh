@@ -1157,7 +1157,7 @@ chooseUser(){
 				if ${SUDO} adduser -Ds /bin/bash "${userToAdd}"; then
 					${SUDO} addgroup "${userToAdd}" wheel
 
-					${SUDO} passwd "${userToAdd}" <<< "${CRYPT}"
+					${SUDO} chpasswd <<< "${userToAdd}:${PASSWORD}"
 					${SUDO} passwd -u "${userToAdd}"
 
 					echo "Succeeded"
@@ -2706,13 +2706,15 @@ confUnattendedUpgrades(){
 			fi
 		fi
 	elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
-		echo 'https://dl-cdn.alpinelinux.org/alpine/edge/testing/' >> /etc/apk/repositories && apk -q update
-		${SUDO} install -m 0755 "${pivpnFilesDir}/files/etc/apk/personal_autoupdate.conf" /etc/apk/personal_autoupdate.conf
+		echo 'https://dl-cdn.alpinelinux.org/alpine/edge/testing/' | ${SUDO} tee -a /etc/apk/repositories && ${SUDO} apk -q update
 
 		PIVPN_DEPS=(apk-autoupdate)
 
 		installDependentPackages PIVPN_DEPS[@]
 
+		${SUDO} sed -i -E -e '/^https:\/\/dl\-cdn\.alpinelinux\.org\/alpine\/edge\/testing\/$/d' /etc/apk/repositories && ${SUDO} apk -q update
+
+		${SUDO} install -m 0755 "${pivpnFilesDir}/files/etc/apk/personal_autoupdate.conf" /etc/apk/personal_autoupdate.conf
 		${SUDO} apk-autoupdate /etc/apk/personal_autoupdate.conf
 	fi
 }
