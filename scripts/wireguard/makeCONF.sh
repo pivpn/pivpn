@@ -171,10 +171,18 @@ if [ -f /etc/pivpn/hosts.wireguard ]; then
     fi
 fi
 
-if systemctl reload wg-quick@wg0; then
-    echo "::: WireGuard reloaded"
+if [ "${PLAT}" == 'Alpine' ]; then
+    if rc-service wg-quick restart; then
+        echo "::: WireGuard reloaded"
+    else
+        echo "::: Failed to reload WireGuard"
+    fi
 else
-    echo "::: Failed to reload WireGuard"
+    if systemctl reload wg-quick@wg0; then
+        echo "::: WireGuard reloaded"
+    else
+        echo "::: Failed to reload WireGuard"
+    fi
 fi
 
 cp "configs/${CLIENT_NAME}.conf" "${install_home}/configs/${CLIENT_NAME}.conf"

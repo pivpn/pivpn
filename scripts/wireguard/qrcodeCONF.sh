@@ -15,8 +15,7 @@ helpFunc(){
 
 # Parse input arguments
 encoding="ansiutf8"
-while test $# -gt 0
-do
+while test $# -gt 0; do
     _key="$1"
     case "$_key" in
         -h|--help)
@@ -65,7 +64,7 @@ for CLIENT_NAME in "${CLIENTS_TO_SHOW[@]}"; do
         exit 1
     elif [[ ${CLIENT_NAME} =~ $re ]] ; then
         CLIENT_NAME=${LIST[$((CLIENT_NAME -1))]}
-    fi    
+    fi
     if grep -qw "${CLIENT_NAME}" clients.txt; then
         echo -e "::: Showing client \e[1m${CLIENT_NAME}\e[0m below"
         echo "====================================================================="

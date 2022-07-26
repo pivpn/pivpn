@@ -25,7 +25,7 @@ piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
 dhcpcdFile="/etc/dhcpcd.conf"
-debianOvpnUserGroup="openvpn:openvpn"
+ovpnUserGroup="openvpn:openvpn"
 
 ######## PKG Vars ########
 PKG_MANAGER="apt-get"
@@ -33,9 +33,13 @@ PKG_MANAGER="apt-get"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update -y"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
 PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
+CHECK_PKG_INSTALLED='dpkg-query -s'
 
 # Dependencies that are required by the script, regardless of the VPN protocol chosen
 BASE_DEPS=(git tar curl grep dnsutils grepcidr whiptail net-tools bsdmainutils bash-completion)
+
+BASE_DEPS_ALPINE=(git grep bind-tools newt net-tools bash-completion coreutils openssl)
+BASE_DEPS_ALPINE+=(util-linux openrc iptables ip6tables coreutils sed perl)
 
 # Dependencies that where actually installed by the script. For example if the script requires
 # grep and dnsutils but dnsutils is already installed, we save grep here. This way when uninstalling
@@ -95,11 +99,11 @@ export LC_ALL=C
 
 main(){
 	# Pre install checks and configs
+	distroCheck
 	rootCheck
 	flagsCheck "$@"
 	unattendedCheck
 	checkExistingInstall "$@"
-	distroCheck
 	checkHostname
 	# Verify there is enough disk space for the install
 	if [[ "${skipSpaceCheck}" == true ]]; then
@@ -110,7 +114,13 @@ main(){
 	updatePackageCache
 	notifyPackageUpdatesAvailable
 	preconfigurePackages
-	installDependentPackages BASE_DEPS[@]
+
+	if [ "${PLAT}" == 'Alpine' ]; then
+		installDependentPackages BASE_DEPS_ALPINE[@]
+	else
+		installDependentPackages BASE_DEPS[@]
+	fi
+
 	welcomeDialogs
 
 	if [ "$pivpnforceipv6" == "1" ]; then
@@ -124,7 +134,7 @@ main(){
 			askforcedipv6route
 		fi
 	fi
-	
+
 	chooseInterface
 	if checkStaticIpSupported; then
 		getStaticIPv4Settings
@@ -161,13 +171,13 @@ rootCheck(){
 	######## FIRST CHECK ########
 	# Must be root to install
 	echo ":::"
-	if [[ $EUID -eq 0 ]];then
+	if [[ $EUID -eq 0 ]]; then
 		echo "::: You are root."
 	else
 		echo "::: sudo will be used for the install."
 		# Check if it is actually installed
 		# If it isn't, exit because the install cannot complete
-		if [[ $(dpkg-query -s sudo) ]];then
+		if eval "${CHECK_PKG_INSTALLED} sudo" &> /dev/null; then
 			export SUDO="sudo"
 			export SUDOE="sudo -E"
 		else
@@ -216,9 +226,9 @@ unattendedCheck(){
 checkExistingInstall(){
   # see which setup already exists
 	if [ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]; then
-    setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
+	setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
 	elif [ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]; then
-    setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
+	setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
 	fi
 
 	if [ -r "$setupVars" ]; then
@@ -283,6 +293,11 @@ distroCheck(){
 		VER="$VERSION_ID"
 		declare -A VER_MAP=(["9"]="stretch" ["10"]="buster" ["11"]="bullseye" ["16.04"]="xenial" ["18.04"]="bionic" ["20.04"]="focal")
 		OSCN=${VER_MAP["${VER}"]}
+
+		# Alpine support
+		if [ -z "${OSCN}" ]; then
+			OSCN="${VER}"
+		fi
 	fi
 
 	case ${PLAT} in
@@ -295,6 +310,13 @@ distroCheck(){
 				maybeOSSupport
 				;;
 			esac
+		;;
+		Alpine)
+		PKG_MANAGER='apk'
+		UPDATE_PKG_CACHE="${PKG_MANAGER} update"
+		PKG_INSTALL="${PKG_MANAGER} --no-cache add"
+		PKG_COUNT="${PKG_MANAGER} list -u | wc -l || true"
+		CHECK_PKG_INSTALLED="${PKG_MANAGER} --no-cache info -e"
 		;;
 		*)
 		noOSSupport
@@ -351,7 +373,7 @@ checkHostname(){
 		fi
 		until [[ ${#host_name} -le 28 && $host_name  =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$ ]]; do
 			host_name=$(whiptail --inputbox "Your hostname is too long.\\nEnter new hostname with less then 28 characters\\nNo special characters allowed." \
-		   --title "Hostname too long" ${r} ${c} 3>&1 1>&2 2>&3)
+			--title "Hostname too long" ${r} ${c} 3>&1 1>&2 2>&3)
 			$SUDO hostnamectl set-hostname "${host_name}"
 			if [[ ${#host_name} -le 28 && $host_name  =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$  ]]; then
 				echo "::: Hostname valid and length OK, proceeding..."
@@ -418,8 +440,9 @@ updatePackageCache(){
 		#update package lists
 		echo ":::"
 		echo -ne "::: Package Cache update is needed, running ${UPDATE_PKG_CACHE} ...\\n"
-        # shellcheck disable=SC2086
-		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null & spinner $!
+		# shellcheck disable=SC2086
+		$SUDO ${UPDATE_PKG_CACHE} &> /dev/null &
+		spinner $!
 		echo " done!"
 }
 
@@ -444,7 +467,7 @@ preconfigurePackages(){
 	# Install packages used by this installation script
 	# If apt is older than 1.5 we need to install an additional package to add
 	# support for https repositories that will be used later on
-	if [[ -f /etc/apt/sources.list ]]; then
+	if [ "${PKG_MANAGER}" == 'apt-get' ] && [ -f /etc/apt/sources.list ]; then
 		INSTALLED_APT="$(apt-cache policy apt | grep -m1 'Installed: ' | grep -v '(none)' | awk '{print $2}')"
 		if dpkg --compare-versions "$INSTALLED_APT" lt 1.5; then
 			BASE_DEPS+=("apt-transport-https")
@@ -456,31 +479,53 @@ preconfigurePackages(){
 		BASE_DEPS+=(dhcpcd5)
 	fi
 
-	DPKG_ARCH="$(dpkg --print-architecture)"
+	if [ "${PKG_MANAGER}" == 'apt-get' ]; then
+		DPKG_ARCH="$(dpkg --print-architecture)"
+	elif [ "${PKG_MANAGER}" == 'apk' ]; then
+		DPKG_ARCH="$(apk --print-arch)"
+	fi
 
-	AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	if [ "${PKG_MANAGER}" == 'apt-get' ]; then
+		AVAILABLE_OPENVPN="$(apt-cache policy openvpn | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	elif [ "${PKG_MANAGER}" == 'apk' ]; then
+		AVAILABLE_OPENVPN="$(apk search -e openvpn | sed -E -e 's/openvpn\-(.*)/\1/')"
+	fi
+
 	OPENVPN_SUPPORT=0
 	NEED_OPENVPN_REPO=0
 
 	# We require OpenVPN 2.4 or later for ECC support. If not available in the
 	# repositories but we are running x86 Debian or Ubuntu, add the official repo
 	# which provides the updated package.
-	if [ -n "$AVAILABLE_OPENVPN" ] && dpkg --compare-versions "$AVAILABLE_OPENVPN" ge 2.4; then
-		OPENVPN_SUPPORT=1
-	else
-		if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
-			if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
-				NEED_OPENVPN_REPO=1
-				OPENVPN_SUPPORT=1
+	if [ "${PKG_MANAGER}" == 'apt-get' ]; then
+		if [ -n "$AVAILABLE_OPENVPN" ] && dpkg --compare-versions "$AVAILABLE_OPENVPN" ge 2.4; then
+			OPENVPN_SUPPORT=1
+		else
+			if [ "$PLAT" = "Debian" ] || [ "$PLAT" = "Ubuntu" ]; then
+				if [ "$DPKG_ARCH" = "amd64" ] || [ "$DPKG_ARCH" = "i386" ]; then
+					NEED_OPENVPN_REPO=1
+					OPENVPN_SUPPORT=1
+				else
+					OPENVPN_SUPPORT=0
+				fi
 			else
 				OPENVPN_SUPPORT=0
 			fi
+		fi
+	elif [ "${PKG_MANAGER}" == 'apk' ]; then
+		if [ -n "${AVAILABLE_OPENVPN}" ] && [ "$(apk version -t "${AVAILABLE_OPENVPN}" 2.4)" == '>' ]; then
+			OPENVPN_SUPPORT=1
 		else
 			OPENVPN_SUPPORT=0
 		fi
 	fi
 
-	AVAILABLE_WIREGUARD="$(apt-cache policy wireguard | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	if [ "${PKG_MANAGER}" == 'apt-get' ]; then
+		AVAILABLE_WIREGUARD="$(apt-cache policy wireguard | grep -m1 'Candidate: ' | grep -v '(none)' | awk '{print $2}')"
+	elif [ "${PKG_MANAGER}" == 'apk' ]; then
+		AVAILABLE_WIREGUARD="$(apk search -e wireguard-tools | sed -E -e 's/wireguard\-tools\-(.*)/\1/')"
+	fi
+
 	WIREGUARD_SUPPORT=0
 
 	# If a wireguard kernel object is found and is part of any installed package, then
@@ -489,8 +534,11 @@ preconfigurePackages(){
 	# and not part of the .deb).
 	# Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
 	WIREGUARD_BUILTIN=0
-	if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null || modinfo wireguard 2> /dev/null | grep -q '^filename:[[:blank:]]*(builtin)$'; then
-		WIREGUARD_BUILTIN=1
+
+	if [ "${PKG_MANAGER}" == 'apt-get' ]; then
+		if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null || modinfo wireguard 2> /dev/null | grep -q '^filename:[[:blank:]]*(builtin)$'; then
+			WIREGUARD_BUILTIN=1
+		fi
 	fi
 
 	if
@@ -500,13 +548,16 @@ preconfigurePackages(){
 		[[ $WIREGUARD_BUILTIN == 1 && ( $PLAT == 'Debian' || $PLAT == 'Raspbian' ) ]] ||
 		# If the module is not builtin, on Raspbian we know the headers package: raspberrypi-kernel-headers
 		[[ $PLAT == 'Raspbian' ]] ||
+		# On Alpine, the kernel must be linux-lts or linux-virt if we want to load the kernel module
+		[[ "${PLAT}" == 'Alpine' && ! -f /.dockerenv && "$(uname -mrs)" =~ ^Linux\ +[0-9\.\-]+\-((lts)|(virt))\ +.*$ ]] ||
+		# On Alpine Docker Container, the responsibility to have a WireGuard module on the host system is at user side
+		[[ "${PLAT}" == 'Alpine' && -f /.dockerenv ]] ||
 		# On Debian (and Ubuntu), we can only reliably assume the headers package for amd64: linux-image-amd64
 		[[ $PLAT == 'Debian' && $DPKG_ARCH == 'amd64' ]] ||
 		# On Ubuntu, additionally the WireGuard package needs to be available, since we didn't test mixing Ubuntu repositories.
 		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'amd64' && -n $AVAILABLE_WIREGUARD ]] ||
 		# Ubuntu focal has wireguard support
-		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'arm64' && $OSCN == 'focal' && -n $AVAILABLE_WIREGUARD ]]
-	then
+		[[ $PLAT == 'Ubuntu' && $DPKG_ARCH == 'arm64' && $OSCN == 'focal' && -n $AVAILABLE_WIREGUARD ]]; then
 		WIREGUARD_SUPPORT=1
 	fi
 
@@ -518,7 +569,7 @@ preconfigurePackages(){
 	# if ufw is enabled, configure that.
 	# running as root because sometimes the executable is not in the user's $PATH
 	if $SUDO bash -c 'command -v ufw' > /dev/null; then
-		if $SUDO ufw status | grep -q inactive; then
+		if ! ${SUDO} ufw status || $SUDO ufw status | grep -q inactive; then
 			USING_UFW=0
 		else
 			USING_UFW=1
@@ -527,10 +578,40 @@ preconfigurePackages(){
 		USING_UFW=0
 	fi
 
-	if [ "$USING_UFW" -eq 0 ]; then
+	if [ "${PKG_MANAGER}" == 'apt-get' ] && [ "$USING_UFW" -eq 0 ]; then
 		BASE_DEPS+=(iptables-persistent)
 		echo iptables-persistent iptables-persistent/autosave_v4 boolean true | $SUDO debconf-set-selections
 		echo iptables-persistent iptables-persistent/autosave_v6 boolean false | $SUDO debconf-set-selections
+	fi
+
+	if [[ "${PLAT}" == 'Alpine' ]] && ! command -v grepcidr &> /dev/null; then
+		## install dependencies
+		# shellcheck disable=SC2086
+		${SUDO} ${PKG_INSTALL} build-base make curl tar
+
+		## download binaeries
+		curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
+		tar -xzf master.tar.gz
+
+		cd grepcidr-master || exit 1
+
+		## personalize binaries
+		sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' Makefile
+
+		## install
+		make
+		${SUDO} make install
+
+		if ! command -v grepcidr &> /dev/null; then
+			echo "::: Failed to compile and install grepcidr!"
+			exit 1
+		fi
+
+		cd ..
+
+		## remove useless files
+		rm master.tar.gz
+		rm -rf grepcidr-master
 	fi
 
 	echo "USING_UFW=${USING_UFW}" >> ${tempsetupVarsFile}
@@ -547,12 +628,23 @@ installDependentPackages(){
 
 	for i in "${argArray1[@]}"; do
 		echo -n ":::    Checking for $i..."
-		if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
-			echo " already installed!"
-		else
-			echo " not installed!"
-			# Add this package to the list of packages in the argument array that need to be installed
-			TO_INSTALL+=("${i}")
+
+		if [ "${PKG_MANAGER}" == 'apt-get' ]; then
+			if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
+				echo " already installed!"
+			else
+				echo " not installed!"
+				# Add this package to the list of packages in the argument array that need to be installed
+				TO_INSTALL+=("${i}")
+			fi
+		elif [ "${PKG_MANAGER}" == 'apk' ]; then
+			if eval "${SUDO} ${CHECK_PKG_INSTALLED} ${i}" &> /dev/null; then
+				echo " already installed!"
+			else
+				echo " not installed!"
+				# Add this package to the list of packages in the argument array that need to be installed
+				TO_INSTALL+=("${i}")
+			fi
 		fi
 	done
 
@@ -570,13 +662,24 @@ installDependentPackages(){
 	local FAILED=0
 
 	for i in "${TO_INSTALL[@]}"; do
-		if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
-			echo ":::    Package $i successfully installed!"
-			# Add this package to the total list of packages that were actually installed by the script
-			INSTALLED_PACKAGES+=("${i}")
-		else
-			echo ":::    Failed to install $i!"
-			((FAILED++))
+		if [ "${PKG_MANAGER}" == 'apt-get' ]; then
+			if dpkg-query -W -f='${Status}' "${i}" 2>/dev/null | grep -q "ok installed"; then
+				echo ":::    Package $i successfully installed!"
+				# Add this package to the total list of packages that were actually installed by the script
+				INSTALLED_PACKAGES+=("${i}")
+			else
+				echo ":::    Failed to install $i!"
+				((FAILED++))
+			fi
+		elif [ "${PKG_MANAGER}" == 'apk' ]; then
+			if eval "${SUDO} ${CHECK_PKG_INSTALLED} ${i}" &> /dev/null; then
+				echo ":::    Package $i successfully installed!"
+				# Add this package to the total list of packages that were actually installed by the script
+				INSTALLED_PACKAGES+=("${i}")
+			else
+				echo ":::    Failed to install $i!"
+				((FAILED++))
+			fi
 		fi
 	done
 
@@ -627,38 +730,38 @@ else
 fi
 
 if [ -z "$availableInterfaces" ]; then
-    echo "::: Could not find any active network interface, exiting"
-    exit 1
+	echo "::: Could not find any active network interface, exiting"
+	exit 1
 else
-    while read -r line; do
-        mode="OFF"
-        if [[ ${firstloop} -eq 1 ]]; then
-            firstloop=0
-            mode="ON"
-        fi
-        interfacesArray+=("${line}" "available" "${mode}")
-        ((interfaceCount++))
-    done <<< "${availableInterfaces}"
+	while read -r line; do
+		mode="OFF"
+		if [[ ${firstloop} -eq 1 ]]; then
+			firstloop=0
+			mode="ON"
+		fi
+		interfacesArray+=("${line}" "available" "${mode}")
+		((interfaceCount++))
+	done <<< "${availableInterfaces}"
 fi
 
 if [ "${runUnattended}" = 'true' ]; then
-    if [ -z "$IPv4dev" ]; then
-        if [ "$interfaceCount" -eq 1 ]; then
-            IPv4dev="${availableInterfaces}"
-            echo "::: No interface specified for IPv4, but only ${IPv4dev} is available, using it"
-        else
-            echo "::: No interface specified for IPv4 and failed to determine one"
-            exit 1
-        fi
-    else
-        if ip -o link | grep -qw "${IPv4dev}"; then
-            echo "::: Using interface: ${IPv4dev} for IPv4"
-        else
-          	echo "::: Interface ${IPv4dev} for IPv4 does not exist"
-            exit 1
-        fi
-    fi
-    echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
+	if [ -z "$IPv4dev" ]; then
+		if [ "$interfaceCount" -eq 1 ]; then
+			IPv4dev="${availableInterfaces}"
+			echo "::: No interface specified for IPv4, but only ${IPv4dev} is available, using it"
+		else
+			echo "::: No interface specified for IPv4 and failed to determine one"
+			exit 1
+		fi
+	else
+		if ip -o link | grep -qw "${IPv4dev}"; then
+			echo "::: Using interface: ${IPv4dev} for IPv4"
+		else
+			echo "::: Interface ${IPv4dev} for IPv4 does not exist"
+			exit 1
+		fi
+	fi
+	echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
 	if [ "$pivpnenableipv6" == "1" ]; then
 		if [ -z "$IPv6dev" ]; then
 			if [ "$interfaceCount" -eq 1 ]; then
@@ -678,31 +781,31 @@ if [ "${runUnattended}" = 'true' ]; then
 		fi
 	fi
 	if [ "$pivpnenableipv6" == "1" ] && [ -z "$IPv6dev" ]; then
-    	echo "IPv6dev=${IPv6dev}" >> ${tempsetupVarsFile}
+		echo "IPv6dev=${IPv6dev}" >> ${tempsetupVarsFile}
 	fi
-    return
+	return
 else
-    if [ "$interfaceCount" -eq 1 ]; then
-        IPv4dev="${availableInterfaces}"
-        echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
+	if [ "$interfaceCount" -eq 1 ]; then
+		IPv4dev="${availableInterfaces}"
+		echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
 		if [ "$pivpnenableipv6" == "1" ]; then
 			IPv6dev="${availableInterfaces}"
 			echo "IPv6dev=${IPv6dev}" >> ${tempsetupVarsFile}
-    	fi
+		fi
 		return
-    fi
+	fi
 fi
 
 chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An interface for IPv4 (press space to select):" "${r}" "${c}" "${interfaceCount}")
 if chooseInterfaceOptions=$("${chooseInterfaceCmd[@]}" "${interfacesArray[@]}" 2>&1 >/dev/tty) ; then
-    for desiredInterface in ${chooseInterfaceOptions}; do
-        IPv4dev=${desiredInterface}
-        echo "::: Using interface: $IPv4dev"
-        echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
-    done
+	for desiredInterface in ${chooseInterfaceOptions}; do
+		IPv4dev=${desiredInterface}
+		echo "::: Using interface: $IPv4dev"
+		echo "IPv4dev=${IPv4dev}" >> ${tempsetupVarsFile}
+	done
 else
-    echo "::: Cancel selected, exiting...."
-    exit 1
+	echo "::: Cancel selected, exiting...."
+	exit 1
 fi
 if [ "$pivpnenableipv6" == "1" ]; then
 	chooseInterfaceCmd=(whiptail --separate-output --radiolist "Choose An interface for IPv6, usually the same as used by IPv4 (press space to select):" "${r}" "${c}" "${interfaceCount}")
@@ -721,10 +824,10 @@ fi
 
 checkStaticIpSupported(){
 	# Not really robust and correct, we should actually check for dhcpcd, not the distro, but works on Raspbian and Debian.
-	if [ "$PLAT" = "Raspbian" ]; then
+	if [ "${PLAT}" = "Raspbian" ]; then
 		return 0
 	# If we are on 'Debian' but the raspi.list file is present, then we actually are on 64-bit Raspberry Pi OS.
-	elif [ "$PLAT" = "Debian" ] && [ -s /etc/apt/sources.list.d/raspi.list ]; then
+	elif [ "${PLAT}" = "Debian" ] && [ -s /etc/apt/sources.list.d/raspi.list ]; then
 		return 0
 	else
 		return 1
@@ -787,7 +890,7 @@ checkipv6uplink(){
 		echo "::: IPv6 test connections to google.com successful. Enabling IPv6 support."
 		pivpnenableipv6="1"
 	fi
-	return 
+	return
 }
 
 askforcedipv6route(){
@@ -893,7 +996,7 @@ Yes: Keep using DHCP reservation
 No: Setup static IP address
 Don't know what DHCP Reservation is? Answer No." ${r} ${c}); then
 		dhcpReserv=1
-        # shellcheck disable=SC2129
+		# shellcheck disable=SC2129
 		echo "dhcpReserv=${dhcpReserv}" >> ${tempsetupVarsFile}
 		# We don't really need to save them as we won't set a static IP but they might be useful for debugging
 		echo "IPv4addr=${CurrentIPv4addr}" >> ${tempsetupVarsFile}
@@ -1021,7 +1124,14 @@ chooseUser(){
 				echo "::: ${install_user} will hold your ovpn configurations."
 			else
 				echo "::: User ${install_user} does not exist, creating..."
-				$SUDO useradd -m -s /bin/bash "${install_user}"
+
+				if [ "${PLAT}" == 'Alpine' ]; then
+					${SUDO} adduser -s /bin/bash "${install_user}"
+					${SUDO} addgroup "${install_user}" wheel
+				else
+					${SUDO} useradd -ms /bin/bash "${install_user}"
+				fi
+
 				echo "::: User created without a password, please do sudo passwd $install_user to create one"
 			fi
 		fi
@@ -1036,19 +1146,32 @@ chooseUser(){
 	whiptail --msgbox --backtitle "Parsing User List" --title "Local Users" "Choose a local user that will hold your ovpn configurations." ${r} ${c}
 	# First, let's check if there is a user available.
 	numUsers=$(awk -F':' 'BEGIN {count=0} $3>=1000 && $3<=60000 { count++ } END{ print count }' /etc/passwd)
-	if [ "$numUsers" -eq 0 ]
-	then
+	if [ "$numUsers" -eq 0 ]; then
 		# We don't have a user, let's ask to add one.
-		if userToAdd=$(whiptail --title "Choose A User" --inputbox "No non-root user account was found. Please type a new username." ${r} ${c} 3>&1 1>&2 2>&3)
-		then
+		if userToAdd=$(whiptail --title "Choose A User" --inputbox "No non-root user account was found. Please type a new username." ${r} ${c} 3>&1 1>&2 2>&3); then
 			# See https://askubuntu.com/a/667842/459815
 			PASSWORD=$(whiptail  --title "password dialog" --passwordbox "Please enter the new user password" ${r} ${c} 3>&1 1>&2 2>&3)
 			CRYPT=$(perl -e 'printf("%s\n", crypt($ARGV[0], "password"))' "${PASSWORD}")
-			if $SUDO useradd -m -p "${CRYPT}" -s /bin/bash "${userToAdd}" ; then
-				echo "Succeeded"
-				((numUsers+=1))
+
+			if [ "${PLAT}" == 'Alpine' ]; then
+				if ${SUDO} adduser -Ds /bin/bash "${userToAdd}"; then
+					${SUDO} addgroup "${userToAdd}" wheel
+
+					${SUDO} chpasswd <<< "${userToAdd}:${PASSWORD}"
+					${SUDO} passwd -u "${userToAdd}"
+
+					echo "Succeeded"
+					((numUsers+=1))
+				else
+					exit 1
+				fi
 			else
-				exit 1
+				if ${SUDO} useradd -mp "${CRYPT}" -s /bin/bash "${userToAdd}"; then
+					echo "Succeeded"
+					((numUsers+=1))
+				else
+					exit 1
+				fi
 			fi
 		else
 			exit 1
@@ -1058,8 +1181,7 @@ chooseUser(){
 	local userArray=()
 	local firstloop=1
 
-	while read -r line
-	do
+	while read -r line; do
 		mode="OFF"
 		if [[ $firstloop -eq 1 ]]; then
 			firstloop=0
@@ -1105,7 +1227,8 @@ updateRepo(){
 		# Go back to /usr/local/src otherwise git will complain when the current working
 		# directory has just been deleted (/usr/local/src/pivpn).
 		cd /usr/local/src && \
-		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null && spinner $!
+		$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null &
+		spinner $!
 		cd "${1}" || exit 1
 		echo " done!"
 		if [ -n "${pivpnGitBranch}" ]; then
@@ -1133,7 +1256,8 @@ makeRepo(){
 	# Go back to /usr/local/src otherwhise git will complain when the current working
 	# directory has just been deleted (/usr/local/src/pivpn).
 	cd /usr/local/src && \
-	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null & spinner $!
+	$SUDO git clone -q --depth 1 --no-single-branch "${2}" "${1}" > /dev/null &
+	spinner $!
 	cd "${1}" || exit 1
 	echo " done!"
 	if [ -n "${pivpnGitBranch}" ]; then
@@ -1177,34 +1301,41 @@ installPiVPN(){
 	askWhichVPN
 	setVPNDefaultVars
 
-	if [ "$VPN" = "openvpn" ]; then
-
+	if [ "${VPN}" == 'openvpn' ]; then
 		setOpenVPNDefaultVars
 		askAboutCustomizing
 		installOpenVPN
 		askCustomProto
-		askCustomPort
-		askClientDNS
+	elif [ "${VPN}" == 'wireguard' ]; then
+		setWireguardDefaultVars
+		installWireGuard
+	fi
+
+	askCustomPort
+	askClientDNS
+
+	if [ "${VPN}" == 'openvpn' ]; then
 		askCustomDomain
-		askPublicIPOrDNS
+	fi
+
+	askPublicIPOrDNS
+
+	if [ "${VPN}" == 'openvpn' ]; then
 		askEncryption
 		confOpenVPN
 		confOVPN
-		confNetwork
-		confLogging
-
-	elif [ "$VPN" = "wireguard" ]; then
-
-		setWireguardDefaultVars
-		installWireGuard
-		askCustomPort
-		askClientDNS
-		askPublicIPOrDNS
+	elif [ "${VPN}" == 'wireguard' ]; then
 		confWireGuard
-		confNetwork
-		writeWireguardTempVarsFile
-
 	fi
+
+	confNetwork
+
+	if [ "${VPN}" == 'openvpn' ]; then
+		confLogging
+	elif [ "${VPN}" == 'wireguard' ]; then
+		writeWireguardTempVarsFile
+	fi
+
 	writeVPNTempVarsFile
 }
 
@@ -1220,7 +1351,19 @@ setVPNDefaultVars(){
 
 generateRandomSubnet() {
 	# Source: https://community.openvpn.net/openvpn/wiki/AvoidRoutingConflicts
-	declare -a SUBNET_EXCLUDE_LIST=(10.0.0.0/24 10.0.1.0/24 10.1.1.0/24 10.1.10.0/24 10.2.0.0/24 10.8.0.0/24 10.10.1.0/24 10.90.90.0/24 10.100.1.0/24 10.255.255.0/24)
+	declare -a SUBNET_EXCLUDE_LIST
+
+	SUBNET_EXCLUDE_LIST=(10.0.0.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.0.1.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.1.1.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.1.10.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.2.0.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.8.0.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.10.1.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.90.90.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.100.1.0/24)
+	SUBNET_EXCLUDE_LIST+=(10.255.255.0/24)
+
 	readarray -t CURRENTLY_USED_SUBNETS <<< "$(ip route show | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
 	SUBNET_EXCLUDE_LIST=("${SUBNET_EXCLUDE_LIST[@]}" "${CURRENTLY_USED_SUBNETS[@]}")
 
@@ -1410,6 +1553,7 @@ installOpenVPN(){
 
 	# Expect is used to feed easy-rsa with passwords
 	PIVPN_DEPS=(openvpn expect)
+
 	installDependentPackages PIVPN_DEPS[@]
 }
 
@@ -1473,6 +1617,12 @@ installWireGuard(){
 
 		installDependentPackages PIVPN_DEPS[@]
 
+	elif [ "${PLAT}" == 'Alpine' ]; then
+		echo "::: Installing WireGuard... "
+
+		PIVPN_DEPS=(wireguard-tools libqrencode)
+
+		installDependentPackages PIVPN_DEPS[@]
 	fi
 }
 
@@ -1506,8 +1656,7 @@ askCustomProto(){
 	if pivpnPROTO=$(whiptail --title "Protocol" --radiolist \
 		"Choose a protocol (press space to select). Please only choose TCP if you know why you need TCP." ${r} ${c} 2 \
 		"UDP" "" ON \
-		"TCP" "" OFF 3>&1 1>&2 2>&3)
-	then
+		"TCP" "" OFF 3>&1 1>&2 2>&3); then
 		# Convert option into lowercase (UDP->udp)
 		pivpnPROTO="${pivpnPROTO,,}"
 		echo "::: Using protocol: $pivpnPROTO"
@@ -1545,8 +1694,7 @@ askCustomPort(){
 		return
 	fi
 
-	until [[ $PORTNumCorrect = True ]]
-		do
+	until [[ $PORTNumCorrect = True ]]; do
 			portInvalid="Invalid"
 
 			if [ "$VPN" = "wireguard" ]; then
@@ -1559,8 +1707,7 @@ askCustomPort(){
 				fi
 			fi
 
-			if pivpnPORT=$(whiptail --title "Default $VPN Port" --inputbox "You can modify the default $VPN port. \\nEnter a new value or hit 'Enter' to retain the default" ${r} ${c} $DEFAULT_PORT 3>&1 1>&2 2>&3)
-			then
+			if pivpnPORT=$(whiptail --title "Default $VPN Port" --inputbox "You can modify the default $VPN port. \\nEnter a new value or hit 'Enter' to retain the default" ${r} ${c} $DEFAULT_PORT 3>&1 1>&2 2>&3); then
 				if [[ "$pivpnPORT" =~ ^[0-9]+$ ]] && [ "$pivpnPORT" -ge 1 ] && [ "$pivpnPORT" -le 65535 ]; then
 					:
 				else
@@ -1669,8 +1816,7 @@ askClientDNS(){
 			PiVPN-is-local-DNS "" off
 			Custom "" off)
 
-	if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty)
-	then
+	if DNSchoices=$("${DNSChoseCmd[@]}" "${DNSChooseOptions[@]}" 2>&1 >/dev/tty); then
 
 		if [[ ${DNSchoices} != "Custom" ]]; then
 
@@ -1693,8 +1839,7 @@ askClientDNS(){
 			until [[ $DNSSettingsCorrect = True ]]; do
 				strInvalid="Invalid"
 
-				if pivpnDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)" --inputbox "Enter your desired upstream DNS provider(s), separated by a comma.\\n\\nFor example '1.1.1.1, 9.9.9.9'" ${r} ${c} "" 3>&1 1>&2 2>&3)
-				then
+				if pivpnDNS=$(whiptail --backtitle "Specify Upstream DNS Provider(s)" --inputbox "Enter your desired upstream DNS provider(s), separated by a comma.\\n\\nFor example '1.1.1.1, 9.9.9.9'" ${r} ${c} "" 3>&1 1>&2 2>&3); then
 					pivpnDNS1=$(echo "$pivpnDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$1}')
 					pivpnDNS2=$(echo "$pivpnDNS" | sed 's/[, \t]\+/,/g' | awk -F, '{print$2}')
 					if ! validIP "$pivpnDNS1" || [ ! "$pivpnDNS1" ]; then
@@ -1739,7 +1884,7 @@ askClientDNS(){
 
 #Call this function to use a regex to check user input for a valid custom domain
 validDomain(){
-    local domain="$1"
+	local domain="$1"
 	grep -qP '(?=^.{4,253}$)(^(?:[a-zA-Z0-9](?:(?:[a-zA-Z0-9\-]){0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$)' <<< "$domain"
 }
 
@@ -1771,8 +1916,7 @@ askCustomDomain(){
 
 	if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno --defaultno "Would you like to add a custom search domain? \\n (This is only for advanced users who have their own domain)\\n" ${r} ${c}); then
 
-		until [[ $DomainSettingsCorrect = True ]]
-		do
+		until [[ $DomainSettingsCorrect = True ]]; do
 			if pivpnSEARCHDOMAIN=$(whiptail --inputbox "Enter Custom Domain\\nFormat: mydomain.com" ${r} ${c} --title "Custom Domain" 3>&1 1>&2 2>&3); then
 				if validDomain "$pivpnSEARCHDOMAIN"; then
 					if (whiptail --backtitle "Custom Search Domain" --title "Custom Search Domain" --yesno "Are these settings correct?\\n    Custom Search Domain: $pivpnSEARCHDOMAIN" ${r} ${c}); then
@@ -2089,10 +2233,18 @@ confOpenVPN(){
 	# Generate an empty Certificate Revocation List
 	${SUDOE} ./easyrsa gen-crl
 	${SUDOE} cp pki/crl.pem /etc/openvpn/crl.pem
-  if ! getent passwd openvpn; then
-	${SUDOE} adduser --system --home /var/lib/openvpn/ --group --disabled-login ${debianOvpnUserGroup%:*}
-  fi
-  ${SUDOE} chown "$debianOvpnUserGroup" /etc/openvpn/crl.pem
+
+	if [ "${PLAT}" == 'Alpine' ]; then
+		if ! getent passwd "${ovpnUserGroup%:*}"; then
+			${SUDOE} adduser -SDh /var/lib/openvpn/ -s /sbin/nologin "${ovpnUserGroup%:*}"
+		fi
+	else
+		if ! getent passwd "${ovpnUserGroup%:*}"; then
+			${SUDOE} useradd --system --home /var/lib/openvpn/ --shell /usr/sbin/nologin "${ovpnUserGroup%:*}"
+		fi
+	fi
+
+	${SUDOE} chown "${ovpnUserGroup}" /etc/openvpn/crl.pem
 
 	# Write config file for server using the template.txt file
 	$SUDO install -m 644 "$pivpnFilesDir"/files/etc/openvpn/server_config.txt /etc/openvpn/server.conf
@@ -2149,6 +2301,12 @@ confOpenVPN(){
 	# write out server certs to conf file
 	$SUDO sed -i "s#\\(key /etc/openvpn/easy-rsa/pki/private/\\).*#\\1${SERVER_NAME}.key#" /etc/openvpn/server.conf
 	$SUDO sed -i "s#\\(cert /etc/openvpn/easy-rsa/pki/issued/\\).*#\\1${SERVER_NAME}.crt#" /etc/openvpn/server.conf
+
+	# On Alpine Linux, the default config file for OpenVPN is "/etc/openvpn/openvpn.conf"
+	# To avoid crash thorugh OpenRC, we symlink this file
+	if [[ "${PLAT}" == 'Alpine' ]]; then
+		${SUDO} ln -sfT /etc/openvpn/server.conf /etc/openvpn/openvpn.conf > /dev/null
+	fi
 }
 
 confOVPN(){
@@ -2177,10 +2335,16 @@ confOVPN(){
 
 confWireGuard(){
 	# Reload job type is not yet available in wireguard-tools shipped with Ubuntu 20.04
-	if ! grep -q 'ExecReload' /lib/systemd/system/wg-quick@.service; then
-		echo "::: Adding additional reload job type for wg-quick unit"
-		$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@.service.d/override.conf /etc/systemd/system/wg-quick@.service.d/override.conf
-		$SUDO systemctl daemon-reload
+	if [ "${PLAT}" == 'Alpine' ]; then
+		echo '::: Adding wg-quick unit'
+
+		${SUDO} install -m 0755 "${pivpnFilesDir}/files/etc/init.d/wg-quick" /etc/init.d/wg-quick
+	else
+		if ! grep -q 'ExecReload' /lib/systemd/system/wg-quick@.service; then
+			echo "::: Adding additional reload job type for wg-quick unit"
+			$SUDO install -D -m 644 "${pivpnFilesDir}"/files/etc/systemd/system/wg-quick@.service.d/override.conf /etc/systemd/system/wg-quick@.service.d/override.conf
+			$SUDO systemctl daemon-reload
+		fi
 	fi
 
 	if [ -d /etc/wireguard ]; then
@@ -2225,34 +2389,34 @@ confWireGuard(){
 
 	echo "::: Server Keys have been generated."
 
-	if [ "$pivpnenableipv6" == "1" ]; then
+	{
+		echo '[Interface]'
+		echo "PrivateKey = $(${SUDO} cat /etc/wireguard/keys/server_priv)"
+		echo -n "Address = ${vpnGw}/${subnetClass}"
 
-	echo "[Interface]
-PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
-Address = ${vpnGw}/${subnetClass},${vpnGwv6}/${subnetClassv6}
-MTU = ${pivpnMTU}
-ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
+		if [ "$pivpnenableipv6" == "1" ]; then
+			echo ",${vpnGwv6}/${subnetClassv6}"
+		else
+			echo
+		fi
 
-	else
+		echo "MTU = ${pivpnMTU}"
+		echo "ListenPort = ${pivpnPORT}"
+	} | ${SUDO} tee /etc/wireguard/wg0.conf &> /dev/null
 
-	echo "[Interface]
-PrivateKey = $($SUDO cat /etc/wireguard/keys/server_priv)
-Address = ${vpnGw}/${subnetClass}
-MTU = ${pivpnMTU}
-ListenPort = ${pivpnPORT}" | $SUDO tee /etc/wireguard/wg0.conf &> /dev/null
-
-	fi
 	echo "::: Server config generated."
 }
 
 confNetwork(){
 	# Enable forwarding of internet traffic
-	$SUDO sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
+	echo 'net.ipv4.ip_forward=1' | $SUDO tee /etc/sysctl.d/99-pivpn.conf > /dev/null
+
 	if [ "$pivpnenableipv6" == "1" ]; then
-		$SUDO sed -i '/net.ipv6.conf.all.forwarding=1/s/^#//g' /etc/sysctl.conf
-		echo "net.ipv6.conf.${IPv6dev}.accept_ra=2" | $SUDO tee /etc/sysctl.d/99-pivpn.conf > /dev/null
+		echo "net.ipv6.conf.all.forwarding=1
+net.ipv6.conf.${IPv6dev}.accept_ra=2" | $SUDO tee -a /etc/sysctl.d/99-pivpn.conf > /dev/null
 	fi
-	$SUDO sysctl -p > /dev/null
+
+	${SUDO} sysctl -p /etc/sysctl.d/99-pivpn.conf > /dev/null
 
 	if [ "$USING_UFW" -eq 1 ]; then
 
@@ -2411,8 +2575,14 @@ confLogging() {
 	# Pre-create rsyslog/logrotate config directories if missing, to assure logs are handled as expected when those are installed at a later time
 	$SUDO mkdir -p /etc/{rsyslog,logrotate}.d
 
-	echo "if \$programname == 'ovpn-server' then /var/log/openvpn.log
-if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
+	if [ "${PLAT}" == 'Alpine' ]; then
+		program_name='openvpn'
+	else
+		program_name='ovpn-server'
+	fi
+
+	echo "if \$programname == '${program_name}' then /var/log/openvpn.log
+if \$programname == '${program_name}' then stop" | $SUDO tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
 	echo "/var/log/openvpn.log
 {
@@ -2429,9 +2599,13 @@ if \$programname == 'ovpn-server' then stop" | $SUDO tee /etc/rsyslog.d/30-openv
 }" | $SUDO tee /etc/logrotate.d/openvpn > /dev/null
 
 	# Restart the logging service
-	case ${PLAT} in
-		Debian|Raspbian|Ubuntu)
+	case "${PLAT}" in
+		Debian | Raspbian | Ubuntu)
 			$SUDO systemctl -q is-active rsyslog.service && $SUDO systemctl restart rsyslog.service
+		;;
+		Alpine)
+			${SUDO} rc-service -is rsyslog restart
+			${SUDO} rc-service -iN rsyslog start
 		;;
 	esac
 }
@@ -2448,6 +2622,17 @@ restartServices(){
 			elif [ "$VPN" = "wireguard" ]; then
 				$SUDO systemctl enable wg-quick@wg0.service &> /dev/null
 				$SUDO systemctl restart wg-quick@wg0.service
+			fi
+		;;
+		Alpine)
+			if [ "${VPN}" == 'openvpn' ]; then
+				${SUDO} rc-update add openvpn default &> /dev/null
+				${SUDO} rc-service -s openvpn restart
+				${SUDO} rc-service -N openvpn start
+			elif [ "${VPN}" == 'wireguard' ]; then
+				${SUDO} rc-update add wg-quick default &> /dev/null
+				${SUDO} rc-service -s wg-quick restart
+				${SUDO} rc-service -N wg-quick start
 			fi
 		;;
 	esac
@@ -2482,52 +2667,63 @@ askUnattendedUpgrades(){
 
 confUnattendedUpgrades(){
 	local PIVPN_DEPS
-	PIVPN_DEPS=(unattended-upgrades)
-	installDependentPackages PIVPN_DEPS[@]
-	aptConfDir="/etc/apt/apt.conf.d"
 
-	if [ "$PLAT" = "Ubuntu" ]; then
+	if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
+		PIVPN_DEPS=(unattended-upgrades)
+		installDependentPackages PIVPN_DEPS[@]
+		aptConfDir="/etc/apt/apt.conf.d"
 
-		# Ubuntu 50unattended-upgrades should already just have security enabled
-		# so we just need to configure the 10periodic file
-		echo "APT::Periodic::Update-Package-Lists \"1\";
-	APT::Periodic::Download-Upgradeable-Packages \"1\";
-	APT::Periodic::AutocleanInterval \"5\";
-	APT::Periodic::Unattended-Upgrade \"1\";" | $SUDO tee "${aptConfDir}/10periodic" > /dev/null
+		if [ "$PLAT" = "Ubuntu" ]; then
+			# Ubuntu 50unattended-upgrades should already just have security enabled
+			# so we just need to configure the 10periodic file
+			echo "APT::Periodic::Update-Package-Lists \"1\";
+		APT::Periodic::Download-Upgradeable-Packages \"1\";
+		APT::Periodic::AutocleanInterval \"5\";
+		APT::Periodic::Unattended-Upgrade \"1\";" | $SUDO tee "${aptConfDir}/10periodic" > /dev/null
+		else
 
-	else
+			# Raspbian's unattended-upgrades package downloads Debian's config, so we copy over the proper config
+			# Source: https://github.com/mvo5/unattended-upgrades/blob/master/data/50unattended-upgrades.Raspbian
+			if [ "$PLAT" = "Raspbian" ]; then
+				$SUDO install -m 644 "${pivpnFilesDir}/files${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
+			fi
 
-		# Raspbian's unattended-upgrades package downloads Debian's config, so we copy over the proper config
-		# Source: https://github.com/mvo5/unattended-upgrades/blob/master/data/50unattended-upgrades.Raspbian
-		if [ "$PLAT" = "Raspbian" ]; then
-			$SUDO install -m 644 "${pivpnFilesDir}/files${aptConfDir}/50unattended-upgrades.Raspbian" "${aptConfDir}/50unattended-upgrades"
+			# Add the remaining settings for all other distributions
+			echo "APT::Periodic::Enable \"1\";
+		APT::Periodic::Update-Package-Lists \"1\";
+		APT::Periodic::Download-Upgradeable-Packages \"1\";
+		APT::Periodic::Unattended-Upgrade \"1\";
+		APT::Periodic::AutocleanInterval \"7\";
+		APT::Periodic::Verbose \"0\";" | $SUDO tee "${aptConfDir}/02periodic" > /dev/null
 		fi
 
-		# Add the remaining settings for all other distributions
-		echo "APT::Periodic::Enable \"1\";
-	APT::Periodic::Update-Package-Lists \"1\";
-	APT::Periodic::Download-Upgradeable-Packages \"1\";
-	APT::Periodic::Unattended-Upgrade \"1\";
-	APT::Periodic::AutocleanInterval \"7\";
-	APT::Periodic::Verbose \"0\";" | $SUDO tee "${aptConfDir}/02periodic" > /dev/null
-
-	fi
-
-	# Enable automatic updates via the bullseye repository when installing from debian package
-	if [ "$VPN" = "wireguard" ]; then
-		if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]; then
-			if ! grep -q "\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"; then
-				$SUDO sed -i "/Unattended-Upgrade::Origins-Pattern {/a\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"
+		# Enable automatic updates via the bullseye repository when installing from debian package
+		if [ "$VPN" = "wireguard" ]; then
+			if [ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]; then
+				if ! grep -q "\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"; then
+					$SUDO sed -i "/Unattended-Upgrade::Origins-Pattern {/a\"o=$PLAT,n=bullseye\";" "${aptConfDir}/50unattended-upgrades"
+				fi
 			fi
 		fi
+	elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
+		echo 'https://dl-cdn.alpinelinux.org/alpine/edge/testing/' | ${SUDO} tee -a /etc/apk/repositories && ${SUDO} apk -q update
+
+		PIVPN_DEPS=(apk-autoupdate)
+
+		installDependentPackages PIVPN_DEPS[@]
+
+		${SUDO} sed -i -E -e '/^https:\/\/dl\-cdn\.alpinelinux\.org\/alpine\/edge\/testing\/$/d' /etc/apk/repositories && ${SUDO} apk -q update
+
+		${SUDO} install -m 0755 "${pivpnFilesDir}/files/etc/apk/personal_autoupdate.conf" /etc/apk/personal_autoupdate.conf
+		${SUDO} apk-autoupdate /etc/apk/personal_autoupdate.conf
 	fi
 }
 
 writeConfigFiles(){
 	# Save installation setting to the final location
 	echo "INSTALLED_PACKAGES=(${INSTALLED_PACKAGES[*]})" >> ${tempsetupVarsFile}
-        echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
-        $SUDO mkdir -p "${setupConfigDir}/${VPN}/"
+		echo "::: Setupfiles copied to ${setupConfigDir}/${VPN}/${setupVarsFile}"
+		$SUDO mkdir -p "${setupConfigDir}/${VPN}/"
 	$SUDO cp ${tempsetupVarsFile} "${setupConfigDir}/${VPN}/${setupVarsFile}"
 }
 
@@ -2555,9 +2751,8 @@ installScripts(){
 		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/pivpn" /usr/local/bin/pivpn
 	else
 		# Check if bash_completion scripts dir exists and creates it if not
-		if [ ! -d "/etc/bash_completion.d" ]; then
-				mkdir -p /etc/bash_copletion.d
-		fi
+		${SUDO} mkdir -p /etc/bash_completion.d
+
 		# Only one protocol is installed, symlink bash completion, the pivpn script
 		# and the script directory
 		$SUDO ln -sf -T "${pivpnFilesDir}/scripts/${VPN}/bash-completion" /etc/bash_completion.d/pivpn
@@ -2597,7 +2792,8 @@ All incomplete posts or bug reports will be ignored or deleted.\\n\\nThank you f
 		whiptail --title "Rebooting" --msgbox "The system will now reboot." ${r} ${c}
 		printf "\\nRebooting system...\\n"
 		$SUDO sleep 3
-		$SUDO shutdown -r now
+
+		${SUDO} reboot
 	fi
 }
 

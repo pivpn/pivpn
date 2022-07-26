@@ -1,8 +1,14 @@
 #!/bin/bash
 
+CHECK_PKG_INSTALLED='dpkg-query -s'
+
+if grep -qsEe "^NAME\=['\"]?Alpine[a-zA-Z ]*['\"]?$" /etc/os-release; then
+	CHECK_PKG_INSTALLED='apk --no-cache info -e'
+fi
+
 # Must be root to use this tool
-if [[ ! $EUID -eq 0 ]];then
-  if [[ $(dpkg-query -s sudo) ]];then
+if [[ ! $EUID -eq 0 ]]; then
+  if eval "${CHECK_PKG_INSTALLED} sudo" &> /dev/null; then
         export SUDO="sudo"
   else
     echo "::: Please install sudo or run this as root."
