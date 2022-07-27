@@ -593,13 +593,19 @@ preconfigurePackages() {
   fi
 
   if [[ "${PLAT}" == 'Alpine' ]] && ! command -v grepcidr &> /dev/null; then
+    local down_dir
     ## install dependencies
     # shellcheck disable=SC2086
     ${SUDO} ${PKG_INSTALL} build-base make curl tar
 
+    if ! down_dir="$(mktemp -d)"; then
+      echo "::: Failed to create download directory for apk-autoupdate!"
+      exit 1
+    fi
+
     ## download binaeries
-    curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
-    tar -xzf master.tar.gz
+    curl -fLo "${down_dir}/master.tar.gz" https://github.com/pivpn/grepcidr/archive/master.tar.gz
+    tar -xzf "${down_dir}/master.tar.gz"
 
     cd grepcidr-master || exit 1
 
@@ -618,7 +624,7 @@ preconfigurePackages() {
     cd ..
 
     ## remove useless files
-    rm master.tar.gz
+    rm "${down_dir}/master.tar.gz"
     rm -rf grepcidr-master
   fi
 
