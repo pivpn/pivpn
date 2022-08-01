@@ -585,33 +585,35 @@ preconfigurePackages(){
 	fi
 
 	if [[ "${PLAT}" == 'Alpine' ]] && ! command -v grepcidr &> /dev/null; then
+		local down_dir
 		## install dependencies
 		# shellcheck disable=SC2086
 		${SUDO} ${PKG_INSTALL} build-base make curl tar
 
-		## download binaeries
-		curl -fLo master.tar.gz https://github.com/pivpn/grepcidr/archive/master.tar.gz
-		tar -xzf master.tar.gz
-
-		cd grepcidr-master || exit 1
-
-		## personalize binaries
-		sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' Makefile
-
-		## install
-		make
-		${SUDO} make install
-
-		if ! command -v grepcidr &> /dev/null; then
-			echo "::: Failed to compile and install grepcidr!"
+		if ! down_dir="$(mktemp -d)"; then
+			echo "::: Failed to create download directory for grepcidr!"
 			exit 1
 		fi
 
-		cd ..
+		## download binaries
+		curl -fLo "${down_dir}/master.tar.gz" https://github.com/pivpn/grepcidr/archive/master.tar.gz
+		tar -xzC "${down_dir}" -f "${down_dir}/master.tar.gz"
 
-		## remove useless files
-		rm master.tar.gz
-		rm -rf grepcidr-master
+		(
+			cd "${down_dir}/grepcidr-master" || exit 1
+
+			## personalize binaries
+			sed -i -E -e 's/^PREFIX\=.*/PREFIX\=\/usr\nCC\=gcc/' Makefile
+
+			## install
+			make
+			${SUDO} make install
+
+			if ! command -v grepcidr &> /dev/null; then
+				echo "::: Failed to compile and install grepcidr!"
+				exit 1
+			fi
+		) || exit 1
 	fi
 
 	echo "USING_UFW=${USING_UFW}" >> ${tempsetupVarsFile}
@@ -2706,13 +2708,34 @@ confUnattendedUpgrades(){
 			fi
 		fi
 	elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
-		echo 'https://dl-cdn.alpinelinux.org/alpine/edge/testing/' | ${SUDO} tee -a /etc/apk/repositories && ${SUDO} apk -q update
+		local down_dir
+		## install dependencies
+		# shellcheck disable=SC2086
+		${SUDO} ${PKG_INSTALL} unzip asciidoctor
 
-		PIVPN_DEPS=(apk-autoupdate)
+		if ! down_dir="$(mktemp -d)"; then
+			echo "::: Failed to create download directory for apk-autoupdate!"
+			exit 1
+		fi
 
-		installDependentPackages PIVPN_DEPS[@]
+		## download binaries
+		curl -fLo "${down_dir}/master.zip" https://github.com/jirutka/apk-autoupdate/archive/refs/heads/master.zip
+		unzip -qd "${down_dir}" "${down_dir}/master.zip"
 
-		${SUDO} sed -i -E -e '/^https:\/\/dl\-cdn\.alpinelinux\.org\/alpine\/edge\/testing\/$/d' /etc/apk/repositories && ${SUDO} apk -q update
+		(
+			cd "${down_dir}/apk-autoupdate-master" || exit 1
+
+			## personalize binaries
+			sed -i -E -e 's/^(prefix\s*:=).*/\1 \/usr/' Makefile
+
+			## install
+			${SUDO} make install
+
+			if ! command -v apk-autoupdate &> /dev/null; then
+				echo "::: Failed to compile and install apk-autoupdate!"
+				exit 1
+			fi
+		) || exit 1
 
 		${SUDO} install -m 0755 "${pivpnFilesDir}/files/etc/apk/personal_autoupdate.conf" /etc/apk/personal_autoupdate.conf
 		${SUDO} apk-autoupdate /etc/apk/personal_autoupdate.conf
