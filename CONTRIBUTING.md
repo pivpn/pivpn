@@ -22,6 +22,11 @@ Please report unacceptable behavior to any project maintainer.
 
 * Ensure the PR description clearly describes the problem and solution. Include the relevant issue number if applicable.
 
+* Use the following [commit rules](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format).
+
+* Use the following [code style rules](https://google.github.io/styleguide/shellguide.html).
+We suggest you to use `shfmt` with the options `-i 2 -ci -sr -w`
+
 ### **PiVPN Website**
 
 * Yes the site is open source as well! You can find and contribute to [pivpn.io](https://github.com/pivpn/pivpn.io) directly.
