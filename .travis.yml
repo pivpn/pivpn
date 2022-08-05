@@ -30,7 +30,7 @@ jobs:
       arch: amd64
       script:
         - shellcheck -x auto_install/install.sh
-        - find scripts/ -type f | xargs shellcheck -x
+        - find scripts/ -type f -exec shellcheck -x {} \;
 
     - stage: style
       name: "Shell Style Guide"
@@ -42,7 +42,7 @@ jobs:
       arch: amd64
       script:
         - shfmt -d -i 2 -ci -sr auto_install/install.sh
-        - find scripts/ -type f | xargs shfmt -d -i 2 -ci -sr
+        - find scripts/ -type f -exec shfmt -d -i 2 -ci -sr {} \;
 
     - stage: test
       name: "OpenVPN Xenial & Commands"
