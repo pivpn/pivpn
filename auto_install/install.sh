@@ -659,38 +659,27 @@ preconfigurePackages() {
   if
     # If the module is builtin and the package available, we only need
     # to install wireguard-tools.
-    [[ "${WIREGUARD_BUILTIN}" -eq 1 &&
-      -n "${AVAILABLE_WIREGUARD}" ]] ||
+    [[ "${WIREGUARD_BUILTIN}" -eq 1 && -n "${AVAILABLE_WIREGUARD}" ]] ||
       # If the package is not available, on Debian and Raspbian we can
       # add it via Bullseye repository.
-      [[ "${WIREGUARD_BUILTIN}" -eq 1 &&
-        ("${PLAT}" == 'Debian' || "${PLAT}" == 'Raspbian') ]] ||
+      [[ "${WIREGUARD_BUILTIN}" -eq 1 && ("${PLAT}" == 'Debian' || "${PLAT}" == 'Raspbian') ]] ||
       # If the module is not builtin, on Raspbian we know the headers
       # package: raspberrypi-kernel-headers
       [[ "${PLAT}" == 'Raspbian' ]] ||
       # On Alpine, the kernel must be linux-lts or linux-virt if we want to
       # load the kernel module
-      [[ "${PLAT}" == 'Alpine' &&
-        ! -f /.dockerenv &&
-        "$(uname -mrs)" =~ ^Linux\ +[0-9\.\-]+\-((lts)|(virt))\ +.*$ ]] ||
+      [[ "${PLAT}" == 'Alpine' && ! -f /.dockerenv && "$(uname -mrs)" =~ ^Linux\ +[0-9\.\-]+\-((lts)|(virt))\ +.*$ ]] ||
       # On Alpine Docker Container, the responsibility to have a WireGuard
       # module on the host system is at user side
-      [[ "${PLAT}" == 'Alpine' &&
-        -f /.dockerenv ]] ||
+      [[ "${PLAT}" == 'Alpine' && -f /.dockerenv ]] ||
       # On Debian (and Ubuntu), we can only reliably assume the headers package
       # for amd64: linux-image-amd64
-      [[ "${PLAT}" == 'Debian' &&
-        "${DPKG_ARCH}" == 'amd64' ]] ||
+      [[ "${PLAT}" == 'Debian' && "${DPKG_ARCH}" == 'amd64' ]] ||
       # On Ubuntu, additionally the WireGuard package needs to be available,
       # since we didn't test mixing Ubuntu repositories.
-      [[ "${PLAT}" == 'Ubuntu' &&
-        "${DPKG_ARCH}" == 'amd64' &&
-        -n "${AVAILABLE_WIREGUARD}" ]] ||
+      [[ "${PLAT}" == 'Ubuntu' && "${DPKG_ARCH}" == 'amd64' && -n "${AVAILABLE_WIREGUARD}" ]] ||
       # Ubuntu focal has wireguard support
-      [[ "${PLAT}" == 'Ubuntu' &&
-        "${DPKG_ARCH}" == 'arm64' &&
-        "${OSCN}" == 'focal' &&
-        -n "${AVAILABLE_WIREGUARD}" ]]
+      [[ "${PLAT}" == 'Ubuntu' && "${DPKG_ARCH}" == 'arm64' && "${OSCN}" == 'focal' && -n "${AVAILABLE_WIREGUARD}" ]]
   then
     WIREGUARD_SUPPORT=1
   fi
@@ -1060,10 +1049,7 @@ validIP() {
     read -r -a ip <<< "${ip}"
     IFS="${OIFS}"
 
-    [[ "${ip[0]}" -le 255 &&
-      "${ip[1]}" -le 255 &&
-      "${ip[2]}" -le 255 &&
-      "${ip[3]}" -le 255 ]]
+    [[ "${ip[0]}" -le 255 && "${ip[1]}" -le 255 && "${ip[2]}" -le 255 && "${ip[3]}" -le 255 ]]
 
     stat="$?"
   fi
@@ -1087,11 +1073,7 @@ validIPAndNetmask() {
     read -r -a ip <<< "${ip}"
     IFS="${OIFS}"
 
-    [[ "${ip[0]}" -le 255 &&
-      "${ip[1]}" -le 255 &&
-      "${ip[2]}" -le 255 &&
-      "${ip[3]}" -le 255 &&
-      "${ip[4]}" -le 32 ]]
+    [[ "${ip[0]}" -le 255 && "${ip[1]}" -le 255 && "${ip[2]}" -le 255 && "${ip[3]}" -le 255 && "${ip[4]}" -le 32 ]]
 
     stat="$?"
   fi
@@ -1587,8 +1569,7 @@ updateRepo() {
         --no-single-branch \
         "${2}" \
         "${1}" \
-        > /dev/null \
-      &
+        > /dev/null &
     spinner $!
     cd "${1}" || exit 1
     echo " done!"
@@ -1626,8 +1607,7 @@ makeRepo() {
       --no-single-branch \
       "${2}" \
       "${1}" \
-      > /dev/null \
-    &
+      > /dev/null &
   spinner $!
   cd "${1}" || exit 1
   echo " done!"
