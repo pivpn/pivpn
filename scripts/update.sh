@@ -90,8 +90,8 @@ updatepivpnscripts() {
     echo
   fi
 
-  if [[ -d "${pivpnlocalpath}" ]] &&
-    [[ -n "${pivpnlocalpath}" ]]; then
+  if [[ -d "${pivpnlocalpath}" ]] \
+    && [[ -n "${pivpnlocalpath}" ]]; then
     rm -rf "${pivpnlocalpath}/../.pivpn"
   fi
 

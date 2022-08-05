@@ -61,9 +61,9 @@ while [[ "$#" -gt 0 ]]; do
       _val="${_key##--name=}"
 
       if [[ "${_val}" == "${_key}" ]]; then
-        [[ "$#" -lt 2 ]] &&
-          err "Missing value for the optional argument '${_key}'." &&
-          exit 1
+        [[ "$#" -lt 2 ]] \
+          && err "Missing value for the optional argument '${_key}'." \
+          && exit 1
 
         _val="${2}"
         shift
@@ -75,9 +75,9 @@ while [[ "$#" -gt 0 ]]; do
       _val="${_key##--password=}"
 
       if [[ "${_val}" == "${_key}" ]]; then
-        [[ "$#" -lt 2 ]] &&
-          err "Missing value for the optional argument '${_key}'." &&
-          exit 1
+        [[ "$#" -lt 2 ]] \
+          && err "Missing value for the optional argument '${_key}'." \
+          && exit 1
 
         _val="${2}"
         shift
@@ -89,9 +89,9 @@ while [[ "$#" -gt 0 ]]; do
       _val="${_key##--days=}"
 
       if [[ "${_val}" == "${_key}" ]]; then
-        [[ "$#" -lt 2 ]] &&
-          err "Missing value for the optional argument '${_key}'." &&
-          exit 1
+        [[ "$#" -lt 2 ]] \
+          && err "Missing value for the optional argument '${_key}'." \
+          && exit 1
 
         _val="${2}"
         shift
@@ -180,9 +180,9 @@ useBitwarden() {
   read -r NAME
 
   # check name
-  until [[ "${NAME}" =~ ^[a-zA-Z0-9.@_-]+$ ]] &&
-    [[ "${NAME::1}" != "." ]] &&
-    [[ "${NAME::1}" != "-" ]]; do
+  until [[ "${NAME}" =~ ^[a-zA-Z0-9.@_-]+$ ]] \
+    && [[ "${NAME::1}" != "." ]] \
+    && [[ "${NAME::1}" != "-" ]]; do
     echo -n "Name can only contain alphanumeric characters and these "
     echo -n "characters (.-@_). The name also cannot start with a dot (.)"
     echo " or a dash (-). Please try again."
@@ -210,13 +210,13 @@ useBitwarden() {
 
   # create a new item for your PiVPN Password
   PASSWD="$(bw generate -usln --length "${LENGTH}")"
-  bw get template item |
-    jq '.login.type = "1"' |
-    jq '.name = "PiVPN"' |
-    jq -r --arg NAME "${NAME}" '.login.username = $NAME' |
-    jq -r --arg PASSWD "${PASSWD}" '.login.password = $PASSWD' |
-    bw encode |
-    bw create item
+  bw get template item \
+    | jq '.login.type = "1"' \
+    | jq '.name = "PiVPN"' \
+    | jq -r --arg NAME "${NAME}" '.login.username = $NAME' \
+    | jq -r --arg PASSWD "${PASSWD}" '.login.password = $PASSWD' \
+    | bw encode \
+    | bw create item
   bw logout
 }
 
@@ -357,9 +357,9 @@ else
     err "Please choose another name or revoke this certificate first."
     exit 1
   # Check if name is reserved
-  elif [[ "${NAME}" == "ta" ]] ||
-    [[ "${NAME}" == "server" ]] ||
-    [[ "${NAME}" == "ca" ]]; then
+  elif [[ "${NAME}" == "ta" ]] \
+    || [[ "${NAME}" == "server" ]] \
+    || [[ "${NAME}" == "ca" ]]; then
     err "Sorry, this is in use by the server and cannot be used by clients."
     exit 1
   fi
@@ -370,9 +370,9 @@ else
     read -r -e -p "How many days should the certificate last?  " -i 1080 DAYS
   fi
 
-  if [[ ! "${DAYS}" =~ ^[0-9]+$ ]] ||
-    [[ "${DAYS}" -lt 1 ]] ||
-    [[ "${DAYS}" -gt 3650 ]]; then
+  if [[ ! "${DAYS}" =~ ^[0-9]+$ ]] \
+    || [[ "${DAYS}" -lt 1 ]] \
+    || [[ "${DAYS}" -gt 3650 ]]; then
     # The CRL lasts 3650 days so it doesn't make much sense
     # that certificates would last longer
     err "Please input a valid number of days, between 1 and 3650 inclusive."
@@ -516,8 +516,8 @@ for i in {2..254}; do
   # cycle to the end without finding and available octet.
   # disabling SC2514, variable sourced externaly
   # shellcheck disable=SC2154
-  if [[ -z "$(ls -A /etc/openvpn/ccd)" ]] ||
-    ! find /etc/openvpn/ccd \
+  if [[ -z "$(ls -A /etc/openvpn/ccd)" ]] \
+    || ! find /etc/openvpn/ccd \
       -type f \
       -exec grep -q "${NET_REDUCED}.${i}" {} +; then
     COUNT="${i}"

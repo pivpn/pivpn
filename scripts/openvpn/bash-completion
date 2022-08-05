@@ -14,8 +14,8 @@ _pivpn() {
     else
       COMPREPLY=("$(compgen -W "${opts}" -- "${cur}")")
     fi
-  elif [[ ("${prev}" == "add" || "${prev}" == "-a") ]] &&
-    [[ "${#COMP_WORDS[@]}" -eq 3 ]]; then
+  elif [[ ("${prev}" == "add" || "${prev}" == "-a") ]] \
+    && [[ "${#COMP_WORDS[@]}" -eq 3 ]]; then
     COMPREPLY=("$(compgen -W "nopass" -- "${cur}")")
   fi
 

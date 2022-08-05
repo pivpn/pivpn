@@ -1,7 +1,7 @@
 #!/bin/bash
 
-PLAT="$(grep -sEe '^NAME\=' /etc/os-release |
-  sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
+PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
+  | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
 
 # dual protocol, VPN type supplied as $1
 VPN="${1}"
@@ -255,8 +255,8 @@ else
 fi
 
 if [[ "${PLAT}" == 'Alpine' ]]; then
-  if [[ "$(rc-service "${VPN_SERVICE}" status |
-    sed -E -e 's/.*status\: (.*)/\1/')" == 'started' ]]; then
+  if [[ "$(rc-service "${VPN_SERVICE}" status \
+    | sed -E -e 's/.*status\: (.*)/\1/')" == 'started' ]]; then
     echo ":: [OK] ${VPN_PRETTY_NAME} is running"
   else
     ERR=1
@@ -271,8 +271,8 @@ if [[ "${PLAT}" == 'Alpine' ]]; then
     fi
   fi
 
-  if rc-update show default |
-    grep -sEe "\s*${VPN_SERVICE} .*" &> /dev/null; then
+  if rc-update show default \
+    | grep -sEe "\s*${VPN_SERVICE} .*" &> /dev/null; then
     echo -n ":: [OK] ${VPN_PRETTY_NAME} is enabled "
     echo "(it will automatically start on reboot)"
   else

@@ -49,8 +49,8 @@ listClients() {
         BYTES_RECEIVED="$(awk '{ print $6 }' <<< "${LINE}")"
         BYTES_SENT="$(awk '{ print $7 }' <<< "${LINE}")"
         LAST_SEEN="$(awk '{ print $5 }' <<< "${LINE}")"
-        CLIENT_NAME="$(grep "${PUBLIC_KEY}" "${CLIENTS_FILE}" |
-          awk '{ print $1 }')"
+        CLIENT_NAME="$(grep "${PUBLIC_KEY}" "${CLIENTS_FILE}" \
+          | awk '{ print $1 }')"
         printf "%s  \t  %s  \t  %s  \t  " \
           "${CLIENT_NAME}" \
           "${REMOTE_IP}" \

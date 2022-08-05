@@ -65,10 +65,10 @@ if [[ "${PLAT}" != 'Alpine' ]]; then
   # Regular expession taken from https://superuser.com/a/202835,
   # it will match invalid IPs like 123.456.789.012 but it's fine
   # since the log only contains valid ones.
-  declare -a IPS_TO_HIDE=("$(echo "${OVPNLOG}" |
-    grepcidr -v 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 |
-    grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' |
-    uniq)")
+  declare -a IPS_TO_HIDE=("$(echo "${OVPNLOG}" \
+    | grepcidr -v 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 \
+    | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' \
+    | uniq)")
 
   for IP in "${IPS_TO_HIDE[@]}"; do
     OVPNLOG="${OVPNLOG//"$IP"/REDACTED}"

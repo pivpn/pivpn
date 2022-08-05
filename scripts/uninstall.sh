@@ -26,8 +26,8 @@ setupConfigDir="/etc/pivpn"
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
 
-PLAT="$(grep -sEe '^NAME\=' /etc/os-release |
-  sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
+PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
+  | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
 
 if [[ "${PLAT}" == 'Alpine' ]]; then
   PKG_MANAGER='apk'
@@ -36,8 +36,8 @@ fi
 
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 
-if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]] &&
-  [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
+if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]] \
+  && [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
   vpnStillExists=1
 
   # Two protocols have been installed, check if the script has passed

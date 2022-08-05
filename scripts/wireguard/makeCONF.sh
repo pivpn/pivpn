@@ -40,9 +40,9 @@ while [[ "$#" -gt 0 ]]; do
       _val="${_key##--name=}"
 
       if [[ "${_val}" == "${_key}" ]]; then
-        [[ "$#" -lt 2 ]] &&
-          err "::: Missing value for the optional argument '${_key}'." &&
-          exit 1
+        [[ "$#" -lt 2 ]] \
+          && err "::: Missing value for the optional argument '${_key}'." \
+          && exit 1
 
         _val="${2}"
         shift
@@ -94,9 +94,9 @@ elif [[ -f "configs/${CLIENT_NAME}.conf" ]]; then
   exit 1
 fi
 
-wg genkey |
-  tee "keys/${CLIENT_NAME}_priv" |
-  wg pubkey > "keys/${CLIENT_NAME}_pub"
+wg genkey \
+  | tee "keys/${CLIENT_NAME}_priv" \
+  | wg pubkey > "keys/${CLIENT_NAME}_pub"
 wg genpsk | tee "keys/${CLIENT_NAME}_psk" &> /dev/null
 echo "::: Client Keys generated"
 
@@ -104,8 +104,8 @@ echo "::: Client Keys generated"
 for i in {2..254}; do
   if ! grep -q " ${i}$" configs/clients.txt; then
     COUNT="${i}"
-    echo "${CLIENT_NAME} $(< keys/"${CLIENT_NAME}"_pub) $(date +%s) ${COUNT}" |
-      tee -a configs/clients.txt > /dev/null
+    echo "${CLIENT_NAME} $(< keys/"${CLIENT_NAME}"_pub) $(date +%s) ${COUNT}" \
+      | tee -a configs/clients.txt > /dev/null
     break
   fi
 done
@@ -167,12 +167,12 @@ echo "::: Client config generated"
 echo "::: Updated server config"
 
 if [[ -f /etc/pivpn/hosts.wireguard ]]; then
-  echo "${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn" |
-    tee -a /etc/pivpn/hosts.wireguard > /dev/null
+  echo "${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn" \
+    | tee -a /etc/pivpn/hosts.wireguard > /dev/null
 
   if [[ "${pivpnenableipv6}" == 1 ]]; then
-    echo "${pivpnNETv6}${COUNT} ${CLIENT_NAME}.pivpn" |
-      tee -a /etc/pivpn/hosts.wireguard > /dev/null
+    echo "${pivpnNETv6}${COUNT} ${CLIENT_NAME}.pivpn" \
+      | tee -a /etc/pivpn/hosts.wireguard > /dev/null
   fi
 
   if killall -SIGHUP pihole-FTL; then

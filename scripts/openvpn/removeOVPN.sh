@@ -166,9 +166,9 @@ for ((ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     # shellcheck disable=SC2154
     # Grab the client IP address
     NET_REDUCED="${pivpnNET::-2}"
-    STATIC_IP="$(grep -v "^#" /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}" |
-      grep -w ifconfig-push |
-      grep -oE "${NET_REDUCED}\.[0-9]{1,3}")"
+    STATIC_IP="$(grep -v "^#" /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}" \
+      | grep -w ifconfig-push \
+      | grep -oE "${NET_REDUCED}\.[0-9]{1,3}")"
     rm -rf /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}"
 
     # disablung warning SC2154, $install_home sourced externally

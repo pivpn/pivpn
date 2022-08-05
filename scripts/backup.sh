@@ -20,8 +20,8 @@ setupConfigDir="/etc/pivpn"
 
 CHECK_PKG_INSTALLED='dpkg-query -s'
 
-if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]] &&
-  [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
+if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]] \
+  && [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
   # Two protocols have been installed, check if the script has passed
   # an argument, otherwise ask the user which one he wants to remove
   if [[ "$#" -ge 1 ]]; then

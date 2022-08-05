@@ -139,13 +139,13 @@ main() {
     echo "::: Forced IPv6 config, skipping IPv6 uplink check!"
     pivpnenableipv6=1
   else
-    if [[ -z "${pivpnenableipv6}" ]] ||
-      [[ "${pivpnenableipv6}" -eq 1 ]]; then
+    if [[ -z "${pivpnenableipv6}" ]] \
+      || [[ "${pivpnenableipv6}" -eq 1 ]]; then
       checkipv6uplink
     fi
 
-    if [[ "${pivpnenableipv6}" -eq 0 ]] &&
-      [[ "${pivpnforceipv6route}" -eq 1 ]]; then
+    if [[ "${pivpnenableipv6}" -eq 0 ]] \
+      && [[ "${pivpnforceipv6route}" -eq 1 ]]; then
       askforcedipv6route
     fi
   fi
@@ -155,8 +155,8 @@ main() {
   if checkStaticIpSupported; then
     getStaticIPv4Settings
 
-    if [[ -z "${dhcpReserv}" ]] ||
-      [[ "${dhcpReserv}" -ne 1 ]]; then
+    if [[ -z "${dhcpReserv}" ]] \
+      || [[ "${dhcpReserv}" -ne 1 ]]; then
       setStaticIPv4
     fi
   else
@@ -294,8 +294,8 @@ checkExistingInstall() {
     fi
   fi
 
-  if [[ -z "${UpdateCmd}" ]] ||
-    [[ "${UpdateCmd}" == "Reconfigure" ]]; then
+  if [[ -z "${UpdateCmd}" ]] \
+    || [[ "${UpdateCmd}" == "Reconfigure" ]]; then
     :
   elif [[ "${UpdateCmd}" == "Update" ]]; then
     ${SUDO} "${pivpnScriptDir}/update.sh" "$@"
@@ -328,8 +328,8 @@ Please choose from the following options \
     "${opt1a}" "${opt1b}" \
     "${opt2a}" "${opt2b}" \
     "${opt3a}" "${opt3b}" \
-    3>&2 2>&1 1>&3)" ||
-    {
+    3>&2 2>&1 1>&3)" \
+    || {
       err "::: Cancel selected. Exiting"
       exit 1
     }
@@ -447,8 +447,8 @@ checkHostname() {
       exit 1
     fi
 
-    until [[ "${#host_name}" -le 28 ]] &&
-      [[ "${host_name}" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$ ]]; do
+    until [[ "${#host_name}" -le 28 ]] \
+      && [[ "${host_name}" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$ ]]; do
       host_name="$(whiptail \
         --title "Hostname too long" \
         --inputbox "Your hostname is too long.
@@ -457,8 +457,8 @@ No special characters allowed." "${r}" "${c}" \
         3>&1 1>&2 2>&3)"
       ${SUDO} hostnamectl set-hostname "${host_name}"
 
-      if [[ "${#host_name}" -le 28 ]] &&
-        [[ "${host_name}" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$ ]]; then
+      if [[ "${#host_name}" -le 28 ]] \
+        && [[ "${host_name}" =~ ^[a-zA-Z0-9][a-zA-Z0-9-]{1,28}$ ]]; then
         echo "::: Hostname valid and length OK, proceeding..."
       fi
     done
@@ -489,9 +489,9 @@ verifyFreeDiskSpace() {
   echo "::: Verifying free disk space..."
   local required_free_kilobytes=76800
   local existing_free_kilobytes
-  existing_free_kilobytes="$(df -Pk |
-    grep -m1 '\/$' |
-    awk '{print $4}')"
+  existing_free_kilobytes="$(df -Pk \
+    | grep -m1 '\/$' \
+    | awk '{print $4}')"
 
   # - Unknown free disk space , not a integer
   if [[ ! "${existing_free_kilobytes}" =~ ^([0-9])+$ ]]; then
@@ -563,12 +563,12 @@ preconfigurePackages() {
   # Install packages used by this installation script
   # If apt is older than 1.5 we need to install an additional package to add
   # support for https repositories that will be used later on
-  if [[ "${PKG_MANAGER}" == 'apt-get' ]] &&
-    [[ -f /etc/apt/sources.list ]]; then
-    INSTALLED_APT="$(apt-cache policy apt |
-      grep -m1 'Installed: ' |
-      grep -v '(none)' |
-      awk '{print $2}')"
+  if [[ "${PKG_MANAGER}" == 'apt-get' ]] \
+    && [[ -f /etc/apt/sources.list ]]; then
+    INSTALLED_APT="$(apt-cache policy apt \
+      | grep -m1 'Installed: ' \
+      | grep -v '(none)' \
+      | awk '{print $2}')"
 
     if dpkg --compare-versions "${INSTALLED_APT}" lt 1.5; then
       BASE_DEPS+=("apt-transport-https")
@@ -587,13 +587,13 @@ preconfigurePackages() {
   fi
 
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-    AVAILABLE_OPENVPN="$(apt-cache policy openvpn |
-      grep -m1 'Candidate: ' |
-      grep -v '(none)' |
-      awk '{print $2}')"
+    AVAILABLE_OPENVPN="$(apt-cache policy openvpn \
+      | grep -m1 'Candidate: ' \
+      | grep -v '(none)' \
+      | awk '{print $2}')"
   elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
-    AVAILABLE_OPENVPN="$(apk search -e openvpn |
-      sed -E -e 's/openvpn\-(.*)/\1/')"
+    AVAILABLE_OPENVPN="$(apk search -e openvpn \
+      | sed -E -e 's/openvpn\-(.*)/\1/')"
   fi
 
   OPENVPN_SUPPORT=0
@@ -603,14 +603,14 @@ preconfigurePackages() {
   # repositories but we are running x86 Debian or Ubuntu, add the official repo
   # which provides the updated package.
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-    if [[ -n "${AVAILABLE_OPENVPN}" ]] &&
-      dpkg --compare-versions "${AVAILABLE_OPENVPN}" ge 2.4; then
+    if [[ -n "${AVAILABLE_OPENVPN}" ]] \
+      && dpkg --compare-versions "${AVAILABLE_OPENVPN}" ge 2.4; then
       OPENVPN_SUPPORT=1
     else
-      if [[ "${PLAT}" == "Debian" ]] ||
-        [[ "${PLAT}" == "Ubuntu" ]]; then
-        if [[ "${DPKG_ARCH}" == "amd64" ]] ||
-          [[ "${DPKG_ARCH}" == "i386" ]]; then
+      if [[ "${PLAT}" == "Debian" ]] \
+        || [[ "${PLAT}" == "Ubuntu" ]]; then
+        if [[ "${DPKG_ARCH}" == "amd64" ]] \
+          || [[ "${DPKG_ARCH}" == "i386" ]]; then
           NEED_OPENVPN_REPO=1
           OPENVPN_SUPPORT=1
         else
@@ -621,8 +621,8 @@ preconfigurePackages() {
       fi
     fi
   elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
-    if [[ -n "${AVAILABLE_OPENVPN}" ]] &&
-      [[ "$(apk version -t "${AVAILABLE_OPENVPN}" 2.4)" == '>' ]]; then
+    if [[ -n "${AVAILABLE_OPENVPN}" ]] \
+      && [[ "$(apk version -t "${AVAILABLE_OPENVPN}" 2.4)" == '>' ]]; then
       OPENVPN_SUPPORT=1
     else
       OPENVPN_SUPPORT=0
@@ -630,13 +630,13 @@ preconfigurePackages() {
   fi
 
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-    AVAILABLE_WIREGUARD="$(apt-cache policy wireguard |
-      grep -m1 'Candidate: ' |
-      grep -v '(none)' |
-      awk '{print $2}')"
+    AVAILABLE_WIREGUARD="$(apt-cache policy wireguard \
+      | grep -m1 'Candidate: ' \
+      | grep -v '(none)' \
+      | awk '{print $2}')"
   elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
-    AVAILABLE_WIREGUARD="$(apk search -e wireguard-tools |
-      sed -E -e 's/wireguard\-tools\-(.*)/\1/')"
+    AVAILABLE_WIREGUARD="$(apk search -e wireguard-tools \
+      | sed -E -e 's/wireguard\-tools\-(.*)/\1/')"
   fi
 
   WIREGUARD_SUPPORT=0
@@ -649,9 +649,9 @@ preconfigurePackages() {
   WIREGUARD_BUILTIN=0
 
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-    if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null ||
-      modinfo wireguard 2> /dev/null |
-      grep -q '^filename:[[:blank:]]*(builtin)$'; then
+    if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null \
+      || modinfo wireguard 2> /dev/null \
+      | grep -q '^filename:[[:blank:]]*(builtin)$'; then
       WIREGUARD_BUILTIN=1
     fi
   fi
@@ -659,33 +659,40 @@ preconfigurePackages() {
   if
     # If the module is builtin and the package available, we only need
     # to install wireguard-tools.
-    [[ "${WIREGUARD_BUILTIN}" -eq 1 && -n "${AVAILABLE_WIREGUARD}" ]] ||
+    [[ "${WIREGUARD_BUILTIN}" -eq 1 && -n "${AVAILABLE_WIREGUARD}" ]] \
+      ||
       # If the package is not available, on Debian and Raspbian we can
       # add it via Bullseye repository.
-      [[ "${WIREGUARD_BUILTIN}" -eq 1 && ("${PLAT}" == 'Debian' || "${PLAT}" == 'Raspbian') ]] ||
+      [[ "${WIREGUARD_BUILTIN}" -eq 1 && ("${PLAT}" == 'Debian' || "${PLAT}" == 'Raspbian') ]] \
+      ||
       # If the module is not builtin, on Raspbian we know the headers
       # package: raspberrypi-kernel-headers
-      [[ "${PLAT}" == 'Raspbian' ]] ||
+      [[ "${PLAT}" == 'Raspbian' ]] \
+      ||
       # On Alpine, the kernel must be linux-lts or linux-virt if we want to
       # load the kernel module
-      [[ "${PLAT}" == 'Alpine' && ! -f /.dockerenv && "$(uname -mrs)" =~ ^Linux\ +[0-9\.\-]+\-((lts)|(virt))\ +.*$ ]] ||
+      [[ "${PLAT}" == 'Alpine' && ! -f /.dockerenv && "$(uname -mrs)" =~ ^Linux\ +[0-9\.\-]+\-((lts)|(virt))\ +.*$ ]] \
+      ||
       # On Alpine Docker Container, the responsibility to have a WireGuard
       # module on the host system is at user side
-      [[ "${PLAT}" == 'Alpine' && -f /.dockerenv ]] ||
+      [[ "${PLAT}" == 'Alpine' && -f /.dockerenv ]] \
+      ||
       # On Debian (and Ubuntu), we can only reliably assume the headers package
       # for amd64: linux-image-amd64
-      [[ "${PLAT}" == 'Debian' && "${DPKG_ARCH}" == 'amd64' ]] ||
+      [[ "${PLAT}" == 'Debian' && "${DPKG_ARCH}" == 'amd64' ]] \
+      ||
       # On Ubuntu, additionally the WireGuard package needs to be available,
       # since we didn't test mixing Ubuntu repositories.
-      [[ "${PLAT}" == 'Ubuntu' && "${DPKG_ARCH}" == 'amd64' && -n "${AVAILABLE_WIREGUARD}" ]] ||
+      [[ "${PLAT}" == 'Ubuntu' && "${DPKG_ARCH}" == 'amd64' && -n "${AVAILABLE_WIREGUARD}" ]] \
+      ||
       # Ubuntu focal has wireguard support
       [[ "${PLAT}" == 'Ubuntu' && "${DPKG_ARCH}" == 'arm64' && "${OSCN}" == 'focal' && -n "${AVAILABLE_WIREGUARD}" ]]
   then
     WIREGUARD_SUPPORT=1
   fi
 
-  if [[ "${OPENVPN_SUPPORT}" -eq 0 ]] &&
-    [[ "${WIREGUARD_SUPPORT}" -eq 0 ]]; then
+  if [[ "${OPENVPN_SUPPORT}" -eq 0 ]] \
+    && [[ "${WIREGUARD_SUPPORT}" -eq 0 ]]; then
     err "::: Neither OpenVPN nor WireGuard are available to install by PiVPN, exiting..."
     exit 1
   fi
@@ -704,14 +711,14 @@ preconfigurePackages() {
 
   if [[ "${PKG_MANAGER}" == 'apt-get' ]] && [[ "${USING_UFW}" -eq 0 ]]; then
     BASE_DEPS+=(iptables-persistent)
-    echo iptables-persistent iptables-persistent/autosave_v4 boolean true |
-      ${SUDO} debconf-set-selections
-    echo iptables-persistent iptables-persistent/autosave_v6 boolean false |
-      ${SUDO} debconf-set-selections
+    echo iptables-persistent iptables-persistent/autosave_v4 boolean true \
+      | ${SUDO} debconf-set-selections
+    echo iptables-persistent iptables-persistent/autosave_v6 boolean false \
+      | ${SUDO} debconf-set-selections
   fi
 
-  if [[ "${PLAT}" == 'Alpine' ]] &&
-    ! command -v grepcidr &> /dev/null; then
+  if [[ "${PLAT}" == 'Alpine' ]] \
+    && ! command -v grepcidr &> /dev/null; then
     local down_dir
     ## install dependencies
     # shellcheck disable=SC2086
@@ -762,8 +769,8 @@ installDependentPackages() {
     echo -n ":::    Checking for ${i}..."
 
     if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-      if dpkg-query -W -f='${Status}' "${i}" 2> /dev/null |
-        grep -q "ok installed"; then
+      if dpkg-query -W -f='${Status}' "${i}" 2> /dev/null \
+        | grep -q "ok installed"; then
         echo " already installed!"
       else
         echo " not installed!"
@@ -790,8 +797,8 @@ installDependentPackages() {
 
   for i in "${TO_INSTALL[@]}"; do
     if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-      if dpkg-query -W -f='${Status}' "${i}" 2> /dev/null |
-        grep -q "ok installed"; then
+      if dpkg-query -W -f='${Status}' "${i}" 2> /dev/null \
+        | grep -q "ok installed"; then
         echo ":::    Package ${i} successfully installed!"
         # Add this package to the total list of packages that were actually
         # installed by the script
@@ -868,20 +875,20 @@ chooseInterface() {
     # Show every network interface, could be useful for those who
     # install PiVPN inside virtual machines or on Raspberry Pis
     # with USB adapters
-    availableInterfaces="$(echo "${availableInterfaces}" |
-      awk '{print $2}')"
+    availableInterfaces="$(echo "${availableInterfaces}" \
+      | awk '{print $2}')"
   else
     # Find network interfaces whose state is UP
-    availableInterfaces="$(echo "${availableInterfaces}" |
-      awk '/state UP/ {print $2}')"
+    availableInterfaces="$(echo "${availableInterfaces}" \
+      | awk '/state UP/ {print $2}')"
   fi
 
   # Skip virtual, loopback and docker interfaces
-  availableInterfaces="$(echo "${availableInterfaces}" |
-    cut -d ':' -f 1 |
-    cut -d '@' -f 1 |
-    grep -v -w 'lo' |
-    grep -v '^docker')"
+  availableInterfaces="$(echo "${availableInterfaces}" \
+    | cut -d ':' -f 1 \
+    | cut -d '@' -f 1 \
+    | grep -v -w 'lo' \
+    | grep -v '^docker')"
 
   if [[ -z "${availableInterfaces}" ]]; then
     err "::: Could not find any active network interface, exiting"
@@ -942,8 +949,8 @@ chooseInterface() {
     {
       echo "IPv4dev=${IPv4dev}"
 
-      if [[ "${pivpnenableipv6}" -eq 1 ]] &&
-        [[ -z "${IPv6dev}" ]]; then
+      if [[ "${pivpnenableipv6}" -eq 1 ]] \
+        && [[ -z "${IPv6dev}" ]]; then
         echo "IPv6dev=${IPv6dev}"
       fi
     } >> "${tempsetupVarsFile}"
@@ -1012,8 +1019,8 @@ checkStaticIpSupported() {
     return 0
   # If we are on 'Debian' but the raspi.list file is present,
   # then we actually are on 64-bit Raspberry Pi OS.
-  elif [[ "${PLAT}" == "Debian" ]] &&
-    [[ -s /etc/apt/sources.list.d/raspi.list ]]; then
+  elif [[ "${PLAT}" == "Debian" ]] \
+    && [[ -s /etc/apt/sources.list.d/raspi.list ]]; then
     return 0
   else
     return 1
@@ -1120,7 +1127,7 @@ force all IPv6 connections through the VPN.\\n\\nThis will prevent the \
 client from bypassing the tunnel and leaking its real IPv6 address to servers, \
 though it might cause the client to have slow response when browsing the web \
 on IPv6 networks.
-    
+
 Do you want to force routing IPv6 to block the leakage?" "${r}" "${c}"; then
     pivpnforceipv6route=1
   else
@@ -1132,23 +1139,23 @@ Do you want to force routing IPv6 to block the leakage?" "${r}" "${c}"; then
 
 getStaticIPv4Settings() {
   # Find the gateway IP used to route to outside world
-  CurrentIPv4gw="$(ip -o route get 192.0.2.1 |
-    grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' |
-    awk 'NR==2')"
+  CurrentIPv4gw="$(ip -o route get 192.0.2.1 \
+    | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' \
+    | awk 'NR==2')"
 
   # Find the IP address (and netmask) of the desidered interface
-  CurrentIPv4addr="$(ip -o -f inet address show dev "${IPv4dev}" |
-    grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
+  CurrentIPv4addr="$(ip -o -f inet address show dev "${IPv4dev}" \
+    | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
 
   # Grab their current DNS servers
-  IPv4dns="$(grep -v "^#" /etc/resolv.conf |
-    grep -w nameserver |
-    grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' |
-    xargs)"
+  IPv4dns="$(grep -v "^#" /etc/resolv.conf \
+    | grep -w nameserver \
+    | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' \
+    | xargs)"
 
   if [[ "${runUnattended}" == 'true' ]]; then
-    if [[ -z "${dhcpReserv}" ]] ||
-      [[ "${dhcpReserv}" -ne 1 ]]; then
+    if [[ -z "${dhcpReserv}" ]] \
+      || [[ "${dhcpReserv}" -ne 1 ]]; then
       local MISSING_STATIC_IPV4_SETTINGS=0
 
       if [[ -z "${IPv4addr}" ]]; then
@@ -1283,7 +1290,7 @@ IPv4 address" "${r}" "${c}" "${CurrentIPv4addr}" \
                 --backtitle "Calibrating network interface" \
                 --title "IPv4 address" \
                 --msgbox "You've entered an invalid IP address: ${IPv4addr}
-                
+
 Please enter an IP address in the CIDR notation, example: 192.168.23.211/24
 
 If you are not sure, please just keep the default." "${r}" "${c}"
@@ -1313,7 +1320,7 @@ default gateway" "${r}" "${c}" "${CurrentIPv4gw}" \
                 --backtitle "Calibrating network interface" \
                 --title "IPv4 gateway (router)" \
                 --msgbox "You've entered an invalid gateway IP: ${IPv4gw}
-                
+
 Please enter the IP address of your gateway (router), example: 192.168.23.1
 
 If you are not sure, please just keep the default." "${r}" "${c}"
@@ -1401,8 +1408,8 @@ chooseUser() {
         exit 1
       fi
     else
-      if awk -F':' '$3>=1000 && $3<=60000 {print $1}' /etc/passwd |
-        grep -qw "${install_user}"; then
+      if awk -F':' '$3>=1000 && $3<=60000 {print $1}' /etc/passwd \
+        | grep -qw "${install_user}"; then
         echo "::: ${install_user} will hold your ovpn configurations."
       else
         echo "::: User ${install_user} does not exist, creating..."
@@ -1419,8 +1426,8 @@ chooseUser() {
       fi
     fi
 
-    install_home="$(grep -m1 "^${install_user}:" /etc/passwd |
-      cut -d ':' -f 6)"
+    install_home="$(grep -m1 "^${install_user}:" /etc/passwd \
+      | cut -d ':' -f 6)"
     install_home="${install_home%/}"
 
     {
@@ -1519,8 +1526,8 @@ chooseUser() {
     for desiredUser in ${chooseUserOptions}; do
       install_user=${desiredUser}
       echo "::: Using User: ${install_user}"
-      install_home=$(grep -m1 "^${install_user}:" /etc/passwd |
-        cut -d ':' -f 6)
+      install_home=$(grep -m1 "^${install_user}:" /etc/passwd \
+        | cut -d ':' -f 6)
       install_home=${install_home%/} # remove possible trailing slash
 
       {
@@ -1562,8 +1569,8 @@ updateRepo() {
 
     # Go back to /usr/local/src otherwise git will complain when the current
     # working directory has just been deleted (/usr/local/src/pivpn).
-    cd /usr/local/src &&
-      ${SUDO} git clone \
+    cd /usr/local/src \
+      && ${SUDO} git clone \
         -q \
         --depth 1 \
         --no-single-branch \
@@ -1600,8 +1607,8 @@ makeRepo() {
 
   # Go back to /usr/local/src otherwhise git will complain when the current
   # working directory has just been deleted (/usr/local/src/pivpn).
-  cd /usr/local/src &&
-    ${SUDO} git clone \
+  cd /usr/local/src \
+    && ${SUDO} git clone \
       -q \
       --depth 1 \
       --no-single-branch \
@@ -1643,8 +1650,8 @@ cloneOrUpdateRepos() {
   ${SUDO} mkdir -p /usr/local/src
 
   # Get Git files
-  getGitFiles "${pivpnFilesDir}" "${pivpnGitUrl}" ||
-    {
+  getGitFiles "${pivpnFilesDir}" "${pivpnGitUrl}" \
+    || {
       err "!!! Unable to clone ${pivpnGitUrl} into ${pivpnFilesDir}, unable to continue."
       exit 1
     }
@@ -1721,8 +1728,8 @@ generateRandomSubnet() {
   SUBNET_EXCLUDE_LIST+=(10.100.1.0/24)
   SUBNET_EXCLUDE_LIST+=(10.255.255.0/24)
 
-  readarray -t CURRENTLY_USED_SUBNETS <<< "$(ip route show |
-    grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
+  readarray -t CURRENTLY_USED_SUBNETS <<< "$(ip route show \
+    | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
   SUBNET_EXCLUDE_LIST=("${SUBNET_EXCLUDE_LIST[@]}"
     "${CURRENTLY_USED_SUBNETS[@]}")
 
@@ -1769,8 +1776,8 @@ setWireguardDefaultVars() {
     pivpnNET="$(generateRandomSubnet)"
   fi
 
-  if [[ "${pivpnenableipv6}" -eq 1 ]] &&
-    [[ -z "${pivpnNETv6}" ]]; then
+  if [[ "${pivpnenableipv6}" -eq 1 ]] \
+    && [[ -z "${pivpnNETv6}" ]]; then
     pivpnNETv6="fd11:5ee:bad:c0de::"
   fi
 
@@ -1787,8 +1794,8 @@ setWireguardDefaultVars() {
 
     # Forward all traffic through PiVPN (i.e. full-tunnel), may be modified by
     # the user after the installation.
-    if [[ "${pivpnenableipv6}" -eq 1 ]] ||
-      [[ "${pivpnforceipv6route}" -eq 1 ]]; then
+    if [[ "${pivpnenableipv6}" -eq 1 ]] \
+      || [[ "${pivpnforceipv6route}" -eq 1 ]]; then
       ALLOWED_IPS="${ALLOWED_IPS}, ::0/0"
     fi
   fi
@@ -1867,15 +1874,15 @@ askWhichVPN() {
       fi
     fi
   else
-    if [[ "${WIREGUARD_SUPPORT}" -eq 1 ]] &&
-      [[ "${OPENVPN_SUPPORT}" -eq 1 ]]; then
+    if [[ "${WIREGUARD_SUPPORT}" -eq 1 ]] \
+      && [[ "${OPENVPN_SUPPORT}" -eq 1 ]]; then
       chooseVPNCmd=(whiptail
         --backtitle "Setup PiVPN"
         --title "Installation mode"
         --separate-output
         --radiolist "WireGuard is a new kind of VPN that provides \
 near-instantaneous connection speed, high performance, and modern cryptography.
-        
+
 It's the recommended choice especially if you use mobile devices where \
 WireGuard is easier on battery than OpenVPN.
 
@@ -1895,12 +1902,12 @@ Choose a VPN (press space to select):" "${r}" "${c}" 2)
         err "::: Cancel selected, exiting...."
         exit 1
       fi
-    elif [[ "${OPENVPN_SUPPORT}" -eq 1 ]] &&
-      [[ "${WIREGUARD_SUPPORT}" -eq 0 ]]; then
+    elif [[ "${OPENVPN_SUPPORT}" -eq 1 ]] \
+      && [[ "${WIREGUARD_SUPPORT}" -eq 0 ]]; then
       echo "::: Using VPN: OpenVPN"
       VPN="openvpn"
-    elif [[ "${OPENVPN_SUPPORT}" -eq 0 ]] &&
-      [[ "${WIREGUARD_SUPPORT}" -eq 1 ]]; then
+    elif [[ "${OPENVPN_SUPPORT}" -eq 0 ]] \
+      && [[ "${WIREGUARD_SUPPORT}" -eq 1 ]]; then
       echo "::: Using VPN: WireGuard"
       VPN="wireguard"
     fi
@@ -1918,7 +1925,7 @@ askAboutCustomizing() {
       --yesno "PiVPN uses the following settings that we believe are good \
 defaults for most users. However, we still want to keep flexibility, so if \
 you need to customize them, choose Yes.
-      
+
 * UDP or TCP protocol: UDP
 * Custom search domain for the DNS field: None
 * Modern features or best compatibility: Modern features \
@@ -1951,8 +1958,8 @@ installOpenVPN() {
     fi
 
     echo "::: Adding OpenVPN repository... "
-    echo "deb https://build.openvpn.net/debian/openvpn/stable ${OSCN} main" |
-      ${SUDO} tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
+    echo "deb https://build.openvpn.net/debian/openvpn/stable ${OSCN} main" \
+      | ${SUDO} tee /etc/apt/sources.list.d/pivpn-openvpn-repo.list > /dev/null
 
     echo "::: Updating package cache..."
     updatePackageCache
@@ -1999,16 +2006,16 @@ installWireGuard() {
     PIVPN_DEPS+=(libqrencode)
   fi
 
-  if [[ "${PLAT}" == "Raspbian" || "${PLAT}" == "Debian" ]] &&
-    [[ -z "${AVAILABLE_WIREGUARD}" ]]; then
+  if [[ "${PLAT}" == "Raspbian" || "${PLAT}" == "Debian" ]] \
+    && [[ -z "${AVAILABLE_WIREGUARD}" ]]; then
     if [[ "${PLAT}" == "Debian" ]]; then
       echo "::: Adding Debian Bullseye repository... "
-      echo "deb https://deb.debian.org/debian/ bullseye main" |
-        ${SUDO} tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
+      echo "deb https://deb.debian.org/debian/ bullseye main" \
+        | ${SUDO} tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
     else
       echo "::: Adding Raspbian Bullseye repository... "
-      echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" |
-        ${SUDO} tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
+      echo "deb http://raspbian.raspberrypi.org/raspbian/ bullseye main" \
+        | ${SUDO} tee /etc/apt/sources.list.d/pivpn-bullseye-repo.list > /dev/null
     fi
 
     {
@@ -2035,8 +2042,8 @@ askCustomProto() {
     else
       pivpnPROTO="${pivpnPROTO,,}"
 
-      if [[ "${pivpnPROTO}" == "udp" ]] ||
-        [[ "${pivpnPROTO}" == "tcp" ]]; then
+      if [[ "${pivpnPROTO}" == "udp" ]] \
+        || [[ "${pivpnPROTO}" == "tcp" ]]; then
         echo "::: Using the ${pivpnPROTO} protocol"
       else
         err ":: ${pivpnPROTO} is not a supported TCP/IP protocol, please specify 'udp' or 'tcp'"
@@ -2091,9 +2098,9 @@ askCustomPort() {
         fi
       fi
     else
-      if [[ "${pivpnPORT}" =~ ^[0-9]+$ ]] &&
-        [[ "${pivpnPORT}" -ge 1 ]] &&
-        [[ "${pivpnPORT}" -le 65535 ]]; then
+      if [[ "${pivpnPORT}" =~ ^[0-9]+$ ]] \
+        && [[ "${pivpnPORT}" -ge 1 ]] \
+        && [[ "${pivpnPORT}" -le 65535 ]]; then
         echo "::: Using port ${pivpnPORT}"
       else
         err "::: ${pivpnPORT} is not a valid port, use a port within the range [1,65535] (inclusive)"
@@ -2124,9 +2131,9 @@ askCustomPort() {
 Enter a new value or hit 'Enter' to retain \
 the default" "${r}" "${c}" "${DEFAULT_PORT}" \
       3>&1 1>&2 2>&3)"; then
-      if [[ "${pivpnPORT}" =~ ^[0-9]+$ ]] &&
-        [[ "${pivpnPORT}" -ge 1 ]] &&
-        [[ "${pivpnPORT}" -le 65535 ]]; then
+      if [[ "${pivpnPORT}" =~ ^[0-9]+$ ]] \
+        && [[ "${pivpnPORT}" -ge 1 ]] \
+        && [[ "${pivpnPORT}" -le 65535 ]]; then
         :
       else
         pivpnPORT="${portInvalid}"
@@ -2164,12 +2171,12 @@ the default" "${r}" "${c}" "${DEFAULT_PORT}" \
 
 askClientDNS() {
   if [[ "${runUnattended}" == 'true' ]]; then
-    if [[ -z "${pivpnDNS1}" ]] &&
-      [[ -n "${pivpnDNS2}" ]]; then
+    if [[ -z "${pivpnDNS1}" ]] \
+      && [[ -n "${pivpnDNS2}" ]]; then
       pivpnDNS1="${pivpnDNS2}"
       unset pivpnDNS2
-    elif [[ -z "${pivpnDNS1}" ]] &&
-      [[ -z "${pivpnDNS2}" ]]; then
+    elif [[ -z "${pivpnDNS1}" ]] \
+      && [[ -z "${pivpnDNS2}" ]]; then
       pivpnDNS1="9.9.9.9"
       pivpnDNS2="149.112.112.112"
       echo -n "::: No DNS provider specified, "
@@ -2183,8 +2190,8 @@ askClientDNS() {
       echo "::: Invalid DNS ${pivpnDNS1}"
     fi
 
-    if [[ -n "${pivpnDNS2}" ]] &&
-      ! validIP "${pivpnDNS2}"; then
+    if [[ -n "${pivpnDNS2}" ]] \
+      && ! validIP "${pivpnDNS2}"; then
       INVALID_DNS_SETTINGS=1
       echo "::: Invalid DNS ${pivpnDNS2}"
     fi
@@ -2218,8 +2225,8 @@ get ad blocking on the go?" "${r}" "${c}"; then
       # Add a custom hosts file for VPN clients so they appear
       # as 'name.pivpn' in the Pi-hole dashboard as well as resolve
       # by their names.
-      echo "addn-hosts=/etc/pivpn/hosts.${VPN}" |
-        ${SUDO} tee "${dnsmasqConfig}" > /dev/null
+      echo "addn-hosts=/etc/pivpn/hosts.${VPN}" \
+        | ${SUDO} tee "${dnsmasqConfig}" > /dev/null
 
       # Then create an empty hosts file or clear if it exists.
       ${SUDO} bash -c "> /etc/pivpn/hosts.${VPN}"
@@ -2296,23 +2303,23 @@ In case you have a local resolver running, i.e. unbound, select \
           --backtitle "Specify Upstream DNS Provider(s)" \
           --inputbox "Enter your desired upstream DNS provider(s), \
 separated by a comma.
-        
+
 For example '1.1.1.1, 9.9.9.9'" "${r}" "${c}" "" \
           3>&1 1>&2 2>&3)"; then
-          pivpnDNS1="$(echo "${pivpnDNS}" |
-            sed 's/[, \t]\+/,/g' |
-            awk -F, '{print$1}')"
-          pivpnDNS2="$(echo "${pivpnDNS}" |
-            sed 's/[, \t]\+/,/g' |
-            awk -F, '{print$2}')"
+          pivpnDNS1="$(echo "${pivpnDNS}" \
+            | sed 's/[, \t]\+/,/g' \
+            | awk -F, '{print$1}')"
+          pivpnDNS2="$(echo "${pivpnDNS}" \
+            | sed 's/[, \t]\+/,/g' \
+            | awk -F, '{print$2}')"
 
-          if ! validIP "${pivpnDNS1}" ||
-            [[ ! "${pivpnDNS1}" ]]; then
+          if ! validIP "${pivpnDNS1}" \
+            || [[ ! "${pivpnDNS1}" ]]; then
             pivpnDNS1="${strInvalid}"
           fi
 
-          if ! validIP "${pivpnDNS2}" &&
-            [[ "${pivpnDNS2}" ]]; then
+          if ! validIP "${pivpnDNS2}" \
+            && [[ "${pivpnDNS2}" ]]; then
             pivpnDNS2="${strInvalid}"
           fi
         else
@@ -2320,8 +2327,8 @@ For example '1.1.1.1, 9.9.9.9'" "${r}" "${c}" "" \
           exit 1
         fi
 
-        if [[ "${pivpnDNS1}" == "${strInvalid}" ]] ||
-          [[ "${pivpnDNS2}" == "${strInvalid}" ]]; then
+        if [[ "${pivpnDNS1}" == "${strInvalid}" ]] \
+          || [[ "${pivpnDNS2}" == "${strInvalid}" ]]; then
           whiptail \
             --backtitle "Invalid IP" \
             --title "Invalid IP" \
@@ -2448,12 +2455,12 @@ Format: mydomain.com" "${r}" "${c}" \
 }
 
 askPublicIPOrDNS() {
-  if ! IPv4pub="$(dig +short myip.opendns.com @208.67.222.222)" ||
-    ! validIP "${IPv4pub}"; then
+  if ! IPv4pub="$(dig +short myip.opendns.com @208.67.222.222)" \
+    || ! validIP "${IPv4pub}"; then
     err "dig failed, now trying to curl checkip.amazonaws.com"
 
-    if ! IPv4pub="$(curl -sSf https://checkip.amazonaws.com)" ||
-      ! validIP "${IPv4pub}"; then
+    if ! IPv4pub="$(curl -sSf https://checkip.amazonaws.com)" \
+      || ! validIP "${IPv4pub}"; then
       err "checkip.amazonaws.com failed, please check your internet connection/DNS"
       exit 1
     fi
@@ -2539,8 +2546,8 @@ Public DNS Name:  ${PUBLICDNS}" "${r}" "${c}"; then
 
 askEncryption() {
   if [[ "${runUnattended}" == 'true' ]]; then
-    if [[ -z "${TWO_POINT_FOUR}" ]] ||
-      [[ "${TWO_POINT_FOUR}" -eq 1 ]]; then
+    if [[ -z "${TWO_POINT_FOUR}" ]] \
+      || [[ "${TWO_POINT_FOUR}" -eq 1 ]]; then
       TWO_POINT_FOUR=1
       echo "::: Using OpenVPN 2.4 features"
 
@@ -2548,9 +2555,9 @@ askEncryption() {
         pivpnENCRYPT=256
       fi
 
-      if [[ "${pivpnENCRYPT}" -eq 256 ]] ||
-        [[ "${pivpnENCRYPT}" -eq 384 ]] ||
-        [[ "${pivpnENCRYPT}" -eq 521 ]]; then
+      if [[ "${pivpnENCRYPT}" -eq 256 ]] \
+        || [[ "${pivpnENCRYPT}" -eq 384 ]] \
+        || [[ "${pivpnENCRYPT}" -eq 521 ]]; then
         echo "::: Using a ${pivpnENCRYPT}-bit certificate"
       else
         err "::: ${pivpnENCRYPT} is not a valid certificate size, use 256, 384, or 521"
@@ -2564,9 +2571,9 @@ askEncryption() {
         pivpnENCRYPT=2048
       fi
 
-      if [[ "${pivpnENCRYPT}" -eq 2048 ]] ||
-        [[ "${pivpnENCRYPT}" -eq 3072 ]] ||
-        [[ "${pivpnENCRYPT}" -eq 4096 ]]; then
+      if [[ "${pivpnENCRYPT}" -eq 2048 ]] \
+        || [[ "${pivpnENCRYPT}" -eq 3072 ]] \
+        || [[ "${pivpnENCRYPT}" -eq 4096 ]]; then
         echo "::: Using a ${pivpnENCRYPT}-bit certificate"
       else
         err "::: ${pivpnENCRYPT} is not a valid certificate size, use 2048, 3072, or 4096"
@@ -2612,7 +2619,7 @@ askEncryption() {
     --yesno "OpenVPN 2.4 can take advantage of Elliptic Curves \
 to provide higher connection speed and improved security over \
 RSA, while keeping smaller certificates.
-    
+
 Moreover, the 'tls-crypt' directive encrypts the certificates \
 being used while authenticating, increasing privacy.
 
@@ -2661,8 +2668,8 @@ then grab a cup of joe and pick 4096 bits." "${r}" "${c}" 3 \
     exit 1
   fi
 
-  if [[ "${pivpnENCRYPT}" -ge 2048 ]] &&
-    whiptail \
+  if [[ "${pivpnENCRYPT}" -ge 2048 ]] \
+    && whiptail \
       --backtitle "Setup OpenVPN" \
       --title "Generate Diffie-Hellman Parameters" \
       --yesno "Generating DH parameters can take many hours on a Raspberry Pi. \
@@ -2732,8 +2739,8 @@ confOpenVPN() {
   fi
 
   # Get easy-rsa
-  curl -sSfL "${easyrsaRel}" |
-    ${SUDO} tar -xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
+  curl -sSfL "${easyrsaRel}" \
+    | ${SUDO} tar -xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
 
   if [[ ! -s /etc/openvpn/easy-rsa/easyrsa ]]; then
     err "${0}: ERR: Failed to download EasyRSA."
@@ -2803,8 +2810,8 @@ confOpenVPN() {
   ${SUDOE} ./easyrsa --batch build-ca nopass
   printf "\\n::: CA Complete.\\n"
 
-  if [[ "${pivpnCERT}" == "rsa" ]] &&
-    [[ "${USE_PREDEFINED_DH_PARAM}" -ne 1 ]]; then
+  if [[ "${pivpnCERT}" == "rsa" ]] \
+    && [[ "${USE_PREDEFINED_DH_PARAM}" -ne 1 ]]; then
     if [[ "${runUnattended}" == 'true' ]]; then
       echo "::: The server key, Diffie-Hellman parameters, \
 and HMAC key will now be generated."
@@ -2818,8 +2825,8 @@ and HMAC key will now be generated." \
         "${r}" \
         "${c}"
     fi
-  elif [[ "${pivpnCERT}" == "ec" ]] ||
-    [[ "${pivpnCERT}" == "rsa" && "${USE_PREDEFINED_DH_PARAM}" -eq 1 ]]; then
+  elif [[ "${pivpnCERT}" == "ec" ]] \
+    || [[ "${pivpnCERT}" == "rsa" && "${USE_PREDEFINED_DH_PARAM}" -eq 1 ]]; then
     if [[ "${runUnattended}" == 'true' ]]; then
       echo "::: The server key and HMAC key will now be generated."
     else
@@ -3100,11 +3107,11 @@ confWireGuard() {
   ${SUDO} mkdir -p /etc/wireguard/keys
 
   # Generate private key and derive public key from it
-  wg genkey |
-    ${SUDO} tee /etc/wireguard/keys/server_priv &> /dev/null
-  ${SUDO} cat /etc/wireguard/keys/server_priv |
-    wg pubkey |
-    ${SUDO} tee /etc/wireguard/keys/server_pub &> /dev/null
+  wg genkey \
+    | ${SUDO} tee /etc/wireguard/keys/server_priv &> /dev/null
+  ${SUDO} cat /etc/wireguard/keys/server_priv \
+    | wg pubkey \
+    | ${SUDO} tee /etc/wireguard/keys/server_pub &> /dev/null
 
   echo "::: Server Keys have been generated."
 
@@ -3128,8 +3135,8 @@ confWireGuard() {
 
 confNetwork() {
   # Enable forwarding of internet traffic
-  echo 'net.ipv4.ip_forward=1' |
-    ${SUDO} tee /etc/sysctl.d/99-pivpn.conf > /dev/null
+  echo 'net.ipv4.ip_forward=1' \
+    | ${SUDO} tee /etc/sysctl.d/99-pivpn.conf > /dev/null
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
     {
@@ -3249,8 +3256,8 @@ confNetwork() {
   # On a newly installed system all policies should be ACCEPT,
   # so the only required rule would be the MASQUERADE one.
 
-  if ! ${SUDO} iptables -t nat -S |
-    grep -q "${VPN}-nat-rule"; then
+  if ! ${SUDO} iptables -t nat -S \
+    | grep -q "${VPN}-nat-rule"; then
     ${SUDO} iptables \
       -t nat \
       -I POSTROUTING \
@@ -3262,8 +3269,8 @@ confNetwork() {
   fi
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-    if ! ${SUDO} ip6tables -t nat -S |
-      grep -q "${VPN}-nat-rule"; then
+    if ! ${SUDO} ip6tables -t nat -S \
+      | grep -q "${VPN}-nat-rule"; then
       ${SUDO} ip6tables \
         -t nat \
         -I POSTROUTING \
@@ -3283,38 +3290,38 @@ confNetwork() {
   # Grep returns non 0 exit code where there are no matches,
   # however that would make the script exit,
   # for this reasons we use '|| true' to force exit code 0
-  INPUT_RULES_COUNT="$(${SUDO} iptables -S INPUT |
-    grep -vcE '(^-P|ufw-)')"
-  FORWARD_RULES_COUNT="$(${SUDO} iptables -S FORWARD |
-    grep -vcE '(^-P|ufw-)')"
-  INPUT_POLICY="$(${SUDO} iptables -S INPUT |
-    grep '^-P' |
-    awk '{print $3}')"
-  FORWARD_POLICY="$(${SUDO} iptables -S FORWARD |
-    grep '^-P' |
-    awk '{print $3}')"
+  INPUT_RULES_COUNT="$(${SUDO} iptables -S INPUT \
+    | grep -vcE '(^-P|ufw-)')"
+  FORWARD_RULES_COUNT="$(${SUDO} iptables -S FORWARD \
+    | grep -vcE '(^-P|ufw-)')"
+  INPUT_POLICY="$(${SUDO} iptables -S INPUT \
+    | grep '^-P' \
+    | awk '{print $3}')"
+  FORWARD_POLICY="$(${SUDO} iptables -S FORWARD \
+    | grep '^-P' \
+    | awk '{print $3}')"
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-    INPUT_RULES_COUNTv6="$(${SUDO} ip6tables -S INPUT |
-      grep -vcE '(^-P|ufw-)')"
-    FORWARD_RULES_COUNTv6="$(${SUDO} ip6tables -S FORWARD |
-      grep -vcE '(^-P|ufw-)')"
-    INPUT_POLICYv6="$(${SUDO} ip6tables -S INPUT |
-      grep '^-P' |
-      awk '{print $3}')"
-    FORWARD_POLICYv6="$(${SUDO} ip6tables -S FORWARD |
-      grep '^-P' |
-      awk '{print $3}')"
+    INPUT_RULES_COUNTv6="$(${SUDO} ip6tables -S INPUT \
+      | grep -vcE '(^-P|ufw-)')"
+    FORWARD_RULES_COUNTv6="$(${SUDO} ip6tables -S FORWARD \
+      | grep -vcE '(^-P|ufw-)')"
+    INPUT_POLICYv6="$(${SUDO} ip6tables -S INPUT \
+      | grep '^-P' \
+      | awk '{print $3}')"
+    FORWARD_POLICYv6="$(${SUDO} ip6tables -S FORWARD \
+      | grep '^-P' \
+      | awk '{print $3}')"
   fi
 
   # If rules count is not zero, we assume we need to explicitly allow traffic.
   # Same conclusion if there are no rules and the policy is not ACCEPT.
   # Note that rules are being added to the top of the chain (using -I).
 
-  if [[ "${INPUT_RULES_COUNT}" -ne 0 ]] ||
-    [[ "${INPUT_POLICY}" != "ACCEPT" ]]; then
-    if ! ${SUDO} iptables -S |
-      grep -q "${VPN}-input-rule"; then
+  if [[ "${INPUT_RULES_COUNT}" -ne 0 ]] \
+    || [[ "${INPUT_POLICY}" != "ACCEPT" ]]; then
+    if ! ${SUDO} iptables -S \
+      | grep -q "${VPN}-input-rule"; then
       ${SUDO} iptables \
         -I INPUT 1 \
         -i "${IPv4dev}" \
@@ -3331,10 +3338,10 @@ confNetwork() {
   fi
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-    if [[ "${INPUT_RULES_COUNTv6}" -ne 0 ]] ||
-      [[ "${INPUT_POLICYv6}" != "ACCEPT" ]]; then
-      if ! ${SUDO} ip6tables -S |
-        grep -q "${VPN}-input-rule"; then
+    if [[ "${INPUT_RULES_COUNTv6}" -ne 0 ]] \
+      || [[ "${INPUT_POLICYv6}" != "ACCEPT" ]]; then
+      if ! ${SUDO} ip6tables -S \
+        | grep -q "${VPN}-input-rule"; then
         ${SUDO} ip6tables \
           -I INPUT 1 \
           -i "${IPv6dev}" \
@@ -3351,10 +3358,10 @@ confNetwork() {
     fi
   fi
 
-  if [[ "${FORWARD_RULES_COUNT}" -ne 0 ]] ||
-    [[ "${FORWARD_POLICY}" != "ACCEPT" ]]; then
-    if ! ${SUDO} iptables -S |
-      grep -q "${VPN}-forward-rule"; then
+  if [[ "${FORWARD_RULES_COUNT}" -ne 0 ]] \
+    || [[ "${FORWARD_POLICY}" != "ACCEPT" ]]; then
+    if ! ${SUDO} iptables -S \
+      | grep -q "${VPN}-forward-rule"; then
       ${SUDO} iptables \
         -I FORWARD 1 \
         -d "${pivpnNET}/${subnetClass}" \
@@ -3381,10 +3388,10 @@ confNetwork() {
   fi
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-    if [[ "${FORWARD_RULES_COUNTv6}" -ne 0 ]] ||
-      [[ "${FORWARD_POLICYv6}" != "ACCEPT" ]]; then
-      if ! ${SUDO} ip6tables -S |
-        grep -q "${VPN}-forward-rule"; then
+    if [[ "${FORWARD_RULES_COUNTv6}" -ne 0 ]] \
+      || [[ "${FORWARD_POLICYv6}" != "ACCEPT" ]]; then
+      if ! ${SUDO} ip6tables -S \
+        | grep -q "${VPN}-forward-rule"; then
         ${SUDO} ip6tables \
           -I FORWARD 1 \
           -d "${pivpnNETv6}/${subnetClassv6}" \
@@ -3413,10 +3420,10 @@ confNetwork() {
 
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
-      ${SUDO} iptables-save |
-        ${SUDO} tee /etc/iptables/rules.v4 > /dev/null
-      ${SUDO} ip6tables-save |
-        ${SUDO} tee /etc/iptables/rules.v6 > /dev/null
+      ${SUDO} iptables-save \
+        | ${SUDO} tee /etc/iptables/rules.v4 > /dev/null
+      ${SUDO} ip6tables-save \
+        | ${SUDO} tee /etc/iptables/rules.v6 > /dev/null
       ;;
   esac
 
@@ -3464,8 +3471,8 @@ confLogging() {
   # Restart the logging service
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
-      ${SUDO} systemctl -q is-active rsyslog.service &&
-        ${SUDO} systemctl restart rsyslog.service
+      ${SUDO} systemctl -q is-active rsyslog.service \
+        && ${SUDO} systemctl restart rsyslog.service
       ;;
     Alpine)
       ${SUDO} rc-service -is rsyslog restart
