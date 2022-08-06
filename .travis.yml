@@ -41,8 +41,8 @@ jobs:
       virt: vm
       arch: amd64
       script:
-        - shfmt -d -i 2 -ci -sr auto_install/install.sh
-        - find scripts/ -type f -exec shfmt -d -i 2 -ci -sr {} \;
+        - shfmt -d -i 2 -ci -sr -bn auto_install/install.sh
+        - find scripts/ -type f -exec shfmt -d -i 2 -ci -sr -bn {} \;
 
     - stage: test
       name: "OpenVPN Xenial & Commands"
