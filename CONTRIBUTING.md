@@ -25,7 +25,7 @@ Please report unacceptable behavior to any project maintainer.
 * Use the following [commit rules](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format).
 
 * Use the following [code style rules](https://google.github.io/styleguide/shellguide.html).
-We suggest you to use `shfmt` with the options `-i 2 -ci -sr -w`
+We suggest you to use `shfmt` with the options `-i 2 -ci -sr -w -bn`
 
 ### **PiVPN Website**
 
