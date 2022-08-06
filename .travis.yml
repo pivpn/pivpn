@@ -30,6 +30,7 @@ jobs:
       arch: amd64
       script:
         - shellcheck -x auto_install/install.sh
+        - find ciscripts/ -type f -regex '.*\.sh' -exec shellcheck -x {} \;
         - find scripts/ -type f -exec shellcheck -x {} \;
 
     - stage: style
@@ -42,6 +43,7 @@ jobs:
       arch: amd64
       script:
         - shfmt -d -i 2 -ci -sr -bn auto_install/install.sh
+        - find ciscripts/ -type f -regex '.*\.sh' -exec shfmt -d -i 2 -ci -sr -bn {} \;
         - find scripts/ -type f -exec shfmt -d -i 2 -ci -sr -bn {} \;
 
     - stage: test
