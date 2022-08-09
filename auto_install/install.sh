@@ -32,8 +32,7 @@ PKG_MANAGER="apt-get"
 ### shellcheck SC2086
 UPDATE_PKG_CACHE="${PKG_MANAGER} update -y"
 PKG_INSTALL="${PKG_MANAGER} --yes --no-install-recommends install"
-PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | "
-PKG_COUNT="${PKG_COUNT} grep -c ^Inst || true"
+PKG_COUNT="${PKG_MANAGER} -s -o Debug::NoLocking=true upgrade | grep -c ^Inst || true"
 CHECK_PKG_INSTALLED='dpkg-query -s'
 
 # Dependencies that are required by the script,
@@ -53,9 +52,7 @@ INSTALLED_PACKAGES=()
 
 ######## URLs ########
 easyrsaVer="3.1.0"
-easyrsaRel="https://github.com/OpenVPN/easy-rsa"
-easyrsaRel="${easyrsaRel}/releases/download/v${easyrsaVer}"
-easyrsaRel="${easyrsaRel}/EasyRSA-${easyrsaVer}.tgz"
+easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
 ######## Undocumented Flags. Shhh ########
 runUnattended=false
@@ -722,10 +719,7 @@ preconfigurePackages() {
     fi
 
     ## download binaries
-    curl \
-      -f \
-      -L \
-      -o "${down_dir}/master.tar.gz" \
+    curl -fLo "${down_dir}/master.tar.gz" \
       https://github.com/pivpn/grepcidr/archive/master.tar.gz
     tar -xzC "${down_dir}" -f "${down_dir}/master.tar.gz"
 
@@ -1385,12 +1379,10 @@ chooseUser() {
   # Choose the user for the ovpns
   if [[ "${runUnattended}" == 'true' ]]; then
     if [[ -z "${install_user}" ]]; then
-      if [[ "$(awk \
-        -F':' \
+      if [[ "$(awk -F ':' \
         'BEGIN {count=0} $3>=1000 && $3<=60000 { count++ } END{ print count }' \
         /etc/passwd)" -eq 1 ]]; then
-        install_user="$(awk \
-          -F':' \
+        install_user="$(awk -F ':' \
           '$3>=1000 && $3<=60000 {print $1}' \
           /etc/passwd)"
         echo -n "::: No user specified, but only ${install_user} is available, "
@@ -1438,8 +1430,7 @@ chooseUser() {
     "${r}" \
     "${c}"
   # First, let's check if there is a user available.
-  numUsers="$(awk \
-    -F':' \
+  numUsers="$(awk -F ':' \
     'BEGIN {count=0} $3>=1000 && $3<=60000 { count++ } END{ print count }' \
     /etc/passwd)"
 
@@ -1562,8 +1553,7 @@ updateRepo() {
     # Go back to /usr/local/src otherwise git will complain when the current
     # working directory has just been deleted (/usr/local/src/pivpn).
     cd /usr/local/src \
-      && ${SUDO} git clone \
-        -q \
+      && ${SUDO} git clone -q \
         --depth 1 \
         --no-single-branch \
         "${2}" \
@@ -1600,8 +1590,7 @@ makeRepo() {
   # Go back to /usr/local/src otherwhise git will complain when the current
   # working directory has just been deleted (/usr/local/src/pivpn).
   cd /usr/local/src \
-    && ${SUDO} git clone \
-      -q \
+    && ${SUDO} git clone -q \
       --depth 1 \
       --no-single-branch \
       "${2}" \
@@ -2761,14 +2750,12 @@ confOpenVPN() {
   ${SUDOE} cp vars.example pki/vars
 
   # Set elliptic curve certificate or traditional rsa certificates
-  ${SUDOE} sed \
-    -i \
+  ${SUDOE} sed -i \
     "s/#set_var EASYRSA_ALGO.*/set_var EASYRSA_ALGO ${pivpnCERT}/" \
     pki/vars
 
   # Set expiration for the CRL to 10 years
-  ${SUDOE} sed \
-    -i \
+  ${SUDOE} sed -i \
     's/#set_var EASYRSA_CRL_DAYS.*/set_var EASYRSA_CRL_DAYS 3650/' \
     pki/vars
 
@@ -2776,10 +2763,7 @@ confOpenVPN() {
     # Set custom key size if different from the default
     sed_pattern="s/#set_var EASYRSA_KEY_SIZE.*/"
     sed_pattern="${sed_pattern} set_var EASYRSA_KEY_SIZE ${pivpnENCRYPT}/"
-    ${SUDOE} sed \
-      -i \
-      "${sed_pattern}" \
-      pki/vars
+    ${SUDOE} sed -i "${sed_pattern}" pki/vars
   else
     # If less than 2048, then it must be 521 or lower,
     # which means elliptic curve certificate was selected.
@@ -2791,10 +2775,7 @@ confOpenVPN() {
     sed_pattern="s/#set_var EASYRSA_CURVE.*/"
     sed_pattern="${sed_pattern} set_var EASYRSA_CURVE"
     sed_pattern="${sed_pattern} ${ECDSA_MAP["${pivpnENCRYPT}"]}/"
-    ${SUDOE} sed \
-      -i \
-      "${sed_pattern}" \
-      pki/vars
+    ${SUDOE} sed -i "${sed_pattern}" pki/vars
   fi
 
   # Build the certificate authority
@@ -2843,9 +2824,7 @@ and HMAC key will now be generated." \
       file_pattern="${pivpnFilesDir}/files/etc/openvpn"
       file_pattern="${file_pattern}/easy-rsa/pki/ffdhe${pivpnENCRYPT}.pem"
       # Use Diffie-Hellman parameters from RFC 7919 (FFDHE)
-      ${SUDOE} install \
-        -m 644 \
-        "${file_pattern}" \
+      ${SUDOE} install -m 644 "${file_pattern}" \
         "pki/dh${pivpnENCRYPT}.pem"
     else
       # Generate Diffie-Hellman key exchange
@@ -2863,9 +2842,7 @@ and HMAC key will now be generated." \
 
   if ! getent passwd "${ovpnUserGroup%:*}"; then
     if [[ "${PLAT}" == 'Alpine' ]]; then
-      ${SUDOE} adduser \
-        -S \
-        -D \
+      ${SUDOE} adduser -SD \
         -h /var/lib/openvpn/ \
         -s /sbin/nologin \
         "${ovpnUserGroup%:*}"
@@ -2881,29 +2858,25 @@ and HMAC key will now be generated." \
   ${SUDOE} chown "${ovpnUserGroup}" /etc/openvpn/crl.pem
 
   # Write config file for server using the template.txt file
-  ${SUDO} install \
-    -m 644 \
+  ${SUDO} install -m 644 \
     "${pivpnFilesDir}/files/etc/openvpn/server_config.txt" \
     /etc/openvpn/server.conf
 
   # Apply client DNS settings
-  ${SUDOE} sed \
-    -i \
+  ${SUDOE} sed -i \
     "0,/\(dhcp-option DNS \)/ s/\(dhcp-option DNS \).*/\1${pivpnDNS1}\"/" \
     /etc/openvpn/server.conf
 
   if [[ -z "${pivpnDNS2}" ]]; then
     ${SUDOE} sed -i '/\(dhcp-option DNS \)/{n;N;d}' /etc/openvpn/server.conf
   else
-    ${SUDOE} sed \
-      -i \
+    ${SUDOE} sed -i \
       "0,/\(dhcp-option DNS \)/! s/\(dhcp-option DNS \).*/\1${pivpnDNS2}\"/" \
       /etc/openvpn/server.conf
   fi
 
   # Set the user encryption key size
-  ${SUDO} sed \
-    -i \
+  ${SUDO} sed -i \
     "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" \
     /etc/openvpn/server.conf
 
@@ -2923,14 +2896,12 @@ and HMAC key will now be generated." \
     sed_pattern="s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh"
     sed_pattern="${sed_pattern} none\necdh-curve"
     sed_pattern="${sed_pattern} ${ECDSA_MAP["${pivpnENCRYPT}"]}/"
-    ${SUDO} sed \
-      -i \
+    ${SUDO} sed -i \
       "${sed_pattern}" \
       /etc/openvpn/server.conf
   elif [[ "${pivpnCERT}" == "rsa" ]]; then
     # Otherwise set the user encryption key size
-    ${SUDO} sed \
-      -i \
+    ${SUDO} sed -i \
       "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" \
       /etc/openvpn/server.conf
   fi
@@ -2942,8 +2913,7 @@ and HMAC key will now be generated." \
 
   # if they modified VPN subnet class put value in server.conf
   if [[ "$(cidrToMask "${subnetClass}")" != "255.255.255.0" ]]; then
-    ${SUDO} sed \
-      -i \
+    ${SUDO} sed -i \
       "s/255.255.255.0/$(cidrToMask "${subnetClass}")/g" \
       /etc/openvpn/server.conf
   fi
@@ -2962,19 +2932,16 @@ and HMAC key will now be generated." \
     sed_pattern="0,/\\(.*dhcp-option.*\\)/"
     sed_pattern="${sed_pattern}s//push \"dhcp-option "
     sed_pattern="${sed_pattern}DOMAIN ${pivpnSEARCHDOMAIN}\" \\n&/"
-    ${SUDO} sed \
-      -i \
+    ${SUDO} sed -i \
       "${sed_pattern}" \
       /etc/openvpn/server.conf
   fi
 
   # write out server certs to conf file
-  ${SUDO} sed \
-    -i \
+  ${SUDO} sed -i \
     "s#\\(key /etc/openvpn/easy-rsa/pki/private/\\).*#\\1${SERVER_NAME}.key#" \
     /etc/openvpn/server.conf
-  ${SUDO} sed \
-    -i \
+  ${SUDO} sed -i \
     "s#\\(cert /etc/openvpn/easy-rsa/pki/issued/\\).*#\\1${SERVER_NAME}.crt#" \
     /etc/openvpn/server.conf
 
@@ -2982,9 +2949,7 @@ and HMAC key will now be generated." \
   # "/etc/openvpn/openvpn.conf".
   # To avoid crash thorugh OpenRC, we symlink this file.
   if [[ "${PLAT}" == 'Alpine' ]]; then
-    ${SUDO} ln -s \
-      -f \
-      -T \
+    ${SUDO} ln -sfT \
       /etc/openvpn/server.conf \
       /etc/openvpn/openvpn.conf \
       > /dev/null
@@ -2992,42 +2957,36 @@ and HMAC key will now be generated." \
 }
 
 confOVPN() {
-  ${SUDO} install \
-    -m 644 \
+  ${SUDO} install -m 644 \
     "${pivpnFilesDir}/files/etc/openvpn/easy-rsa/pki/Default.txt" \
     /etc/openvpn/easy-rsa/pki/Default.txt
 
-  ${SUDO} sed \
-    -i \
+  ${SUDO} sed -i \
     "s/IPv4pub/${pivpnHOST}/" \
     /etc/openvpn/easy-rsa/pki/Default.txt
 
   # if they modified port put value in Default.txt for clients to use
   if [[ "${pivpnPORT}" -ne 1194 ]]; then
-    ${SUDO} sed \
-      -i \
+    ${SUDO} sed -i \
       "s/1194/${pivpnPORT}/g" \
       /etc/openvpn/easy-rsa/pki/Default.txt
   fi
 
   # if they modified protocol put value in Default.txt for clients to use
   if [[ "${pivpnPROTO}" != "udp" ]]; then
-    ${SUDO} sed \
-      -i \
+    ${SUDO} sed -i \
       "s/proto udp/proto tcp/g" \
       /etc/openvpn/easy-rsa/pki/Default.txt
   fi
 
   # verify server name to strengthen security
-  ${SUDO} sed \
-    -i \
+  ${SUDO} sed -i \
     "s/SRVRNAME/${SERVER_NAME}/" \
     /etc/openvpn/easy-rsa/pki/Default.txt
 
   if [[ "${pivpnTLSPROT}" == "tls-crypt" ]]; then
     # If they enabled 2.4 remove key-direction options since it's not required
-    ${SUDO} sed \
-      -i \
+    ${SUDO} sed -i \
       "/key-direction 1/d" \
       /etc/openvpn/easy-rsa/pki/Default.txt
   fi
@@ -3038,8 +2997,7 @@ confWireGuard() {
   # Ubuntu 20.04
   if [[ "${PLAT}" == 'Alpine' ]]; then
     echo '::: Adding wg-quick unit'
-    ${SUDO} install \
-      -m 0755 \
+    ${SUDO} install -m 0755 \
       "${pivpnFilesDir}/files/etc/init.d/wg-quick" \
       /etc/init.d/wg-quick
   else
@@ -3049,9 +3007,7 @@ confWireGuard() {
       wireguard_service_path="${wireguard_service_path}/wg-quick@.service.d"
       wireguard_service_path="${wireguard_service_path}/override.conf"
       echo "::: Adding additional reload job type for wg-quick unit"
-      ${SUDO} install \
-        -D \
-        -m 644 \
+      ${SUDO} install -Dm 644 \
         "${wireguard_service_path}" \
         /etc/systemd/system/wg-quick@.service.d/override.conf
       ${SUDO} systemctl daemon-reload
@@ -3562,8 +3518,7 @@ confUnattendedUpgrades() {
     # https://github.com/mvo5/unattended-upgrades/blob/master/data/50unattended-upgrades.Raspbian
     # Add the remaining settings for all other distributions
     if [[ "${PLAT}" == "Raspbian" ]]; then
-      ${SUDO} install \
-        -m 644 \
+      ${SUDO} install -m 644 \
         "${pivpnFilesDir}/files${aptConfDir}/50unattended-upgrades.Raspbian" \
         "${aptConfDir}/50unattended-upgrades"
     fi
@@ -3594,9 +3549,7 @@ confUnattendedUpgrades() {
     # when installing from debian package
     if [[ "${VPN}" == "wireguard" ]]; then
       if [[ -f /etc/apt/sources.list.d/pivpn-bullseye-repo.list ]]; then
-        if ! grep \
-          -q \
-          "\"o=${PLAT},n=bullseye\";" \
+        if ! grep -q "\"o=${PLAT},n=bullseye\";" \
           "${aptConfDir}/50unattended-upgrades"; then
           local sed_pattern
           sed_pattern=" {/a\"o=${PLAT},n=bullseye\";"
@@ -3617,10 +3570,7 @@ confUnattendedUpgrades() {
     fi
 
     ## download binaries
-    curl \
-      -f \
-      -L \
-      -o "${down_dir}/master.zip" \
+    curl -fLo "${down_dir}/master.zip" \
       https://github.com/jirutka/apk-autoupdate/archive/refs/heads/master.zip
     unzip -qd "${down_dir}" "${down_dir}/master.zip"
 
@@ -3639,8 +3589,7 @@ confUnattendedUpgrades() {
       fi
     ) || exit 1
 
-    ${SUDO} install \
-      -m 0755 \
+    ${SUDO} install -m 0755 \
       "${pivpnFilesDir}/files/etc/apk/personal_autoupdate.conf" \
       /etc/apk/personal_autoupdate.conf
     ${SUDO} apk-autoupdate /etc/apk/personal_autoupdate.conf
@@ -3683,15 +3632,10 @@ installScripts() {
 
     # Only one protocol is installed, symlink bash completion, the pivpn script
     # and the script directory
-    ${SUDO} ln -s \
-      -f \
-      -T \
+    ${SUDO} ln -sfT \
       "${pivpnFilesDir}/scripts/${VPN}/bash-completion" \
       /etc/bash_completion.d/pivpn
-    ${SUDO} ln \
-      -s \
-      -f \
-      -T \
+    ${SUDO} ln -sfT \
       "${pivpnFilesDir}/scripts/${VPN}/pivpn.sh" \
       /usr/local/bin/pivpn
     ${SUDO} ln -sf "${pivpnFilesDir}/scripts/" "${pivpnScriptDir}"

@@ -358,13 +358,11 @@ removeAll() {
     ${SUDO} unlink /usr/local/bin/pivpn
 
     ${SUDO} ln \
-      -s \
-      -T "${pivpnFilesDir}/scripts/${othervpn}/pivpn.sh" \
+      -sT "${pivpnFilesDir}/scripts/${othervpn}/pivpn.sh" \
       /usr/local/bin/pivpn
 
     ${SUDO} ln \
-      -s \
-      -T "${pivpnFilesDir}/scripts/${othervpn}/bash-completion" \
+      -sT "${pivpnFilesDir}/scripts/${othervpn}/bash-completion" \
       /etc/bash_completion.d/pivpn
 
     # shellcheck disable=SC1091

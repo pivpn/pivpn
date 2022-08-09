@@ -37,8 +37,7 @@ if [[ "$(< /proc/sys/net/ipv4/ip_forward)" -eq 1 ]]; then
   echo ":: [OK] IP forwarding is enabled"
 else
   ERR=1
-  read \
-    -r \
+  read -r \
     -p ":: [ERR] IP forwarding is not enabled, attempt fix now? [Y/n] " \
     REPLY
 
@@ -98,8 +97,7 @@ if [[ "${USING_UFW}" -eq 0 ]]; then
       echo ":: [OK] Iptables INPUT rule set"
     else
       ERR=1
-      read \
-        -r \
+      read -r \
         -p ":: [ERR] Iptables INPUT rule is not set, attempt fix now? [Y/n] " \
         REPLY
 
@@ -219,8 +217,7 @@ else
     echo ":: [OK] Ufw input rule set"
   else
     ERR=1
-    read \
-      -r \
+    read -r \
       -p ":: [ERR] Ufw input rule is not set, attempt fix now? [Y/n] " \
       REPLY
 
@@ -240,8 +237,7 @@ else
     echo ":: [OK] Ufw forwarding rule set"
   else
     ERR=1
-    read \
-      -r \
+    read -r \
       -p ":: [ERR] Ufw forwarding rule is not set, attempt fix now? [Y/n] " \
       REPLY
 

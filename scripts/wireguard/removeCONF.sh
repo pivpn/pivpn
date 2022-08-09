@@ -109,8 +109,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
       # Then remove the client matching the variables above
       sed \
         -e "\#${CLIENT_NAME} ${PUBLIC_KEY} ${CREATION_DATE} ${COUNT}#d" \
-        -i \
-        configs/clients.txt
+        -i configs/clients.txt
 
       # Remove the peer section from the server config
       sed_pattern="/### begin ${CLIENT_NAME} ###/,"
@@ -136,10 +135,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
           rm "${CONFIG}"
         fi
       done < <(find "${install_home}" \
-        -maxdepth 3 \
-        -type f \
-        -name '*.conf' \
-        -print0)
+        -maxdepth 3 -type f -name '*.conf' -print0)
 
       ((DELETED_COUNT++))
       echo "::: Successfully deleted ${CLIENT_NAME}"
@@ -152,8 +148,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
         sed \
           -e "\#${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn#d" \
           -e "\#${pivpnNETv6}${COUNT} ${CLIENT_NAME}.pivpn#d" \
-          -i \
-          /etc/pivpn/hosts.wireguard
+          -i /etc/pivpn/hosts.wireguard
 
         if killall -SIGHUP pihole-FTL; then
           echo "::: Updated hosts file for Pi-hole"

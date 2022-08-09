@@ -181,8 +181,7 @@ for ((ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     if [[ -f /etc/pivpn/hosts.openvpn ]]; then
       sed \
         -e "\#${STATIC_IP} ${CERTS_TO_REVOKE[ii]}.pivpn#d" \
-        -i \
-        /etc/pivpn/hosts.openvpn
+        -i /etc/pivpn/hosts.openvpn
 
       if killall -SIGHUP pihole-FTL; then
         echo "::: Updated hosts file for Pi-hole"

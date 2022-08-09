@@ -443,8 +443,7 @@ echo "tls Private Key found: ${TA}"
 
   # Next append the client Public Cert
   echo "<cert>"
-  sed \
-    -n \
+  sed -n \
     -e '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' \
     < "issued/${NAME}${CRT}"
   echo "</cert>"
@@ -517,8 +516,7 @@ for i in {2..254}; do
   # disabling SC2514, variable sourced externaly
   # shellcheck disable=SC2154
   if [[ -z "$(ls -A /etc/openvpn/ccd)" ]] \
-    || ! find /etc/openvpn/ccd \
-      -type f \
+    || ! find /etc/openvpn/ccd -type f \
       -exec grep -q "${NET_REDUCED}.${i}" {} +; then
     COUNT="${i}"
     echo -n "ifconfig-push ${NET_REDUCED}.${i}" >> /etc/openvpn/ccd/"${NAME}"

@@ -58,9 +58,7 @@ listClients() {
           printf "- %s\n" "${array[9]}"
         done < "${STATUS_LOG}"
       else
-        awk \
-          -F' ' \
-          -v s='CLIENT_LIST' \
+        awk -F ' ' -v s='CLIENT_LIST' \
           '$1 == s {
             print $2"\t\t"$3"\t"$4"\t"$5"\t\t"$6"\t\t"$8" "$9" "$11" - "$10"\n"
           }' \

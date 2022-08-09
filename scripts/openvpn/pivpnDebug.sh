@@ -22,8 +22,7 @@ echo -n "Branch: "
 
 git --git-dir /usr/local/src/pivpn/.git rev-parse --abbrev-ref HEAD
 git \
-  --git-dir /usr/local/src/pivpn/.git log \
-  -n 1 \
+  --git-dir /usr/local/src/pivpn/.git log -n 1 \
   --format='Commit: %H%nAuthor: %an%nDate: %ad%nSummary: %s'
 
 printf "=============================================\n"
