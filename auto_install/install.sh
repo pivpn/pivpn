@@ -3395,26 +3395,22 @@ confLogging() {
     program_name='ovpn-server'
   fi
 
-  {
-    echo "if \$programname == '${program_name}' then /var/log/openvpn.log"
-    echo "if \$programname == '${program_name}' then stop"
-  } | ${SUDO} tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
+  echo "if \$programname == '${program_name}' then /var/log/openvpn.log
+if \$programname == '${program_name}' then stop" | ${SUDO} tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
-  {
-    echo "/var/log/openvpn.log"
-    echo "{"
-    echo $'\t'"rotate 4"
-    echo $'\t'"weekly"
-    echo $'\t'"missingok"
-    echo $'\t'"notifempty"
-    echo $'\t'"compress"
-    echo $'\t'"delaycompress"
-    echo $'\t'"sharedscripts"
-    echo $'\t'"postrotate"
-    echo $'\t'$'\t'"invoke-rc.d rsyslog rotate >/dev/null 2>&1 || true"
-    echo $'\t'"endscript"
-    echo "}"
-  } | ${SUDO} tee /etc/logrotate.d/openvpn > /dev/null
+  echo "/var/log/openvpn.log
+{
+    rotate 4
+    weekly
+    missingok
+    notifempty
+    compress
+    delaycompress
+    sharedscripts
+    postrotate
+        invoke-rc.d rsyslog rotate >/dev/null 2>&1 || true
+    endscript
+}" | ${SUDO} tee /etc/logrotate.d/openvpn > /dev/null
 
   # Restart the logging service
   case "${PLAT}" in
