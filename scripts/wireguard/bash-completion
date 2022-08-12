@@ -1,18 +1,22 @@
 #!/bin/bash
-_pivpn()
-{
-    local cur opts
-    COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    dashopts="-a -c -d -l -qr -r -h -u -up -bk -off -on"
-    opts="add clients debug list qrcode remove help uninstall update backup (temp) off (temp) on"
-    if [ "${#COMP_WORDS[@]}" -eq 2 ]; then
-        if [[ ${cur} == -* ]] ; then
-            COMPREPLY=( "$(compgen -W "${dashopts}" -- "${cur}")" )
-        else
-            COMPREPLY=( "$(compgen -W "${opts}" -- "${cur}")" )
-        fi
+
+_pivpn() {
+  local cur opts
+  COMPREPLY=()
+  cur="${COMP_WORDS[COMP_CWORD]}"
+  dashopts="-a -c -d -l -qr -r -h -u -up -bk -off -on"
+  opts="add clients debug list qrcode remove help uninstall update"
+  opts="${opts} backup (temp) off (temp) on"
+
+  if [[ "${#COMP_WORDS[@]}" -eq 2 ]]; then
+    if [[ "${cur}" == -* ]]; then
+      COMPREPLY=("$(compgen -W "${dashopts}" -- "${cur}")")
+    else
+      COMPREPLY=("$(compgen -W "${opts}" -- "${cur}")")
     fi
-    return 0
+  fi
+
+  return 0
 }
+
 complete -F _pivpn pivpn

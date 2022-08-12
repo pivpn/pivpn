@@ -3,15 +3,13 @@ language: shell
 addons:
   hosts:
     - pivpn.test
-  apt:
-    packages:
-      - shellcheck
 
 services:
   - docker
 
 stages:
   - lint
+  - style
   - test
 
 branches:
@@ -24,11 +22,29 @@ jobs:
     - stage: lint
       name: "Shellcheck lint"
       dist: focal
+      addons:
+        apt:
+          packages:
+            - shellcheck
       virt: vm
       arch: amd64
       script:
-        - shellcheck auto_install/install.sh
-        - find scripts/ -type f | xargs shellcheck
+        - shellcheck -x auto_install/install.sh
+        - find ciscripts/ -type f -regex '.*\.sh' -exec shellcheck -x {} \;
+        - find scripts/ -type f -exec shellcheck -x {} \;
+
+    - stage: style
+      name: "Shell Style Guide"
+      dist: xenial
+      addons:
+        snaps:
+          - shfmt
+      virt: vm
+      arch: amd64
+      script:
+        - shfmt -d -i 2 -ci -sr -bn auto_install/install.sh
+        - find ciscripts/ -type f -regex '.*\.sh' -exec shfmt -d -i 2 -ci -sr -bn {} \;
+        - find scripts/ -type f -exec shfmt -d -i 2 -ci -sr -bn {} \;
 
     - stage: test
       name: "OpenVPN Xenial & Commands"
