@@ -11,6 +11,7 @@ stages:
   - lint
   - style
   - test
+  - release
 
 branches:
   only:
@@ -21,7 +22,7 @@ jobs:
   include:
     - stage: lint
       name: "Shellcheck lint"
-      dist: focal
+      dist: jammy
       addons:
         apt:
           packages:
@@ -35,7 +36,7 @@ jobs:
 
     - stage: style
       name: "Shell Style Guide"
-      dist: xenial
+      dist: jammy
       addons:
         snaps:
           - shfmt
@@ -47,151 +48,106 @@ jobs:
         - find scripts/ -type f -exec shfmt -d -i 2 -ci -sr -bn {} \;
 
     - stage: test
-      name: "OpenVPN Xenial & Commands"
-      dist: xenial
-      virt: vm
-      arch: amd64
-      before_script: 
-        - cat /etc/os-release
-        - uname -a
-        - ip a
-        - sudo chmod +x ciscripts/startup.sh
-        - ./ciscripts/startup.sh -o
-      script:
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
-      after_script:
-        - systemctl status openvpn
-        - pivpn add -n foo nopass -d 180
-        - pivpn add -p "$RANDOM$RANDOM" -n bar -d 180
-        - pivpn add -o -n foo
-        - pivpn -bk
-        - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -l
-        - pivpn -c
-        - pivpn -r foo -y
-      after_fail:
-        - sudo journalctl -xe
-
-    - stage: test
-      name: "Wireguard Xenial & Commands"
-      dist: xenial
-      virt: vm
-      arch: amd64
-      before_script: 
-        - cat /etc/os-release
-        - uname -a
-        - ip a
-        - sudo chmod +x ciscripts/startup.sh
-        - ./ciscripts/startup.sh -w
-      script: 
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
-      after_script:
-        - systemctl status wg-quick@wg0
-        - pivpn add -n foo
-        - pivpn -qr foo
-        - pivpn -bk
-        - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -l
-        - pivpn -c
-        - pivpn -r foo -y
-      after_fail:
-        - sudo journalctl -xe
-
-    - stage: test
-      name: "OpenVPN Bionic & Commands"
+      name: "OpenVPN Bionic (18.04)"
       dist: bionic
       virt: vm
       arch: amd64
       before_script: 
-        - cat /etc/os-release
-        - uname -a
-        - ip a
-        - sudo chmod +x ciscripts/startup.sh
+        - sudo chmod +x ciscripts/*.sh
+        - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -o
       script:
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
-        - systemctl status openvpn
-        - pivpn add -n foo nopass -d 180
-        - pivpn add -p "$RANDOM$RANDOM" -n bar -d 180
-        - pivpn add -o -n foo
-        - pivpn -bk
-        - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -l
-        - pivpn -c
-        - pivpn -r foo -y
+        - ./ciscripts/test.sh -o
       after_fail:
         - sudo journalctl -xe
 
     - stage: test
-      name: "Wireguard Bionic & Commands"
+      name: "Wireguard Bionic (18.04)"
       dist: bionic
       virt: vm
       arch: amd64
       before_script: 
-        - cat /etc/os-release
-        - uname -a
-        - ip a
-        - sudo apt update -y
-        - sudo chmod +x ciscripts/startup.sh
+        - sudo chmod +x ciscripts/*.sh
+        - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -w
       script: 
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
-        - systemctl status wg-quick@wg0
-        - pivpn add -n foo
-        - pivpn -qr foo
-        - pivpn -bk
-        - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -l
-        - pivpn -c
-        - pivpn -r foo -y
+        - ./ciscripts/test.sh -w
       after_fail:
         - sudo journalctl -xe
 
     - stage: test
-      name: "OpenVPN Focal & Commands"
+      name: "OpenVPN Focal (20.04)"
       dist: focal
       virt: vm
       arch: amd64
       before_script: 
-        - cat /etc/os-release
-        - uname -a
-        - ip a
-        - sudo chmod +x ciscripts/startup.sh
+        - sudo chmod +x ciscripts/*.sh
+        - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -o
       script:
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
-        - systemctl status openvpn
-        - pivpn add -n foo nopass -d 180
-        - pivpn add -p "$RANDOM$RANDOM" -n bar -d 180
-        - pivpn add -o -n foo
-        - pivpn -bk
-        - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -l
-        - pivpn -c
-        - pivpn -r foo -y
+        - ./ciscripts/test.sh -o
       after_fail:
         - sudo journalctl -xe
 
     - stage: test
-      name: "Wireguard Focal & Commands"
+      name: "Wireguard Focal (20.04)"
       dist: focal
       virt: vm
       arch: amd64
       before_script: 
-        - cat /etc/os-release
-        - uname -a
-        - ip a
-        - sudo chmod +x ciscripts/startup.sh
+        - sudo chmod +x ciscripts/*.sh
+        - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -w
       script: 
         - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
-        - systemctl status wg-quick@wg0
-        - pivpn add -n foo
-        - pivpn -qr foo
-        - pivpn -bk
-        - ls ~pi/pivpnbackup/ | grep backup
-        - pivpn -l
-        - pivpn -c
-        - pivpn -r foo -y
+        - ./ciscripts/test.sh -w
       after_fail:
         - sudo journalctl -xe
+
+    - stage: test
+      name: "OpenVPN Jammy (22.04)"
+      dist: jammy
+      virt: vm
+      arch: amd64
+      before_script: 
+        - sudo chmod +x ciscripts/*.sh
+        - ./ciscripts/pre_checks.sh
+        - ./ciscripts/startup.sh -o
+      script:
+        - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
+        - ./ciscripts/test.sh -o
+      after_fail:
+        - sudo journalctl -xe
+
+    - stage: test
+      name: "Wireguard Jammy (22.04)"
+      dist: jammy
+      virt: vm
+      arch: amd64
+      before_script: 
+        - sudo chmod +x ciscripts/*.sh
+        - ./ciscripts/pre_checks.sh
+        - ./ciscripts/startup.sh -w
+      script: 
+        - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
+        - ./ciscripts/test.sh -w
+      after_fail:
+        - sudo journalctl -xe
+
+    - stage: "release"
+      name: "release" 
+      if: type = push
+      dist: jammy
+      virt: vm
+      arch: amd64
+      language: node_js
+      node_js:
+        - "node"
+      install:
+        - npm install @semantic-release/github -D
+        - npm install @semantic-release/changelog -D
+      script:
+        - npx semantic-release

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 interface=$(ip -o link \
   | awk '{print $2}' \
