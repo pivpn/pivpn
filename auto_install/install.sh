@@ -351,7 +351,8 @@ distroCheck() {
       ["11"]="bullseye"
       ["16.04"]="xenial"
       ["18.04"]="bionic"
-      ["20.04"]="focal")
+      ["20.04"]="focal"
+      ["22.04"]="jammy")
     OSCN="${VER_MAP["${VER}"]}"
 
     # Alpine support
@@ -363,7 +364,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        stretch | buster | bullseye | xenial | bionic | focal)
+        stretch | buster | bullseye | xenial | bionic | focal | jammy)
           :
           ;;
         *)
