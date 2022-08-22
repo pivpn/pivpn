@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## August 2022
+
+Changelog is deprecated and changes should now be refflected in the releases page: https://github.com/pivpn/pivpn/releases
+
 ## June 10th 2022
 
 - Bug fixes & Improvements
