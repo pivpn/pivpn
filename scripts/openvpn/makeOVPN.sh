@@ -155,7 +155,7 @@ done
 
 keynoPASS() {
   # Build the client key
-  export EASYRSA_CERT_EXPIRE "${DAYS}"
+  export EASYRSA_CERT_EXPIRE="${DAYS}"
   ./easyrsa build-client-full "${NAME}" nopass
   cd pki || exit
 }
