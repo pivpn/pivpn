@@ -155,12 +155,8 @@ done
 
 keynoPASS() {
   # Build the client key
-  expect << EOF
-    set timeout -1
-    set env(EASYRSA_CERT_EXPIRE) "${DAYS}"
-    spawn ./easyrsa build-client-full "${NAME}" nopass
-    expect eof
-EOF
+  export EASYRSA_CERT_EXPIRE "${DAYS}"
+  ./easyrsa build-client-full "${NAME}" nopass
   cd pki || exit
 }
 
@@ -252,51 +248,11 @@ keyPASS() {
     exit 1
   fi
 
-  # Escape chars in PASSWD
-  PASSWD_UNESCAPED="${PASSWD}"
+  export EASYRSA_CERT_EXPIRE="${DAYS}"
+  ./easyrsa --passin=pass:"${PASSWD}" \
+    --passout=pass:"${PASSWD}" \
+    build-client-full "${NAME}"
 
-  PASSWD="${PASSWD//\\/\\\\}"
-  PASSWD="${PASSWD//\//\\\/}"
-  PASSWD="${PASSWD//\$/\\\$}"
-  PASSWD="${PASSWD//!/\\!}"
-  PASSWD="${PASSWD//\./\\\.}"
-  PASSWD="${PASSWD//\'/\\\'}"
-  PASSWD="${PASSWD//\"/\\\"}"
-  PASSWD="${PASSWD//*/\\*}"
-  PASSWD="${PASSWD//@/\\@}"
-  PASSWD="${PASSWD//#/\\#}"
-  PASSWD="${PASSWD//\£/\\\£}"
-  PASSWD="${PASSWD//%/\\%}"
-  PASSWD="${PASSWD//\^/\\\^}"
-  PASSWD="${PASSWD//\&/\\\&}"
-  PASSWD="${PASSWD//\(/\\\(}"
-  PASSWD="${PASSWD//\)/\\\)}"
-  PASSWD="${PASSWD//\-/\\\-}"
-  PASSWD="${PASSWD//\_/\\\_}"
-  PASSWD="${PASSWD//\+/\\\+}"
-  PASSWD="${PASSWD//\=/\\\=}"
-  PASSWD="${PASSWD//\[/\\\[}"
-  PASSWD="${PASSWD//\]/\\\]}"
-  PASSWD="${PASSWD//:/\\:}"
-  PASSWD="${PASSWD//\;/\\\;}"
-  PASSWD="${PASSWD//\|/\\\|}"
-  PASSWD="${PASSWD//\</\\\<}"
-  PASSWD="${PASSWD//\>/\\\>}"
-  PASSWD="${PASSWD//\,/\\\,}"
-  PASSWD="${PASSWD//\~/\\\~}"
-  PASSWD="${PASSWD//\?/\\\?}"
-  PASSWD="${PASSWD//\{/\\\{}"
-  PASSWD="${PASSWD//\}/\\\}}"
-
-  # Build the client key and then encrypt the key
-  expect << EOF
-  set timeout -1
-  set env(EASYRSA_CERT_EXPIRE) "${DAYS}"
-  spawn ./easyrsa build-client-full "${NAME}"
-  expect "Enter PEM pass phrase" {sleep 0.1; send -- "${PASSWD}\r"}
-  expect "Verifying - Enter PEM pass phrase" {sleep 0.1; send -- "${PASSWD}\r"}
-  expect eof
-EOF
   cd pki || exit
 }
 

@@ -1947,8 +1947,7 @@ installOpenVPN() {
     updatePackageCache
   fi
 
-  # Expect is used to feed easy-rsa with passwords
-  PIVPN_DEPS=(openvpn expect)
+  PIVPN_DEPS=(openvpn)
 
   installDependentPackages PIVPN_DEPS[@]
 }
