@@ -52,12 +52,14 @@ jobs:
       dist: bionic
       virt: vm
       arch: amd64
+      env:
+        - VPNPROTO=openvpn
       before_script: 
         - sudo chmod +x ciscripts/*.sh
         - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -o
       script:
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
+        - ./ciscripts/test_install.sh
         - ./ciscripts/test.sh -o
       after_fail:
         - sudo journalctl -xe
@@ -67,12 +69,14 @@ jobs:
       dist: bionic
       virt: vm
       arch: amd64
+      env:
+        - VPNPROTO=wireguard
       before_script: 
         - sudo chmod +x ciscripts/*.sh
         - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -w
-      script: 
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
+      script:
+        - ./ciscripts/test_install.sh
         - ./ciscripts/test.sh -w
       after_fail:
         - sudo journalctl -xe
@@ -82,12 +86,14 @@ jobs:
       dist: focal
       virt: vm
       arch: amd64
+      env:
+        - VPNPROTO=openvpn
       before_script: 
         - sudo chmod +x ciscripts/*.sh
         - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -o
       script:
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
+        - ./ciscripts/test_install.sh
         - ./ciscripts/test.sh -o
       after_fail:
         - sudo journalctl -xe
@@ -97,12 +103,14 @@ jobs:
       dist: focal
       virt: vm
       arch: amd64
+      env:
+        - VPNPROTO=wireguard
       before_script: 
         - sudo chmod +x ciscripts/*.sh
         - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -w
-      script: 
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
+      script:
+        - ./ciscripts/test_install.sh
         - ./ciscripts/test.sh -w
       after_fail:
         - sudo journalctl -xe
@@ -112,12 +120,14 @@ jobs:
       dist: jammy
       virt: vm
       arch: amd64
+      env:
+        - VPNPROTO=openvpn
       before_script: 
         - sudo chmod +x ciscripts/*.sh
         - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -o
       script:
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_openvpn.conf
+        - ./ciscripts/test_install.sh
         - ./ciscripts/test.sh -o
       after_fail:
         - sudo journalctl -xe
@@ -127,12 +137,14 @@ jobs:
       dist: jammy
       virt: vm
       arch: amd64
+      env:
+        - VPNPROTO=wireguard
       before_script: 
         - sudo chmod +x ciscripts/*.sh
         - ./ciscripts/pre_checks.sh
         - ./ciscripts/startup.sh -w
-      script: 
-        - sudo ./auto_install/install.sh --unattended ciscripts/ci_wireguard.conf
+      script:
+        - ./ciscripts/test_install.sh
         - ./ciscripts/test.sh -w
       after_fail:
         - sudo journalctl -xe
