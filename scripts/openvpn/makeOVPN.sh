@@ -11,6 +11,8 @@ CA="ca.crt"
 TA="ta.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 
+echo -e "\n THIS IS A TEST, IF YOU SEE THIS THE CORRECT BRANCH AND REPO IS BEING TESTED! \n"
+
 if [[ ! -f "${setupVars}" ]]; then
   err "::: Missing setup vars file!"
   exit 1
