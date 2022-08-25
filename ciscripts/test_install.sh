@@ -11,6 +11,6 @@ else
     sudo TESTING= ./auto_install/install.sh --unattended ciscripts/ci_"${VPNPROTO}".conf
   else
     echo "Testing PiVPN Master branch"
-    sudo ./autoinstall.sh --unattended ciscripts/ci_"${VPNPROTO}".conf
+    sudo ./auto_install/install.sh --unattended ciscripts/ci_"${VPNPROTO}".conf
   fi
 fi
