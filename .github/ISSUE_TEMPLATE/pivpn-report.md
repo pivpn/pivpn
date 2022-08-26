@@ -9,6 +9,9 @@ assignees: ''
 
 <!--
 # PiVPN Issue Template
+
+DO NOT DELETE THIS! THIS IS IMPORTANT FOR US TO BETTER HELP YOU! 
+
 PLEASE READ THIS TEMPLATE CAREFULLY BEFORE OPENING AN ISSUE!
 Any Issue opened that doesn't follow this template will be removed.
 
@@ -23,8 +26,9 @@ For any output requested below, you may alternatively post it on https://pastebi
 `{please fill the checkboxes, e.g: [X]}`
 
 - [] I have read the [documentation](https://docs.pivpn.io)
-- [] Is it a feature request? please consider opening a [Discussion] (https://github.com/pivpn/pivpn/discussions/new)
-- [] I have read and understood the [contributors guide](https://github.com/pivpn/pivpn/blob/master/CONTRIBUTING.md).
+- [] Is it a feature request? please consider opening a [Discussion] (https://github.com/pivpn/pivpn/discussions/new?category=feature-requests)
+- [] Is this a support request? please consider copying the content of this document and using it to open a [Discussion](https://github.com/pivpn/pivpn/discussions/new?category=support)
+- [] I have read and understood the [PiVPN General Guidelines](https://github.com/pivpn/pivpn/#general-guidelines)
 - [] The issue I am reporting can be *replicated*. <!-- READ COMMENT BELOW--> 
 - [] The issue I am reporting *is* directly related to the pivpn installer script.<!--READ COMMENT BELOW-->
 - [] The issue I am reporting isn't a duplicate (see [FAQs](https://github.com/pivpn/pivpn/wiki/FAQ), [closed issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aclosed), and [open issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen)).
