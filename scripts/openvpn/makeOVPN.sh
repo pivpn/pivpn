@@ -475,8 +475,12 @@ for i in {2..254}; do
     || ! find /etc/openvpn/ccd -type f \
       -exec grep -q "${NET_REDUCED}.${i}" {} +; then
     COUNT="${i}"
-    echo -n "ifconfig-push ${NET_REDUCED}.${i}" >> /etc/openvpn/ccd/"${NAME}"
+    echo -n "ifconfig-push ${NET_REDUCED}.${i} " >> /etc/openvpn/ccd/"${NAME}"
+    # The space after ${i} is important ------^!
     cidrToMask "${subnetClass}" >> /etc/openvpn/ccd/"${NAME}"
+    # the end resuld should be a line like:
+    # ifconfig-push ${NET_REDUCED}.${i} ${subnetClass}
+    # ifconfig-push 10.205.45.8 255.255.255.0
     break
   fi
 done
