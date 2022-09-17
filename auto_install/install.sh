@@ -3143,7 +3143,7 @@ confNetwork() {
       sed_pattern="${sed_pattern} -j MASQUERADE"
       sed_pattern="${sed_pattern} -m comment"
       sed_pattern="${sed_pattern} --comment ${VPN}-nat-rule\n"
-      sed_pattern="${sed_pattern} COMMIT\n"
+      sed_pattern="${sed_pattern}COMMIT\n"
       ${SUDO} sed "${sed_pattern}" -i /etc/ufw/before.rules
     fi
 
@@ -3173,7 +3173,7 @@ confNetwork() {
         sed_pattern="${sed_pattern} -j MASQUERADE"
         sed_pattern="${sed_pattern} -m comment"
         sed_pattern="${sed_pattern} --comment ${VPN}-nat-rule\n"
-        sed_pattern="${sed_pattern} COMMIT\n"
+        sed_pattern="${sed_pattern}COMMIT\n"
         ${SUDO} sed "${sed_pattern}" -i /etc/ufw/before6.rules
       fi
     fi
