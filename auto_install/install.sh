@@ -3178,21 +3178,25 @@ confNetwork() {
       fi
     fi
 
-    # Insert rules at the beginning of the chain
+    # Checks for any existing UFW rules and
+    # insert rules at the beginning of the chain
     # (in case there are other rules that may drop the traffic)
-    ${SUDO} ufw insert 1 \
-      allow "${pivpnPORT}/${pivpnPROTO}" \
-      comment "allow-${VPN}" > /dev/null
-    ${SUDO} ufw route insert 1 \
-      allow in on "${pivpnDEV}" \
-      from "${pivpnNET}/${subnetClass}" \
-      out on "${IPv4dev}" to any > /dev/null
+    if ${SUDO} ufw status numbered | grep -E "\[.[0-9]{1}\]" > /dev/null; then
+      ${SUDO} ufw insert 1 \
+        allow "${pivpnPORT}/${pivpnPROTO}" \
+        comment "allow-${VPN}" > /dev/null
 
-    if [[ "${pivpnenableipv6}" -eq 1 ]]; then
       ${SUDO} ufw route insert 1 \
         allow in on "${pivpnDEV}" \
-        from "${pivpnNETv6}/${subnetClassv6}" \
-        out on "${IPv6dev}" to any > /dev/null
+        from "${pivpnNET}/${subnetClass}" \
+        out on "${IPv4dev}" to any > /dev/null
+
+      if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+        ${SUDO} ufw route insert 1 \
+          allow in on "${pivpnDEV}" \
+          from "${pivpnNETv6}/${subnetClassv6}" \
+          out on "${IPv6dev}" to any > /dev/null
+      fi
     fi
 
     ${SUDO} ufw reload > /dev/null
