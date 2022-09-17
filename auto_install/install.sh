@@ -2232,7 +2232,7 @@ get ad blocking on the go?" "${r}" "${c}"; then
           on "${pivpnDEV}" to any port 53 \
           from "${pivpnNET}/${subnetClass}" > /dev/null
       else
-        ${SUDO} iptables -I INPUT -i "${IPv4dev}" \
+        ${SUDO} iptables -I INPUT -i "${pivpnDEV}" \
           -p udp --dport 53 -j ACCEPT -m comment --comment "pihole-DNS-rule"
       fi
       return
