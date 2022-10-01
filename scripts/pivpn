@@ -2,6 +2,10 @@
 
 CHECK_PKG_INSTALLED='dpkg-query -s'
 
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+}
+
 if grep -qsEe "^NAME\=['\"]?Alpine[a-zA-Z ]*['\"]?$" /etc/os-release; then
   CHECK_PKG_INSTALLED='apk --no-cache info -e'
 fi
@@ -17,10 +21,6 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 scriptDir="/opt/pivpn"
-
-err() {
-  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
-}
 
 uninstallServer() {
   ${SUDO} "${scriptDir}/uninstall.sh"

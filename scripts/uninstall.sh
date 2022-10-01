@@ -26,6 +26,10 @@ setupConfigDir="/etc/pivpn"
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
 
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+}
+
 PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
   | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
 
@@ -84,10 +88,6 @@ fi
 
 # shellcheck disable=SC1090
 source "${setupVars}"
-
-err() {
-  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
-}
 
 ### FIXME: introduce global lib
 spinner() {

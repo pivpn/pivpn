@@ -6,6 +6,10 @@ screen_size="$(stty size 2> /dev/null || echo 24 80)"
 rows="$(echo "${screen_size}" | awk '{print $1}')"
 columns="$(echo "${screen_size}" | awk '{print $2}')"
 
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+}
+
 # Divide by two so the dialogs take up half of the screen, which looks nice.
 r=$((rows / 2))
 c=$((columns / 2))
@@ -68,10 +72,6 @@ source "${setupVars}"
 if [[ "${PLAT}" == 'Alpine' ]]; then
   CHECK_PKG_INSTALLED='apk --no-cache info -e'
 fi
-
-err() {
-  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
-}
 
 checkbackupdir() {
   # Disabling shellcheck error $install_home sourced from $setupVars
