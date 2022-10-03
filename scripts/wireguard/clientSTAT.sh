@@ -3,14 +3,14 @@
 
 CLIENTS_FILE="/etc/wireguard/configs/clients.txt"
 
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+}
+
 if [[ ! -s "${CLIENTS_FILE}" ]]; then
   err "::: There are no clients to list"
   exit 0
 fi
-
-err() {
-  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
-}
 
 scriptusage() {
   echo "::: List any connected clients to the server"
