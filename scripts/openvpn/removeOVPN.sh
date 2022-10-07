@@ -1,17 +1,13 @@
 #!/bin/bash
 # PiVPN: revoke client script
 
+### Constants
 setupVars="/etc/pivpn/openvpn/setupVars.conf"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
-
-if [[ ! -f "${setupVars}" ]]; then
-  err "::: Missing setup vars file!"
-  exit 1
-fi
-
 # shellcheck disable=SC1090
 source "${setupVars}"
 
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
@@ -28,6 +24,12 @@ helpFunc() {
   echo ":::  -y,--yes             Remove Client(s) without confirmation"
   echo ":::  -h,--help            Show this help dialog"
 }
+
+### Script
+if [[ ! -f "${setupVars}" ]]; then
+  err "::: Missing setup vars file!"
+  exit 1
+fi
 
 # Parse input arguments
 while [[ "$#" -gt 0 ]]; do

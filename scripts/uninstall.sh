@@ -1,11 +1,7 @@
 #!/bin/bash
 # PiVPN: Uninstall Script
 
-### FIXME:
-###   global: config storage, refactor all scripts to adhere to the storage
-### FIXME:
-###   use variables where appropriate, reduce magic numbers by 99.9%, at least.
-
+### Constants
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size="$(stty size 2> /dev/null || echo 24 80)"
 rows="$(echo "${screen_size}" | awk '{print $1}')"
@@ -25,69 +21,14 @@ setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn"
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
+PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
+  | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
+UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
-
-PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
-  | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
-
-if [[ "${PLAT}" == 'Alpine' ]]; then
-  PKG_MANAGER='apk'
-  PKG_REMOVE="${PKG_MANAGER} --no-cache --purge del -r"
-fi
-
-UPDATE_PKG_CACHE="${PKG_MANAGER} update"
-
-if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]] \
-  && [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
-  vpnStillExists=1
-
-  # Two protocols have been installed, check if the script has passed
-  # an argument, otherwise ask the user which one he wants to remove
-  if [[ "$#" -ge 1 ]]; then
-    VPN="${1}"
-    echo "::: Uninstalling VPN: ${VPN}"
-  else
-    chooseVPNCmd=(whiptail
-      --backtitle "Setup PiVPN"
-      --title "Uninstall"
-      --separate-output
-      --radiolist "Both OpenVPN and WireGuard are installed, \
-choose a VPN to uninstall (press space to select):"
-      "${r}" "${c}" 2)
-    VPNChooseOptions=(WireGuard "" on
-      OpenVPN "" off)
-
-    if VPN="$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 \
-      > /dev/tty)"; then
-      echo "::: Uninstalling VPN: ${VPN}"
-      VPN="${VPN,,}"
-    else
-      err "::: Cancel selected, exiting...."
-      exit 1
-    fi
-  fi
-
-  setupVars="${setupConfigDir}/${VPN}/${setupVarsFile}"
-else
-  vpnStillExists=0
-
-  if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]]; then
-    setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
-  elif [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
-    setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
-  fi
-fi
-
-if [[ ! -f "${setupVars}" ]]; then
-  err "::: Missing setup vars file!"
-  exit 1
-fi
-
-# shellcheck disable=SC1090
-source "${setupVars}"
 
 ### FIXME: introduce global lib
 spinner() {
@@ -391,7 +332,61 @@ askreboot() {
   fi
 }
 
-######### SCRIPT ###########
+### Script
+if [[ "${PLAT}" == 'Alpine' ]]; then
+  PKG_MANAGER='apk'
+  PKG_REMOVE="${PKG_MANAGER} --no-cache --purge del -r"
+fi
+
+if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]] \
+  && [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
+  vpnStillExists=1
+
+  # Two protocols have been installed, check if the script has passed
+  # an argument, otherwise ask the user which one he wants to remove
+  if [[ "$#" -ge 1 ]]; then
+    VPN="${1}"
+    echo "::: Uninstalling VPN: ${VPN}"
+  else
+    chooseVPNCmd=(whiptail
+      --backtitle "Setup PiVPN"
+      --title "Uninstall"
+      --separate-output
+      --radiolist "Both OpenVPN and WireGuard are installed, \
+choose a VPN to uninstall (press space to select):"
+      "${r}" "${c}" 2)
+    VPNChooseOptions=(WireGuard "" on
+      OpenVPN "" off)
+
+    if VPN="$("${chooseVPNCmd[@]}" "${VPNChooseOptions[@]}" 2>&1 \
+      > /dev/tty)"; then
+      echo "::: Uninstalling VPN: ${VPN}"
+      VPN="${VPN,,}"
+    else
+      err "::: Cancel selected, exiting...."
+      exit 1
+    fi
+  fi
+
+  setupVars="${setupConfigDir}/${VPN}/${setupVarsFile}"
+else
+  vpnStillExists=0
+
+  if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]]; then
+    setupVars="${setupConfigDir}/wireguard/${setupVarsFile}"
+  elif [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
+    setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
+  fi
+fi
+
+if [[ ! -f "${setupVars}" ]]; then
+  err "::: Missing setup vars file!"
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "${setupVars}"
+
 echo -n "::: Preparing to remove packages, be sure that each may be safely "
 echo "removed depending on your operating system."
 echo "::: (SAFE TO REMOVE ALL ON RASPBIAN)"

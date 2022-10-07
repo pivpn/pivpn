@@ -1,7 +1,7 @@
 #!/bin/bash
-
 # Create OVPN Client
-# Default Variable Declarations
+
+### Constants
 setupVars="/etc/pivpn/openvpn/setupVars.conf"
 DEFAULT="Default.txt"
 FILEEXT=".ovpn"
@@ -14,14 +14,10 @@ INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 # shellcheck disable=SC1090
 source "${setupVars}"
 
+## Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
-
-if [[ ! -f "${setupVars}" ]]; then
-  err "::: Missing setup vars file!"
-  exit 1
-fi
 
 helpFunc() {
   echo "::: Create a client ovpn profile, optional nopass"
@@ -67,7 +63,117 @@ checkName() {
     err "::: You cannot leave the name blank."
     exit 1
   fi
-}  
+}
+
+keynoPASS() {
+  # Build the client key
+  export EASYRSA_CERT_EXPIRE="${DAYS}"
+  ./easyrsa build-client-full "${NAME}" nopass
+  cd pki || exit
+}
+
+useBitwarden() {
+  # login and unlock vault
+  printf "****Bitwarden Login****"
+  printf "\n"
+
+  SESSION_KEY="$(bw login --raw)"
+  export BW_SESSION="${SESSION_KEY}"
+
+  printf "Successfully Logged in!"
+  printf "\n"
+
+  # ask user for username
+  printf "Enter the username:  "
+  read -r NAME
+
+  #check name
+  checkName
+
+  # ask user for length of password
+  printf "Please enter the length of characters you want your password to be "
+  printf "(minimum 12): "
+  read -r LENGTH
+
+  # check length
+  until [[ "${LENGTH}" -gt 11 ]] && [[ "${LENGTH}" -lt 129 ]]; do
+    echo "Password must be between from 12 to 128 characters, please try again."
+    # ask user for length of password
+    printf "Please enter the length of characters you want your password to be "
+    printf "(minimum 12): "
+    read -r LENGTH
+  done
+
+  printf "Creating a PiVPN item for your vault..."
+  printf "\n"
+
+  # create a new item for your PiVPN Password
+  PASSWD="$(bw generate -usln --length "${LENGTH}")"
+  bw get template item \
+    | jq '.login.type = "1"' \
+    | jq '.name = "PiVPN"' \
+    | jq -r --arg NAME "${NAME}" '.login.username = $NAME' \
+    | jq -r --arg PASSWD "${PASSWD}" '.login.password = $PASSWD' \
+    | bw encode \
+    | bw create item
+  bw logout
+}
+
+keyPASS() {
+  if [[ -z "${PASSWD}" ]]; then
+    stty -echo
+
+    while true; do
+      printf "Enter the password for the client:  "
+      read -r PASSWD
+      printf "\n"
+      printf "Enter the password again to verify:  "
+      read -r PASSWD2
+      printf "\n"
+
+      [[ "${PASSWD}" == "${PASSWD2}" ]] && break
+
+      printf "Passwords do not match! Please try again.\n"
+    done
+
+    stty echo
+
+    if [[ -z "${PASSWD}" ]]; then
+      err "You left the password blank"
+      err "If you don't want a password, please run:"
+      err "pivpn add nopass"
+      exit 1
+    fi
+  fi
+
+  if [[ "${#PASSWD}" -lt 4 ]] || [[ "${#PASSWD}" -gt 1024 ]]; then
+    err "Password must be between from 4 to 1024 characters"
+    exit 1
+  fi
+
+  export EASYRSA_CERT_EXPIRE="${DAYS}"
+  ./easyrsa --passin=pass:"${PASSWD}" \
+    --passout=pass:"${PASSWD}" \
+    build-client-full "${NAME}"
+
+  cd pki || exit
+}
+
+cidrToMask() {
+  # Source: https://stackoverflow.com/a/20767392
+  set -- $((5 - (${1} / 8))) \
+    255 255 255 255 \
+    $(((255 << (8 - (${1} % 8))) & 255)) \
+    0 0 0
+  shift "${1}"
+  echo "${1-0}.${2-0}.${3-0}.${4-0}"
+}
+
+### Script
+if [[ ! -f "${setupVars}" ]]; then
+  err "::: Missing setup vars file!"
+  exit 1
+fi
 
 if [[ -z "${HELP_SHOWN}" ]]; then
   helpFunc
@@ -174,102 +280,6 @@ while [[ "$#" -gt 0 ]]; do
 
   shift
 done
-
-# Functions def
-
-keynoPASS() {
-  # Build the client key
-  export EASYRSA_CERT_EXPIRE="${DAYS}"
-  ./easyrsa build-client-full "${NAME}" nopass
-  cd pki || exit
-}
-
-useBitwarden() {
-  # login and unlock vault
-  printf "****Bitwarden Login****"
-  printf "\n"
-
-  SESSION_KEY="$(bw login --raw)"
-  export BW_SESSION="${SESSION_KEY}"
-
-  printf "Successfully Logged in!"
-  printf "\n"
-
-  # ask user for username
-  printf "Enter the username:  "
-  read -r NAME
-
-  #check name
-  checkName
-
-  # ask user for length of password
-  printf "Please enter the length of characters you want your password to be "
-  printf "(minimum 12): "
-  read -r LENGTH
-
-  # check length
-  until [[ "${LENGTH}" -gt 11 ]] && [[ "${LENGTH}" -lt 129 ]]; do
-    echo "Password must be between from 12 to 128 characters, please try again."
-    # ask user for length of password
-    printf "Please enter the length of characters you want your password to be "
-    printf "(minimum 12): "
-    read -r LENGTH
-  done
-
-  printf "Creating a PiVPN item for your vault..."
-  printf "\n"
-
-  # create a new item for your PiVPN Password
-  PASSWD="$(bw generate -usln --length "${LENGTH}")"
-  bw get template item \
-    | jq '.login.type = "1"' \
-    | jq '.name = "PiVPN"' \
-    | jq -r --arg NAME "${NAME}" '.login.username = $NAME' \
-    | jq -r --arg PASSWD "${PASSWD}" '.login.password = $PASSWD' \
-    | bw encode \
-    | bw create item
-  bw logout
-}
-
-keyPASS() {
-  if [[ -z "${PASSWD}" ]]; then
-    stty -echo
-
-    while true; do
-      printf "Enter the password for the client:  "
-      read -r PASSWD
-      printf "\n"
-      printf "Enter the password again to verify:  "
-      read -r PASSWD2
-      printf "\n"
-
-      [[ "${PASSWD}" == "${PASSWD2}" ]] && break
-
-      printf "Passwords do not match! Please try again.\n"
-    done
-
-    stty echo
-
-    if [[ -z "${PASSWD}" ]]; then
-      err "You left the password blank"
-      err "If you don't want a password, please run:"
-      err "pivpn add nopass"
-      exit 1
-    fi
-  fi
-
-  if [[ "${#PASSWD}" -lt 4 ]] || [[ "${#PASSWD}" -gt 1024 ]]; then
-    err "Password must be between from 4 to 1024 characters"
-    exit 1
-  fi
-
-  export EASYRSA_CERT_EXPIRE="${DAYS}"
-  ./easyrsa --passin=pass:"${PASSWD}" \
-    --passout=pass:"${PASSWD}" \
-    build-client-full "${NAME}"
-
-  cd pki || exit
-}
 
 #make sure ovpns dir exists
 # Disabling warning for SC2154, var sourced externaly
@@ -455,16 +465,6 @@ if [[ "${iOS}" == 1 ]]; then
   printf "to your iOS device.\n"
   printf "========================================================\n\n"
 fi
-
-cidrToMask() {
-  # Source: https://stackoverflow.com/a/20767392
-  set -- $((5 - (${1} / 8))) \
-    255 255 255 255 \
-    $(((255 << (8 - (${1} % 8))) & 255)) \
-    0 0 0
-  shift "${1}"
-  echo "${1-0}.${2-0}.${3-0}.${4-0}"
-}
 
 #disabling SC2514, variable sourced externaly
 # shellcheck disable=SC2154

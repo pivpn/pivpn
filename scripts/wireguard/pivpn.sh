@@ -1,24 +1,16 @@
 #!/bin/bash
 
+### Constants
+
 CHECK_PKG_INSTALLED='dpkg-query -s'
+scriptdir="/opt/pivpn"
+vpn="wireguard"
 
 if grep -qsEe "^NAME\=['\"]?Alpine[a-zA-Z ]*['\"]?$" /etc/os-release; then
   CHECK_PKG_INSTALLED='apk --no-cache info -e'
 fi
 
-# Must be root to use this tool
-if [[ "${EUID}" -ne 0 ]]; then
-  if ${CHECK_PKG_INSTALLED} sudo &> /dev/null; then
-    export SUDO="sudo"
-  else
-    err "::: Please install sudo or run this as root."
-    exit 1
-  fi
-fi
-
-scriptdir="/opt/pivpn"
-vpn="wireguard"
-
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
@@ -113,6 +105,17 @@ showHelp() {
   echo ":::   -bk, backup           Backup VPN configs and user profiles"
   exit 0
 }
+
+### Script
+# Must be root to use this tool
+if [[ "${EUID}" -ne 0 ]]; then
+  if ${CHECK_PKG_INSTALLED} sudo &> /dev/null; then
+    export SUDO="sudo"
+  else
+    err "::: Please install sudo or run this as root."
+    exit 1
+  fi
+fi
 
 if [[ "$#" == 0 ]]; then
   showHelp

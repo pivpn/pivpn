@@ -4,6 +4,7 @@
 # Clean up Escape Seq -- psgoundar
 
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
+EASYRSA="/etc/openvpn/easy-rsa/easyrsa"
 
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
@@ -13,8 +14,6 @@ if [[ ! -f "${INDEX}" ]]; then
   err "The file: ${INDEX} was not found!"
   exit 1
 fi
-
-EASYRSA="/etc/openvpn/easy-rsa/easyrsa"
 
 if [[ ! -f "${EASYRSA}" ]]; then
   err "The file: ${EASYRSA} was not found!"

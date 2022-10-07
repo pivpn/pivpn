@@ -1,9 +1,12 @@
 #!/bin/bash
+### Constants
 
+### Funcions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
 
+### Script
 cd /etc/wireguard/configs || exit
 
 if [[ ! -s clients.txt ]]; then

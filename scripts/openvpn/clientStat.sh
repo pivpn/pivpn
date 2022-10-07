@@ -3,11 +3,6 @@
 
 STATUS_LOG="/var/log/openvpn-status.log"
 
-if [[ ! -f "${STATUS_LOG}" ]]; then
-  err "The file: ${STATUS_LOG} was not found!"
-  exit 1
-fi
-
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
@@ -71,6 +66,11 @@ listClients() {
     printf "\n"
   } | column -t -s $'\t'
 }
+
+if [[ ! -f "${STATUS_LOG}" ]]; then
+  err "The file: ${STATUS_LOG} was not found!"
+  exit 1
+fi
 
 if [[ "$#" -eq 0 ]]; then
   HR=1

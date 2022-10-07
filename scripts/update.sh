@@ -1,7 +1,18 @@
 #!/bin/bash
-
 ### Updates pivpn scripts (Not PiVPN)
-### Main Vars
+# TODO: Delete this section when the updating functionality will be re-enabled
+###
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+}
+
+err "::: The updating functionality for PiVPN scripts is temporarily disabled"
+err "::: To keep the VPN (and the system) up to date, use:"
+err "        apt update; apt upgrade"
+exit 0
+### END SECTION ###
+
+### Constants
 pivpnrepo="https://github.com/pivpn/pivpn.git"
 pivpnlocalpath="/etc/.pivpn"
 pivpnscripts="/opt/pivpn/"
@@ -18,18 +29,6 @@ c=$((columns / 2))
 # Unless the screen is tiny
 r=$((r < 20 ? 20 : r))
 c=$((c < 70 ? 70 : c))
-
-# TODO: Delete this section when the updating functionality will be re-enabled
-###
-err() {
-  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
-}
-
-err "::: The updating functionality for PiVPN scripts is temporarily disabled"
-err "::: To keep the VPN (and the system) up to date, use:"
-err "        apt update; apt upgrade"
-exit 0
-###
 
 chooseVPNCmd=(whiptail
   --backtitle "Setup PiVPN"
@@ -50,14 +49,10 @@ fi
 
 setupVars="/etc/pivpn/${VPN}/setupVars.conf"
 
-if [[ ! -f "${setupVars}" ]]; then
-  err "::: Missing setup vars file!"
-  exit 1
-fi
-
 # shellcheck disable=SC1090
 source "${setupVars}"
 
+### Functions
 # TODO: Uncomment this function when the updating functionality
 # will be re-enabled
 #err() {
@@ -75,8 +70,6 @@ scriptusage() {
   echo ":::  -h, help            Show this usage dialog"
 }
 
-### Functions
-## Updates scripts
 updatepivpnscripts() {
   local branch
   branch="${1}"
@@ -126,6 +119,10 @@ cloneandupdate() {
 }
 
 ## SCRIPT
+if [[ ! -f "${setupVars}" ]]; then
+  err "::: Missing setup vars file!"
+  exit 1
+fi
 
 if [[ "$#" -eq 0 ]]; then
   updatepivpnscripts

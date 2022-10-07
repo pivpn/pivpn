@@ -1,5 +1,6 @@
 #!/bin/bash
 
+### Constants
 PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
   | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
 
@@ -8,10 +9,12 @@ VPN="${1}"
 setupVars="/etc/pivpn/${VPN}/setupVars.conf"
 ERR=0
 
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
 
+### Script
 if [[ ! -f "${setupVars}" ]]; then
   err "::: Missing setup vars file!"
   exit 1

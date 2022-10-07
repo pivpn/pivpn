@@ -1,14 +1,11 @@
 #!/bin/bash
 # PiVPN: Backup Script
 
+### Constants
 # Find the rows and columns. Will default to 80x24 if it can not be detected.
 screen_size="$(stty size 2> /dev/null || echo 24 80)"
 rows="$(echo "${screen_size}" | awk '{print $1}')"
 columns="$(echo "${screen_size}" | awk '{print $2}')"
-
-err() {
-  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
-}
 
 # Divide by two so the dialogs take up half of the screen, which looks nice.
 r=$((rows / 2))
@@ -24,6 +21,49 @@ setupConfigDir="/etc/pivpn"
 
 CHECK_PKG_INSTALLED='dpkg-query -s'
 
+### Functions
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
+}
+
+checkbackupdir() {
+  # Disabling shellcheck error $install_home sourced from $setupVars
+  # shellcheck disable=SC2154
+  mkdir -p "${install_home}/${backupdir}"
+}
+
+backup_openvpn() {
+  openvpndir=/etc/openvpn
+  ovpnsdir="${install_home}/ovpns"
+  backupzip="${date}-pivpnovpnbackup.tgz"
+
+  checkbackupdir
+  # shellcheck disable=SC2210
+  tar czpf "${install_home}/${backupdir}/${backupzip}" "${openvpndir}" \
+    "${ovpnsdir}" > /dev/null 2>&1
+
+  echo -e "Backup created in ${install_home}/${backupdir}/${backupzip} "
+  echo -e "To restore the backup, follow instructions at:"
+  echo -ne "https://docs.pivpn.io/openvpn/"
+  echo -e "#migrating-pivpn-openvpn"
+}
+
+backup_wireguard() {
+  wireguarddir=/etc/wireguard
+  configsdir="${install_home}/configs"
+  backupzip="${date}-pivpnwgbackup.tgz"
+
+  checkbackupdir
+  tar czpf "${install_home}/${backupdir}/${backupzip}" "${wireguarddir}" \
+    "${configsdir}" > /dev/null 2>&1
+
+  echo -e "Backup created in ${install_home}/${backupdir}/${backupzip} "
+  echo -e "To restore the backup, follow instructions at:"
+  echo -ne "https://docs.pivpn.io/openvpn/"
+  echo -e "wireguard/#migrating-pivpn-wireguard"
+}
+
+### Script
 if [[ -r "${setupConfigDir}/wireguard/${setupVarsFile}" ]] \
   && [[ -r "${setupConfigDir}/openvpn/${setupVarsFile}" ]]; then
   # Two protocols have been installed, check if the script has passed
@@ -72,43 +112,6 @@ source "${setupVars}"
 if [[ "${PLAT}" == 'Alpine' ]]; then
   CHECK_PKG_INSTALLED='apk --no-cache info -e'
 fi
-
-checkbackupdir() {
-  # Disabling shellcheck error $install_home sourced from $setupVars
-  # shellcheck disable=SC2154
-  mkdir -p "${install_home}/${backupdir}"
-}
-
-backup_openvpn() {
-  openvpndir=/etc/openvpn
-  ovpnsdir="${install_home}/ovpns"
-  backupzip="${date}-pivpnovpnbackup.tgz"
-
-  checkbackupdir
-  # shellcheck disable=SC2210
-  tar czpf "${install_home}/${backupdir}/${backupzip}" "${openvpndir}" \
-    "${ovpnsdir}" > /dev/null 2>&1
-
-  echo -e "Backup created in ${install_home}/${backupdir}/${backupzip} "
-  echo -e "To restore the backup, follow instructions at:"
-  echo -ne "https://docs.pivpn.io/openvpn/"
-  echo -e "#migrating-pivpn-openvpn"
-}
-
-backup_wireguard() {
-  wireguarddir=/etc/wireguard
-  configsdir="${install_home}/configs"
-  backupzip="${date}-pivpnwgbackup.tgz"
-
-  checkbackupdir
-  tar czpf "${install_home}/${backupdir}/${backupzip}" "${wireguarddir}" \
-    "${configsdir}" > /dev/null 2>&1
-
-  echo -e "Backup created in ${install_home}/${backupdir}/${backupzip} "
-  echo -e "To restore the backup, follow instructions at:"
-  echo -ne "https://docs.pivpn.io/openvpn/"
-  echo -e "wireguard/#migrating-pivpn-wireguard"
-}
 
 if [[ "${EUID}" -ne 0 ]]; then
   if ${CHECK_PKG_INSTALLED} sudo &> /dev/null; then

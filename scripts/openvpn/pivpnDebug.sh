@@ -1,19 +1,21 @@
 #!/bin/bash
 # This scripts runs as root
-
+### Contants
 setupVars="/etc/pivpn/openvpn/setupVars.conf"
 
+# shellcheck disable=SC1090
+source "${setupVars}"
+
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
 
+### Script
 if [[ ! -f "${setupVars}" ]]; then
   err "::: Missing setup vars file!"
   exit 1
 fi
-
-# shellcheck disable=SC1090
-source "${setupVars}"
 
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
 printf "=============================================\n"

@@ -1,18 +1,14 @@
 #!/bin/bash
 
+### Constants
 setupVars="/etc/pivpn/wireguard/setupVars.conf"
+# shellcheck disable=SC1090
+source "${setupVars}"
 
+### Funcions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
-
-if [[ ! -f "${setupVars}" ]]; then
-  err "::: Missing setup vars file!"
-  exit 1
-fi
-
-# shellcheck disable=SC1090
-source "${setupVars}"
 
 helpFunc() {
   echo "::: Disable client conf profiles"
@@ -27,6 +23,12 @@ helpFunc() {
   echo ":::  -v                   Show disabled clients only"
   echo ":::  -h,--help            Show this help dialog"
 }
+
+### Script
+if [[ ! -f "${setupVars}" ]]; then
+  err "::: Missing setup vars file!"
+  exit 1
+fi
 
 # Parse input arguments
 while [[ "$#" -gt 0 ]]; do

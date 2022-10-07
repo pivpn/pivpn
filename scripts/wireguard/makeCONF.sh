@@ -1,5 +1,6 @@
 #!/bin/bash
 
+### Constantss
 # Some vars that might be empty but need to be defined for checks
 pivpnPERSISTENTKEEPALIVE=""
 pivpnDNS2=""
@@ -8,17 +9,13 @@ setupVars="/etc/pivpn/wireguard/setupVars.conf"
 # shellcheck disable=SC2154
 userGroup="${install_user}:${install_user}"
 
+# shellcheck disable=SC1090
+source "${setupVars}"
+
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
-
-if [[ ! -f "${setupVars}" ]]; then
-  err "::: Missing setup vars file!"
-  exit 1
-fi
-
-# shellcheck disable=SC1090
-source "${setupVars}"
 
 helpFunc() {
   echo "::: Create a client conf profile"
@@ -55,7 +52,13 @@ checkName() {
     err "::: A client with this name already exists"
     exit 1
   fi
-}  
+}
+
+### Script
+if [[ ! -f "${setupVars}" ]]; then
+  err "::: Missing setup vars file!"
+  exit 1
+fi
 
 # Parse input arguments
 while [[ "$#" -gt 0 ]]; do

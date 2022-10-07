@@ -1,16 +1,13 @@
 #!/bin/bash
 # PiVPN: client status script
 
+### Constants
 CLIENTS_FILE="/etc/wireguard/configs/clients.txt"
 
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
-
-if [[ ! -s "${CLIENTS_FILE}" ]]; then
-  err "::: There are no clients to list"
-  exit 0
-fi
 
 scriptusage() {
   echo "::: List any connected clients to the server"
@@ -82,6 +79,12 @@ listClients() {
   echo "::: Disabled clients :::"
   grep '\[disabled\] ### begin' wg0.conf | sed 's/#//g; s/begin//'
 }
+
+### Script
+if [[ ! -s "${CLIENTS_FILE}" ]]; then
+  err "::: There are no clients to list"
+  exit 0
+fi
 
 if [[ "$#" -eq 0 ]]; then
   HR=1

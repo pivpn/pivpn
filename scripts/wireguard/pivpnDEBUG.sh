@@ -1,19 +1,25 @@
 #!/bin/bash
-# This scripts runs as root
+
+### Constants
 
 setupVars="/etc/pivpn/wireguard/setupVars.conf"
+
+# shellcheck disable=SC1090
+source "${setupVars}"
+
+### Funcions
 
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
 
+### Script
+
+# This scripts runs as root
 if [[ ! -f "${setupVars}" ]]; then
   err "::: Missing setup vars file!"
   exit 1
 fi
-
-# shellcheck disable=SC1090
-source "${setupVars}"
 
 echo -e "::::\t\t\e[4mPiVPN debug\e[0m\t\t ::::"
 printf "=============================================\n"

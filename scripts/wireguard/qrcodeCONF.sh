@@ -1,5 +1,9 @@
 #!/bin/bash
 
+### Constants
+encoding="ansiutf8"
+
+### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
@@ -18,8 +22,8 @@ helpFunc() {
   echo ":::  -h,--help            Show this help dialog"
 }
 
+### Script
 # Parse input arguments
-encoding="ansiutf8"
 
 while [[ "$#" -gt 0 ]]; do
   _key="${1}"
