@@ -11,17 +11,17 @@ CA="ca.crt"
 TA="ta.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 
-if [[ ! -f "${setupVars}" ]]; then
-  err "::: Missing setup vars file!"
-  exit 1
-fi
-
 # shellcheck disable=SC1090
 source "${setupVars}"
 
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
 }
+
+if [[ ! -f "${setupVars}" ]]; then
+  err "::: Missing setup vars file!"
+  exit 1
+fi
 
 helpFunc() {
   echo "::: Create a client ovpn profile, optional nopass"
@@ -45,6 +45,29 @@ helpFunc() {
   echo "existing client"
   echo ":::  -h,--help            Show this help dialog"
 }
+
+checkName() {
+  # check name
+  if [[ "${NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
+    err "Name can only contain alphanumeric characters and these symbols (.-@_)."
+    exit 1
+  elif [[ "${NAME}" =~ ^[0-9]+$ ]]; then
+    err "Names cannot be integers."
+    exit 1
+  elif [[ "${NAME}" =~ \ |\' ]]; then
+    err "Names cannot contain spaces."
+    exit 1
+  elif [[ "${NAME:0:1}" == "-" ]]; then
+    err "Name cannot start with - (dash)"
+    exit 1
+  elif [[ "${NAME::1}" == "." ]]; then
+    err "Names cannot start with a . (dot)."
+    exit 1
+  elif [[ -z "${NAME}" ]]; then
+    err "::: You cannot leave the name blank."
+    exit 1
+  fi
+}  
 
 if [[ -z "${HELP_SHOWN}" ]]; then
   helpFunc
@@ -70,6 +93,7 @@ while [[ "$#" -gt 0 ]]; do
       fi
 
       NAME="${_val}"
+      checkName
       ;;
     -p | --password | --password=*)
       _val="${_key##--password=}"
@@ -175,17 +199,8 @@ useBitwarden() {
   printf "Enter the username:  "
   read -r NAME
 
-  # check name
-  until [[ "${NAME}" =~ ^[a-zA-Z0-9.@_-]+$ ]] \
-    && [[ "${NAME::1}" != "." ]] \
-    && [[ "${NAME::1}" != "-" ]]; do
-    echo -n "Name can only contain alphanumeric characters and these "
-    echo -n "characters (.-@_). The name also cannot start with a dot (.)"
-    echo " or a dash (-). Please try again."
-    # ask user for username again
-    printf "Enter the username: "
-    read -r NAME
-  done
+  #check name
+  checkName
 
   # ask user for length of password
   printf "Please enter the length of characters you want your password to be "
@@ -273,18 +288,9 @@ fi
 if [[ -z "${NAME}" ]]; then
   printf "Enter a Name for the Client:  "
   read -r NAME
-elif [[ "${NAME::1}" == "." ]] || [[ "${NAME::1}" == "-" ]]; then
-  err "Names cannot start with a dot (.) or a dash (-)."
-  exit 1
-elif [[ "${NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
-  err "Name can only contain alphanumeric characters and these symbols (.-@_)."
-  exit 1
-elif [[ "${NAME}" =~ ^[0-9]+$ ]]; then
-  err "Names cannot be integers."
-  exit 1
-elif [[ -z "${NAME}" ]]; then
-  err "You cannot leave the name blank."
-  exit 1
+  checkName
+else
+  checkName
 fi
 
 if [[ "${GENOVPNONLY}" == 1 ]]; then

@@ -31,6 +31,32 @@ helpFunc() {
   echo ":::  -h,--help            Show this help dialog"
 }
 
+checkName() {
+  # check name
+  if [[ "${CLIENT_NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
+    err "Name can only contain alphanumeric characters and these symbols (.-@_)."
+    exit 1
+  elif [[ "${CLIENT_NAME}" =~ ^[0-9]+$ ]]; then
+    err "Names cannot be integers."
+    exit 1
+  elif [[ "${CLIENT_NAME}" =~ \ |\' ]]; then
+    err "Names cannot contain spaces."
+    exit 1
+  elif [[ "${CLIENT_NAME:0:1}" == "-" ]]; then
+    err "Name cannot start with - (dash)"
+    exit 1
+  elif [[ "${CLIENT_NAME::1}" == "." ]]; then
+    err "Names cannot start with a . (dot)."
+    exit 1
+  elif [[ -z "${CLIENT_NAME}" ]]; then
+    err "::: You cannot leave the name blank."
+    exit 1
+  elif [[ -f "configs/${CLIENT_NAME}.conf" ]]; then
+    err "::: A client with this name already exists"
+    exit 1
+  fi
+}  
+
 # Parse input arguments
 while [[ "$#" -gt 0 ]]; do
   _key="${1}"
@@ -49,6 +75,7 @@ while [[ "$#" -gt 0 ]]; do
       fi
 
       CLIENT_NAME="${_val}"
+      checkName
       ;;
     -h | --help)
       helpFunc
@@ -77,21 +104,9 @@ cd /etc/wireguard || exit
 
 if [[ -z "${CLIENT_NAME}" ]]; then
   read -r -p "Enter a Name for the Client: " CLIENT_NAME
-elif [[ "${CLIENT_NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
-  err "Name can only contain alphanumeric characters and these symbols (.-@_)."
-  exit 1
-elif [[ "${CLIENT_NAME:0:1}" == "-" ]]; then
-  err "Name cannot start with -"
-  exit 1
-elif [[ "${CLIENT_NAME}" =~ ^[0-9]+$ ]]; then
-  err "Names cannot be integers."
-  exit 1
-elif [[ -z "${CLIENT_NAME}" ]]; then
-  err "::: You cannot leave the name blank."
-  exit 1
-elif [[ -f "configs/${CLIENT_NAME}.conf" ]]; then
-  err "::: A client with this name already exists"
-  exit 1
+  checkName
+else
+  checkName
 fi
 
 wg genkey \
