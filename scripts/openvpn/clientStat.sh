@@ -51,6 +51,7 @@ listClients() {
 
           printf "  \t  %s %s %s " "${array[7]}" "${array[8]}" "${array[10]}"
           printf "- %s\n" "${array[9]}"
+          printf "\n"
         done < "${STATUS_LOG}"
       else
         awk -F ' ' -v s='CLIENT_LIST' \
