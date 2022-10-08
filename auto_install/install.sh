@@ -1744,6 +1744,15 @@ setOpenVPNDefaultVars() {
   fi
 
   vpnGw="$(cut -d '.' -f 1-3 <<< "${pivpnNET}").1"
+
+  if [[ "${pivpnenableipv6}" -eq 1 ]] \
+    && [[ -z "${pivpnNETv6}" ]]; then
+    pivpnNETv6="fd11:5ee:bad:c0de::"
+  fi
+
+  if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+    vpnGwv6="${pivpnNETv6}1"
+  fi
 }
 
 setWireguardDefaultVars() {
