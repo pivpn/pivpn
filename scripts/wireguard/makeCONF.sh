@@ -6,11 +6,12 @@ pivpnPERSISTENTKEEPALIVE=""
 pivpnDNS2=""
 
 setupVars="/etc/pivpn/wireguard/setupVars.conf"
-# shellcheck disable=SC2154
-userGroup="${install_user}:${install_user}"
 
 # shellcheck disable=SC1090
 source "${setupVars}"
+
+# shellcheck disable=SC2154
+userGroup="${install_user}:${install_user}"
 
 ### Functions
 err() {
