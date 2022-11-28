@@ -14,6 +14,10 @@ INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 # shellcheck disable=SC1090
 source "${setupVars}"
 
+
+# shellcheck disable=SC2154
+userGroup="${install_user}:${install_user}"
+
 ## Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
@@ -286,7 +290,7 @@ done
 # shellcheck disable=SC2154
 if [[ ! -d "${install_home}/ovpns" ]]; then
   mkdir "${install_home}/ovpns"
-  chown "${install_user}:${install_user}" "${install_home}/ovpns"
+  chown "${userGroup}" "${install_home}/ovpns"
   chmod 0750 "${install_home}/ovpns"
 fi
 
@@ -456,7 +460,7 @@ if [[ "${iOS}" == 1 ]]; then
     -name "${NAME}" \
     -out "${install_home}/ovpns/${NAME}.ovpn12"
 
-  chown "${install_user}:${install_user}" "${install_home}/ovpns/${NAME}.ovpn12"
+  chown "${userGroup}" "${install_home}/ovpns/${NAME}.ovpn12"
   chmod 640 "${install_home}/ovpns/${NAME}.ovpn12"
 
   printf "========================================================\n"
