@@ -159,7 +159,7 @@ removeAll() {
 
   for i in "${INSTALLED_PACKAGES[@]}"; do
     while true; do
-      read -rp "::: Do you wish to remove ${i} from your system? [Y/n]: " yn
+      read -rp "::: Do you wish to remove ${i} from your system? [y/n]: " yn
 
       case "${yn}" in
         [Yy]*)
