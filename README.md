@@ -22,7 +22,7 @@ This script's primary mission in life is to allow a user to have as cost-effecti
 
 That being said ...
 
-PiVPN should be, bar none, the simplest and fastest way to Install and set up an extremely secure OpenVPN or Wiregaurd server on your raspberry pi. You won't need a guide or tutorial as PiVPN will do it all for you in a fraction of the time with hardened security settings in place by default.  
+PiVPN should be, bar none, the simplest and fastest way to Install and set up an extremely secure OpenVPN or Wireguard server on your raspberry pi. You won't need a guide or tutorial as PiVPN will do it all for you in a fraction of the time with hardened security settings in place by default.  
 
 We recommend running PiVPN on the latest RaspberryPi OS Lite image in a Raspberry Pi at your home so you can VPN into your network from not secure remote locations and safely use the internet. However, you can also use PiVPN in any Cloud Provider VPS running Ubuntu or Debian to assist those with untrustworthy ISPs. Running a VPN on a server elsewhere means you can connect to the VPN from home, and because your traffic will be getting out from the cloud/VPS provider, your ISP will only see encrypted traffic. 
 
