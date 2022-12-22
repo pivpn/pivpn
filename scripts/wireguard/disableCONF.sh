@@ -106,7 +106,7 @@ for CLIENT_NAME in "${CLIENTS_TO_CHANGE[@]}"; do
       read -r -p "Confirm you want to disable ${CLIENT_NAME}? [Y/n] "
     fi
 
-    if [[ "${REPLY}" =~ ^[yY]$ ]] || [[ -z "${REPLY}" ]]; then
+    if [[ "${REPLY}" =~ ^[Yy]$ ]] || [[ -z "${REPLY}" ]]; then
       # Disable the peer section from the server config
       echo "${CLIENT_NAME}"
 
