@@ -89,6 +89,13 @@ for CLIENT_NAME in "${CLIENTS_TO_SHOW[@]}"; do
     qrencode -t "${encoding}" < "${CLIENT_NAME}.conf"
 
     echo "====================================================================="
+  elif [[ -f "${CLIENT_NAME}" ]]; then
+    echo -e "::: Showing client \e[1m${CLIENT_NAME}\e[0m below"
+    echo "====================================================================="
+
+    qrencode -t "${encoding}" < "${CLIENT_NAME}"
+
+    echo "====================================================================="
   else
     echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
   fi
