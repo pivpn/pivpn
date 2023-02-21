@@ -44,6 +44,12 @@ BASE_DEPS_ALPINE=(git grep bind-tools newt net-tools bash-completion coreutils)
 BASE_DEPS_ALPINE+=(openssl util-linux openrc iptables ip6tables coreutils sed)
 BASE_DEPS_ALPINE+=(perl)
 
+BASE_DEPS_ARCH=(git tar curl grep bind libnewt net-tools bash-completion)
+BASE_DEPS_ARCH+=(base-devel yay)
+BASE_DEPS_ARCH_YAY=(grepcidr bsdmainutils)
+
+
+
 # Dependencies that where actually installed by the script. For example if the
 # script requires grep and dnsutils but dnsutils is already installed, we save
 # grep here. This way when uninstalling PiVPN we won't prompt to remove packages
@@ -126,6 +132,9 @@ main() {
 
   if [[ "${PLAT}" == 'Alpine' ]]; then
     installDependentPackages BASE_DEPS_ALPINE[@]
+  elif [[ "${PLAT}" == 'ManjaroLinux' || "${PLAT}" == 'Arch' ]]; then
+    installDependentPackages BASE_DEPS_ARCH[@]
+    installDependentPackagesYAY BASE_DEPS_ARCH_YAY[@]
   else
     installDependentPackages BASE_DEPS[@]
   fi
@@ -379,6 +388,19 @@ distroCheck() {
       PKG_COUNT="${PKG_MANAGER} list -u | wc -l || true"
       CHECK_PKG_INSTALLED="${PKG_MANAGER} --no-cache info -e"
       ;;
+    ManjaroLinux | Arch)
+      PKG_MANAGER='pacman'
+      UPDATE_PKG_CACHE="${PKG_MANAGER} --noconfirm -Syu"
+      PKG_INSTALL="${PKG_MANAGER} --noconfirm -S"
+      PKG_COUNT='${PKG_MANAGER} -u -Q | wc -l || true'
+      CHECK_PKG_INSTALLED="${PKG_MANAGER} -Q"
+      ##
+      YAY_PKG_MANAGER='yay'
+      YAY_UPDATE_PKG_CACHE="${YAY_PKG_MANAGER} --answerclean=ALL --answerdiff=None --answeredit=None --noremovemake --noconfirm -Syu"
+      YAY_PKG_INSTALL="${YAY_PKG_MANAGER} --answerclean=ALL --answerdiff=None --answeredit=None --noremovemake --noconfirm -S"
+      YAY_PKG_COUNT='${YAY_PKG_MANAGER} -Qu | wc -l || true'
+      YAY_CHECK_PKG_INSTALLED="${YAY_PKG_MANAGER} -Q"
+      ;;
     *)
       noOSSupport
       ;;
@@ -537,6 +559,14 @@ updatePackageCache() {
   ${SUDO} ${UPDATE_PKG_CACHE} &> /dev/null &
   spinner "$!"
   echo " done!"
+  if [[ "${PLAT}" == 'ManjaroLinux' || "${PLAT}" == 'Arch' ]]; then
+    echo ":::"
+    echo -e "::: Package Cache update is needed for AUR (yay), running ${YAY_UPDATE_PKG_CACHE} ..."
+    # shellcheck disable=SC2086
+    ${SUDO} ${YAY_UPDATE_PKG_CACHE} &> /dev/null &
+    spinner "$!"
+    echo " done!"
+  fi
 }
 
 notifyPackageUpdatesAvailable() {
@@ -554,6 +584,22 @@ notifyPackageUpdatesAvailable() {
     echo "::: There are ${updatesToInstall} updates available for your system!"
     echo "::: We recommend you update your OS after installing PiVPN! "
     echo ":::"
+  fi
+
+  if [[ "${PLAT}" == 'ManjaroLinux' || "${PLAT}" == 'Arch' ]]; then
+    echo ":::"
+    echo -n "::: Checking ${YAY_PKG_MANAGER} for upgraded packages...."
+    yayupdatesToInstall="$(eval "${YAY_PKG_COUNT}")"
+    echo " done!"
+    echo ":::"
+
+    if [[ "${yayupdatesToInstall}" -eq 0 ]]; then
+      echo "::: Your system is up to date! Continuing with PiVPN installation..."
+    else
+      echo "::: There are ${yayupdatesToInstall} updates available for your system!"
+      echo "::: We recommend you update your OS after installing PiVPN! "
+      echo ":::"
+    fi
   fi
 }
 
@@ -592,6 +638,8 @@ preconfigurePackages() {
   elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
     AVAILABLE_OPENVPN="$(apk search -e openvpn \
       | sed -E -e 's/openvpn\-(.*)/\1/')"
+  elif [[ "${PKG_MANAGER}" == 'pacman' ]]; then
+    AVAILABLE_OPENVPN="$(pacman -p --print-format='%v' -S openvpn)"    
   fi
 
   OPENVPN_SUPPORT=0
@@ -624,6 +672,12 @@ preconfigurePackages() {
       OPENVPN_SUPPORT=1
     else
       OPENVPN_SUPPORT=0
+    fi
+  fi
+
+  if [[ "${PKG_MANAGER}" == 'pacman' ]]; then
+    if [[ -n "${AVAILABLE_OPENVPN}" ]]; then
+      OPENVPN_SUPPORT=1
     fi
   fi
 
@@ -775,6 +829,17 @@ installDependentPackages() {
         TO_INSTALL+=("${i}")
       fi
     fi
+
+    if [[ "${PKG_MANAGER}" == 'pacman' ]]; then
+      if pacman -Q "${i}" 2> /dev/null \
+        | grep -q "${i}"; then
+        echo " already installed!"
+      else
+        echo " not installed!"
+        TO_INSTALL+=("${i}")
+      fi
+    fi 
+
   done
 
   APTLOGFILE="$(${SUDO} mktemp)"
@@ -805,6 +870,69 @@ installDependentPackages() {
         ((FAILED++))
       fi
     fi
+
+    if [[ "${PKG_MANAGER}" == 'pacman' ]]; then
+      if pacman -Q "${i}" 2> /dev/null \
+        | grep -q "${i}"; then
+        echo ":::    Package ${i} successfully installed!"
+        INSTALLED_PACKAGES+=("${i}")
+      else
+        echo ":::    Failed to install ${i}!"
+        ((FAILED++))
+      fi 
+    fi 
+
+  done
+
+  if [[ "${FAILED}" -gt 0 ]]; then
+    echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]:" >&2
+    ${SUDO} cat "${APTLOGFILE}" >&2
+    exit 1
+  fi
+}
+
+installDependentPackagesYAY() {
+  # Install packages passed via argument array using YAY
+  # No spinner - conflicts with set -e
+  local FAILED=0
+  local APTLOGFILE
+  declare -a TO_INSTALL=()
+  declare -a argArray1=("${!1}")
+
+  for i in "${argArray1[@]}"; do
+    echo -n ":::    Checking for ${i}..."
+
+    if [[ "${YAY_PKG_MANAGER}" == 'yay' ]]; then
+      if yay -Q "${i}" 2> /dev/null \
+        | grep -q "${i}"; then
+        echo " already installed!"
+      else
+        echo " not installed!"
+        TO_INSTALL+=("${i}")
+      fi
+    fi 
+
+  done
+
+  APTLOGFILE="$(${SUDO} mktemp)"
+
+  # shellcheck disable=SC2086
+  #${SUDO} ${YAY_PKG_INSTALL} "${TO_INSTALL[@]}"   #Never Run YAY as Sudo.
+  ${YAY_PKG_INSTALL} "${TO_INSTALL[@]}"
+
+  for i in "${TO_INSTALL[@]}"; do
+
+    if [[ "${YAY_PKG_MANAGER}" == 'yay' ]]; then
+      if yay -Q "${i}" 2> /dev/null \
+        | grep -q "${i}"; then
+        echo ":::    Package ${i} successfully installed!"
+        INSTALLED_PACKAGES+=("${i}")
+      else
+        echo ":::    Failed to install ${i}!"
+        ((FAILED++))
+      fi 
+    fi 
+
   done
 
   if [[ "${FAILED}" -gt 0 ]]; then
@@ -1002,7 +1130,7 @@ IPv4 (press space to select):" "${r}" "${c}" "${interfaceCount}")
 checkStaticIpSupported() {
   # Not really robust and correct, we should actually check for dhcpcd,
   # not the distro, but works on Raspbian and Debian.
-  if [[ "${PLAT}" == "Raspbian" ]]; then
+  if [[ "${PLAT}" == "Raspbian" || "${PLAT}" == "ManjaroLinux" || "${PLAT}" == "Arch" ]]; then
     return 0
   # If we are on 'Debian' but the raspi.list file is present,
   # then we actually are on 64-bit Raspberry Pi OS.
@@ -1680,6 +1808,29 @@ installPiVPN() {
   fi
 
   writeVPNTempVarsFile
+
+  if [[ "${PLAT}" == "ManjaroLinux" || "${PLAT}" == "Arch" ]]; then
+    # 1) Solve /var/log/ Permission Overwritten issue.
+    #       Issue is because of a Systemd feature.
+    #       There are three directories, with the
+    #         first having greatest precedence (and intended for admins
+    #         to use in order to override settings from the other two):
+    #             - /etc/tmpfiles.d/*.conf
+    #             - /run/tmpfiles.d/*.conf
+    #             - /usr/lib/tmpfiles.d/*.conf
+    ${SUDO} sed -i 's,^d /var/log .*$,d /var/log 0777 - - -,' /usr/lib/tmpfiles.d/var.conf
+
+    # 2) Solve iptables-restore preExec Issue.
+    #       This script dumps iptables (iptables-save) to following location.
+    #         (see netConf() for details.)
+    #           - /etc/iptables/rules.v4
+    #           - /etc/iptables/rules.v6
+    #       Manjaro/Arch does not have iptables-persistant package, need to
+    #         manually reload these rules, when service starts.
+    #       Openvpn service description file default location
+    #           - /usr/lib/systemd/system/openvpn-server@.service
+    ${SUDO} sed -i 's,^ExecStart=.*$,ExecStartPre=\/usr\/bin\/sh -c "\/usr\/bin\/iptables-restore < \/etc\/iptables\/rules.v4"\nExecStartPre=\/usr\/bin\/sh -c "\/usr\/bin\/iptables-restore < \/etc\/iptables\/rules.v6"\n&,' /usr/lib/systemd/system/openvpn-server@.service
+  fi
 }
 
 setVPNDefaultVars() {
@@ -3001,6 +3152,19 @@ confOVPN() {
       "/key-direction 1/d" \
       /etc/openvpn/easy-rsa/pki/Default.txt
   fi
+
+  if [[ "${PLAT}" == 'ManjaroLinux' || "${PLAT}" == 'Arch' ]]; then  
+    # Service Configuration needs to reflect the created server.conf file location.
+    # Edit /usr/lib/systemd/system/openvpn-server@.service file and Update 'WorkingDirectory'
+    # WorkingDirectory=/etc/openvpn/server --> WorkingDirectory=/etc/openvpn
+    ${SUDO} sed -i 's,WorkingDirectory=/etc/openvpn/server,WorkingDirectory=/etc/openvpn,' /usr/lib/systemd/system/openvpn-server@.service
+    # Update permissions for /etc/openvpn
+    ${SUDO} chown -R openvpn:network /etc/openvpn    
+    # Update Permissions for openvpn:network user  access to keys.
+    ${SUDO} chown -R openvpn:openvpn /etc/openvpn/easy-rsa/pki/
+    # Update permissions for log folder
+    ${SUDO} chmod -R a+w /var/log
+  fi
 }
 
 confWireGuard() {
@@ -3382,7 +3546,7 @@ confNetwork() {
   fi
 
   case "${PLAT}" in
-    Debian | Raspbian | Ubuntu)
+    Debian | Raspbian | Ubuntu | ManjaroLinux | Arch)
       ${SUDO} iptables-save \
         | ${SUDO} tee /etc/iptables/rules.v4 > /dev/null
       ${SUDO} ip6tables-save \
@@ -3449,6 +3613,16 @@ restartServices() {
       if [[ "${VPN}" == "openvpn" ]]; then
         ${SUDO} systemctl enable openvpn.service &> /dev/null
         ${SUDO} systemctl restart openvpn.service
+      elif [[ "${VPN}" == "wireguard" ]]; then
+        ${SUDO} systemctl enable wg-quick@wg0.service &> /dev/null
+        ${SUDO} systemctl restart wg-quick@wg0.service
+      fi
+
+      ;;
+    ManjaroLinux | Arch)
+      if [[ "${VPN}" == "openvpn" ]]; then
+        ${SUDO} systemctl enable openvpn-server@server.service &> /dev/null
+        ${SUDO} systemctl restart openvpn-server@server.service
       elif [[ "${VPN}" == "wireguard" ]]; then
         ${SUDO} systemctl enable wg-quick@wg0.service &> /dev/null
         ${SUDO} systemctl restart wg-quick@wg0.service
