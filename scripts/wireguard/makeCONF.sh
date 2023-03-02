@@ -4,6 +4,8 @@
 # Some vars that might be empty but need to be defined for checks
 pivpnPERSISTENTKEEPALIVE=""
 pivpnDNS2=""
+pivpnDNS3=""
+pivpnDNS4=""
 
 setupVars="/etc/pivpn/wireguard/setupVars.conf"
 
@@ -148,7 +150,19 @@ NET_REDUCED="${pivpnNET::-2}"
   echo -n "DNS = ${pivpnDNS1}"
 
   if [[ -n "${pivpnDNS2}" ]]; then
-    echo ", ${pivpnDNS2}"
+    echo -n ", ${pivpnDNS2}"
+  else
+    echo
+  fi
+
+  if [[ -n "${pivpnDNS3}" ]]; then
+    echo -n ", ${pivpnDNS3}"
+  else
+    echo
+  fi
+
+  if [[ -n "${pivpnDNS4}" ]]; then
+    echo ", ${pivpnDNS4}"
   else
     echo
   fi
