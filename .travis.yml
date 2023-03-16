@@ -17,6 +17,8 @@ branches:
   only:
     - test
     - master
+    - dev
+
 
 jobs:
   include:
@@ -31,8 +33,8 @@ jobs:
       arch: amd64
       script:
         - shellcheck -x auto_install/install.sh
-        - find ciscripts/ -type f -regex '.*\.sh' -exec shellcheck -x {} \;
-        - find scripts/ -type f -exec shellcheck -x {} \;
+        - find ciscripts/ -type f -regex '.*\.sh'| xargs shellcheck -x
+        - find scripts/ -type f | xargs shellcheck -x
 
     - stage: style
       name: "Shell Style Guide"
@@ -44,8 +46,8 @@ jobs:
       arch: amd64
       script:
         - shfmt -d -i 2 -ci -sr -bn auto_install/install.sh
-        - find ciscripts/ -type f -regex '.*\.sh' -exec shfmt -d -i 2 -ci -sr -bn {} \;
-        - find scripts/ -type f -exec shfmt -d -i 2 -ci -sr -bn {} \;
+        - find ciscripts/ -type f -regex '.*\.sh' | xargs shfmt -d -i 2 -ci -sr -bn
+        - find scripts/ -type f | xargs shfmt -d -i 2 -ci -sr -bn
 
     - stage: test
       name: "OpenVPN Bionic (18.04)"
