@@ -1531,7 +1531,9 @@ isRepo() {
     return 1
   }
   ${SUDO} git status &> /dev/null && echo " OK!"
+  #shellcheck disable=SC2317
   return 0 || echo " not found!"
+  #shellcheck disable=SC2317
   return 1
 }
 

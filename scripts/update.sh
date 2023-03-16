@@ -1,4 +1,5 @@
 #!/bin/bash
+#shellcheck disable=SC2317
 ### Updates pivpn scripts (Not PiVPN)
 # TODO: Delete this section when the updating functionality will be re-enabled
 ###
