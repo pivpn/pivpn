@@ -31,12 +31,13 @@ debug() {
   echo "::: Generating Debug Output"
 
   ${SUDO} "${scriptdir}/${vpn}/pivpnDEBUG.sh" | tee /tmp/debug.log
+  e="${?}"
 
   echo "::: "
   echo "::: Debug output completed above."
   echo "::: Copy saved to /tmp/debug.log"
   echo "::: "
-  exit "${?}"
+  exit "${e}"
 }
 
 listClients() {

@@ -36,12 +36,13 @@ debugFunc() {
   echo "::: Generating Debug Output"
 
   ${SUDO} "${scriptDir}/${vpn}/pivpnDebug.sh" | tee /tmp/debug.log
+  e="${?}"
 
   echo "::: "
   echo "::: Debug output completed above."
   echo "::: Copy saved to /tmp/debug.log"
   echo "::: "
-  exit "${?}"
+  exit "${e}"
 }
 
 removeOVPNFunc() {
