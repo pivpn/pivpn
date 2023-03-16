@@ -14,7 +14,6 @@ INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 # shellcheck disable=SC1090
 source "${setupVars}"
 
-
 # shellcheck disable=SC2154
 userGroup="${install_user}:${install_user}"
 
