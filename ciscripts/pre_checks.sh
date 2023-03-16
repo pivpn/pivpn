@@ -1,4 +1,4 @@
-#/bin/bash -e
+#!/bin/bash -e
 
 cat /etc/os-release
 uname -a
