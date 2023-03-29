@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: PiVPN Community Support
+    url: https://github.com/pivpn/pivpn/discussions
+    about: Please ask and answer questions here.
+  - name: PiVPN Documentation
+    url: https://docs.pivpn.io
+    about: Please read and review our documentation before opening an issue.

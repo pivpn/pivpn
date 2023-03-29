@@ -1,0 +1,151 @@
+name: PiVPN Issue Report 
+description: Report general issues related with pivpn or VPN Protocols usage after installation
+title: "[General Issue]: "
+labels: ["Needs Investigation"] 
+body: 
+  - type: markdown
+    attributes:
+      value: |
+        # PiVPN Issue Template
+
+        Hi, you are about to open a report, Please provide us with all the info required below, incomplete issues will decrease our effectiveness to troubleshoot your issue and increase the time we need to spend helping you out or end up with your issue closed even if it is a legitimate issue. 
+        Please remember we do not have any super power that makes us guess exactly what your issue is without any decent details!
+        For any output requested below, you may alternatively post it on https://pastebin.com and provide the Pastebin URL in its place
+        For pasting code blocks please don't forget to wrap them with triple backticks (```) before and after the code block.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: In raising this issue I confirm that
+      options:
+        - label: I have read the [documentation](https://docs.pivpn.io)
+          required: true
+        - label: I have read and understood the [PiVPN General Guidelines](https://github.com/pivpn/pivpn/#general-guidelines)
+          required: true
+        - label: I have read and understood the [PiVPN Troubleshooting Guidelines](https://docs.pivpn.io/faq/#how-do-i-troubleshoot-connection-issues)
+          required: true
+        - label: The issue I am reporting isn't a duplicate, see [closed issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aclosed) and [open issues](https://github.com/pivpn/pivpn/issues?q=is%3Aissue+sort%3Aupdated-desc+is%3Aopen).
+          required: true
+        - label: I have searched for similar issues and solutions
+          required: true
+        - label: I can replicate the issue even after a clean OS installation
+          required: true
+
+
+  - type: textarea
+    id: issue
+    attributes:
+      label: Describe the issue
+      description: Please explain your issue. Feel free to format your text
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: replicate
+    attributes:
+      label: Please describe the steps to replicate the issue
+      description: Please explain your issue. Feel free to format your text
+      placeholder: |
+        Steps to reproduce the behavior:
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: search
+    attributes:
+      label: Have you taken any steps towards solving your issue?
+      description: describe the steps you have taken to resolve the issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+    validations:
+      required: false
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Where did you run pivpn?
+      description: please describe the hardware type you have used to run PiVPN
+      placeholder: |
+        RaspberryPi
+        Ordroid
+        OrangePi
+        bananaPi
+        Virtual machine
+    validations:
+      required: true
+
+  - type: textarea
+    id: kernel
+    attributes:
+      label: Please provide your output from `uname -a`
+      description: Please provide your output from `uname -a`
+      placeholder: |
+        Linux raspberrypi 5.10.17-v7l+ #1403 SMP Thu Feb 25 13:15:58 GMT 2021 armv7l GNU/Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: os
+    attributes:
+      label: Details about Operative System
+      description: Please provide your output from `cat /etc/os-release`
+      placeholder: |
+        PRETTY_NAME="Raspbian GNU/Linux 10 (buster)"
+        NAME="Raspbian GNU/Linux"
+        VERSION_ID="10"
+        VERSION="10 (buster)"
+        VERSION_CODENAME=buster
+        ID=raspbian
+        ID_LIKE=debian
+    validations:
+      required: true
+
+  - type: textarea
+    id: install
+    attributes:
+      label: Installation 
+      description: If available, please provide your output from `curl -L https://install.pivpn.io | bash`
+      placeholder: |
+        curl -L https://install.pivpn.io | bash
+    validations:
+      required: false
+
+  - type: textarea
+    id: addprofile
+    attributes:
+      label: Profile / Client creation
+      description: If applicable, please provide the output of `pivpn add` or `pivpn add nopass`
+    validations:
+      required: false
+
+
+  - type: textarea
+    id: debug
+    attributes:
+      label: Debug output
+      description: Please provide your output from `pivpn debug`
+      placeholder: |
+        pivpn debug
+        :::: Generating Debug Output
+        :::: Debug output completed above.
+        :::: Copy saved to /tmp/debug.log
+    validations:
+      required: true
