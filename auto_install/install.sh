@@ -19,6 +19,7 @@ setupConfigDir="/etc/pivpn"
 tempsetupVarsFile="/tmp/setupVars.conf"
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
+GITBIN="/usr/bin/git"
 
 piholeSetupVars="/etc/pihole/setupVars.conf"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
@@ -1530,7 +1531,7 @@ isRepo() {
     echo " not found!"
     return 1
   }
-  ${SUDO} git status &> /dev/null && echo " OK!"
+  ${SUDO} ${GITBIN} status &> /dev/null && echo " OK!"
   #shellcheck disable=SC2317
   return 0 || echo " not found!"
   #shellcheck disable=SC2317
@@ -1554,7 +1555,7 @@ updateRepo() {
     # Go back to /usr/local/src otherwise git will complain when the current
     # working directory has just been deleted (/usr/local/src/pivpn).
     cd /usr/local/src \
-      && ${SUDO} git clone -q \
+      && ${SUDO} ${GITBIN} clone -q \
         --depth 1 \
         --no-single-branch \
         "${2}" \
@@ -1566,13 +1567,13 @@ updateRepo() {
 
     if [[ -n "${pivpnGitBranch}" ]]; then
       echo ":::     Checkout branch '${pivpnGitBranch}' from ${2} in ${1}..."
-      ${SUDOE} git checkout -q "${pivpnGitBranch}"
+      ${SUDOE} ${GITBIN} checkout -q "${pivpnGitBranch}"
       echo ":::     Custom branch checkout done!"
     elif [[ -z "${TESTING+x}" ]]; then
       :
     else
       echo ":::     Checkout branch 'test' from ${2} in ${1}..."
-      ${SUDOE} git checkout -q test
+      ${SUDOE} ${GITBIN} checkout -q test
       echo ":::     'test' branch checkout done!"
     fi
   fi
@@ -1591,7 +1592,7 @@ makeRepo() {
   # Go back to /usr/local/src otherwhise git will complain when the current
   # working directory has just been deleted (/usr/local/src/pivpn).
   cd /usr/local/src \
-    && ${SUDO} git clone -q \
+    && ${SUDO} ${GITBIN} clone -q \
       --depth 1 \
       --no-single-branch \
       "${2}" \
@@ -1603,13 +1604,13 @@ makeRepo() {
 
   if [[ -n "${pivpnGitBranch}" ]]; then
     echo ":::     Checkout branch '${pivpnGitBranch}' from ${2} in ${1}..."
-    ${SUDOE} git checkout -q "${pivpnGitBranch}"
+    ${SUDOE} ${GITBIN} checkout -q "${pivpnGitBranch}"
     echo ":::     Custom branch checkout done!"
   elif [[ -z "${TESTING+x}" ]]; then
     :
   else
     echo ":::     Checkout branch 'test' from ${2} in ${1}..."
-    ${SUDOE} git checkout -q test
+    ${SUDOE} ${GITBIN} checkout -q test
     echo ":::     'test' branch checkout done!"
   fi
 }
