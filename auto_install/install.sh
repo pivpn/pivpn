@@ -363,7 +363,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        stretch | buster | bullseye | xenial | bionic | focal | jammy | kinetic | lunar)
+        stretch | buster | bullseye | xenial | bionic | focal | jammy | lunar)
           :
           ;;
         *)
