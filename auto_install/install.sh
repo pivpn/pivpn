@@ -351,7 +351,6 @@ distroCheck() {
       ["18.04"]="bionic"
       ["20.04"]="focal"
       ["22.04"]="jammy"
-      ["22.10"]="kinetic"
       ["23.04"]="lunar")
     OSCN="${VER_MAP["${VER}"]}"
 
