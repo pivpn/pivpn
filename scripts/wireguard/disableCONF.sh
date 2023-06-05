@@ -97,7 +97,7 @@ for CLIENT_NAME in "${CLIENTS_TO_CHANGE[@]}"; do
 
   if ! grep -q "^${CLIENT_NAME} " configs/clients.txt; then
     echo -e "::: \e[1m${CLIENT_NAME}\e[0m does not exist"
-  elif grep -q "#\[disabled\] ### begin ${CLIENT_NAME}" wg0.conf; then
+  elif grep -q "#\[disabled\] ### begin ${CLIENT_NAME} ###" wg0.conf; then
     echo -e "::: \e[1m${CLIENT_NAME}\e[0m is already disabled"
   else
     if [[ -n "${CONFIRM}" ]]; then
