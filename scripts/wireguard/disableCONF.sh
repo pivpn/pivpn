@@ -111,7 +111,7 @@ for CLIENT_NAME in "${CLIENTS_TO_CHANGE[@]}"; do
       echo "${CLIENT_NAME}"
 
       sed_pattern="/### begin ${CLIENT_NAME} ###/,"
-      sed_pattern="${sed_pattern}/end ${CLIENT_NAME} ###/ s/^/#\[disabled\] /"
+      sed_pattern="${sed_pattern}/### end ${CLIENT_NAME} ###/ s/^/#\[disabled\] /"
       sed -e "${sed_pattern}" -i wg0.conf
       unset sed_pattern
 
