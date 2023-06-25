@@ -129,7 +129,7 @@ Feature requests are very welcome, please do so at:
 * Use the following [code style rules](https://google.github.io/styleguide/shellguide.html). 
   * We suggest you to use the following [shfmt](https://github.com/mvdan/sh) command: `shfmt -i 2 -ci -sr -w -bn`
 
-## contributions
+## Contributions
 
 PiVPN is not taking donations but if you want to show your appreciation, then contribute or leave feedback on suggestions or improvements.
 
