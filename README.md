@@ -20,7 +20,7 @@ PiVPN is a set of shell scripts developed to easily turn your Raspberry Pi (TM) 
 
 This script's primary mission in life is to allow a user to have as cost-effective as possible VPN at home without being a technical wizard, hence the design of PiVPN to work on a Raspberry Pi ($35) with a one-command installer followed by easy management of the VPN with the 'pivpn' command.  
 
-That being said ...
+That being said...
 
 PiVPN should be, bar none, the simplest and fastest way to Install and set up an extremely secure OpenVPN or WireGuard server on your Raspberry Pi. You won't need a guide or tutorial as PiVPN will do it all for you in a fraction of the time with hardened security settings in place by default.  
 
