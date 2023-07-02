@@ -349,6 +349,7 @@ distroCheck() {
     VER="${VERSION_ID}"
     declare -A VER_MAP=(["10"]="buster"
       ["11"]="bullseye"
+      ["12"]="bookworm"
       ["18.04"]="bionic"
       ["20.04"]="focal"
       ["22.04"]="jammy"
@@ -364,7 +365,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        stretch | buster | bullseye | xenial | bionic | focal | jammy | lunar)
+        stretch | buster | bullseye | bookwork | xenial | bionic | focal | jammy | lunar)
           :
           ;;
         *)
