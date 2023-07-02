@@ -8,8 +8,8 @@
 [![Website shields.io](https://img.shields.io/website-up-down-green-red/https/pivpn.io.svg)](https://pivpn.io/)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/pivpn/pivpn/graphs/commit-activity)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/452112df3c2c435d93aacc113f546eae)](https://app.codacy.com/gh/pivpn/pivpn?utm_source=github.com&utm_medium=referral&utm_content=pivpn/pivpn&utm_campaign=Badge_Grade_Settings)
-[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn)
 [![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=master)](https://travis-ci.com/pivpn/pivpn)
+[![Build Status](https://travis-ci.com/pivpn/pivpn.svg?branch=test)](https://travis-ci.com/pivpn/pivpn)
 [![made-with-bash](https://img.shields.io/badge/Made%20with-Bash-1f425f.svg)](https://www.gnu.org/software/bash/)
 [![Generic badge](https://img.shields.io/badge/status-page-blue.svg)](https://stats.uptimerobot.com/8X64yTjrJO)
 [![semantic-release: angular](https://img.shields.io/badge/semantic--release-angular-e10079?logo=semantic-release)](https://github.com/semantic-release/semantic-release)
@@ -22,7 +22,7 @@ This script's primary mission in life is to allow a user to have as cost-effecti
 
 That being said...
 
-PiVPN should be, bar none, the simplest and fastest way to Install and set up an extremely secure OpenVPN or WireGuard server on your Raspberry Pi. You won't need a guide or tutorial as PiVPN will do it all for you in a fraction of the time with hardened security settings in place by default.  
+PiVPN should be, bar none, the simplest and fastest way to Install and set up an extremely secure **OpenVPN** or **WireGuard** server on your Raspberry Pi. You won't need a guide or tutorial as PiVPN will do it all for you in a fraction of the time with hardened security settings in place by default.  
 
 We recommend running PiVPN on the latest RaspberryPi OS Lite image in a Raspberry Pi at your home so you can VPN into your network from not secure remote locations and safely use the internet. However, you can also use PiVPN in any Cloud Provider VPS running Ubuntu or Debian to assist those with untrustworthy ISPs. Running a VPN on a server elsewhere means you can connect to the VPN from home, and because your traffic will be getting out from the cloud/VPS provider, your ISP will only see encrypted traffic. 
 
