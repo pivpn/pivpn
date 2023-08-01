@@ -136,7 +136,7 @@ PiVPN is not taking donations but if you want to show your appreciation, then co
 Contributions can come in all kinds of different ways! You don't need to be a developer to help out. 
 
 * Please check the current [issues](https://github.com/pivpn/pivpn/issues) and [discussions](https://github.com/pivpn/pivpn/discussions). Maybe there is something you can help with
-* [Documentation](https://github.com/pivpn/docs)! Documentation is never good enough! There is always something missing, or typos, or better English!
+* [Documentation](https://github.com/pivpn/docs)! Documentation is never good enough! There is always something missing, whether it's typos or better English!
 * Our [website](https://pivpn.io) is also Open Source. feel free to suggest any changes or improvements [here](https://github.com/pivpn/pivpn.io)
 * Testing!!! Run pivpn in different ways, different systems, different configurations! Let us know if you find something!
 * Assisting other users in any of our official channels is also very welcomed
