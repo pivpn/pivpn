@@ -43,7 +43,7 @@ BASE_DEPS+=(bsdmainutils bash-completion)
 
 BASE_DEPS_ALPINE=(git grep bind-tools newt net-tools bash-completion coreutils)
 BASE_DEPS_ALPINE+=(openssl util-linux openrc iptables ip6tables coreutils sed)
-BASE_DEPS_ALPINE+=(perl)
+BASE_DEPS_ALPINE+=(perl libqrencode-tools)
 
 # Dependencies that where actually installed by the script. For example if the
 # script requires grep and dnsutils but dnsutils is already installed, we save
@@ -349,6 +349,7 @@ distroCheck() {
     VER="${VERSION_ID}"
     declare -A VER_MAP=(["10"]="buster"
       ["11"]="bullseye"
+      ["12"]="bookworm"
       ["18.04"]="bionic"
       ["20.04"]="focal"
       ["22.04"]="jammy"
@@ -364,7 +365,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        stretch | buster | bullseye | xenial | bionic | focal | jammy | lunar)
+        stretch | buster | bullseye | bookwork | xenial | bionic | focal | jammy | lunar)
           :
           ;;
         *)
@@ -664,17 +665,19 @@ preconfigurePackages() {
   #         if we want to load the kernel module
   # case 5: On Alpine Docker Container, the responsibility to have
   #         a WireGuard module on the host system is at user side
-  # case 6: On Debian (and Ubuntu), we can only reliably assume the
+  # case 6: On Alpine container, wireguard-tools is available
+  # case 7: On Debian (and Ubuntu), we can only reliably assume the
   #         headers package for amd64: linux-image-amd64
-  # case 7: On Ubuntu, additionally the WireGuard package needs to
+  # case 8: On Ubuntu, additionally the WireGuard package needs to
   #         be available, since we didn't test mixing Ubuntu repositories.
-  # case 8: Ubuntu focal has wireguard support
+  # case 9: Ubuntu focal has wireguard support
 
   if [[ "${WIREGUARD_BUILTIN}" -eq 1 && -n "${AVAILABLE_WIREGUARD}" ]] \
     || [[ "${WIREGUARD_BUILTIN}" -eq 1 && ("${PLAT}" == 'Debian' || "${PLAT}" == 'Raspbian') ]] \
     || [[ "${PLAT}" == 'Raspbian' ]] \
     || [[ "${PLAT}" == 'Alpine' && ! -f /.dockerenv && "$(uname -mrs)" =~ ^Linux\ +[0-9\.\-]+\-((lts)|(virt))\ +.*$ ]] \
     || [[ "${PLAT}" == 'Alpine' && -f /.dockerenv ]] \
+    || [[ "${PLAT}" == 'Alpine' && -n "${AVAILABLE_WIREGUARD}" ]] \
     || [[ "${PLAT}" == 'Debian' && "${DPKG_ARCH}" == 'amd64' ]] \
     || [[ "${PLAT}" == 'Ubuntu' && "${DPKG_ARCH}" == 'amd64' && -n "${AVAILABLE_WIREGUARD}" ]] \
     || [[ "${PLAT}" == 'Ubuntu' && "${DPKG_ARCH}" == 'arm64' && "${OSCN}" == 'focal' && -n "${AVAILABLE_WIREGUARD}" ]]; then
