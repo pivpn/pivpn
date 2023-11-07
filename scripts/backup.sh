@@ -59,8 +59,8 @@ backup_wireguard() {
 
   echo -e "Backup created in ${install_home}/${backupdir}/${backupzip} "
   echo -e "To restore the backup, follow instructions at:"
-  echo -ne "https://docs.pivpn.io/openvpn/"
-  echo -e "wireguard/#migrating-pivpn-wireguard"
+  echo -ne "https://docs.pivpn.io/wireguard/"
+  echo -e "#migrating-pivpn-wireguard"
 }
 
 ### Script
