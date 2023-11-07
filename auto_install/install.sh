@@ -1425,7 +1425,7 @@ chooseUser() {
     else
       if awk -F':' '$3>=1000 && $3<=60000 {print $1}' /etc/passwd \
         | grep -qw "${install_user}"; then
-        echo "::: ${install_user} will hold your ovpn and wireguard configurations."
+        echo "::: ${install_user} will hold your VPN client configuration files."
       else
         echo "::: User ${install_user} does not exist, creating..."
 
