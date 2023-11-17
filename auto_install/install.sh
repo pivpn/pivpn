@@ -1714,6 +1714,42 @@ installPiVPN() {
   writeVPNTempVarsFile
 }
 
+decIPv4ToDot(){
+  local a b c d
+  a=$(( ($1 & 4278190080) >> 24 ))
+  b=$(( ($1 & 16711680) >> 16 ))
+  c=$(( ($1 & 65280) >> 8 ))
+  d=$(( $1 & 255 ))
+  printf "%s.%s.%s.%s\n" $a $b $c $d
+}
+
+dotIPv4ToDec(){
+  local original_ifs=$IFS
+  IFS='.'
+  read -r -a array_ip <<< "$1"
+  IFS=$original_ifs
+  printf "%s\n" $(( array_ip[0]*(16777216) + array_ip[1]*(65536) + array_ip[2]*(256) + array_ip[3] ))
+}
+
+decIPv4ToHex(){
+  local hex ip
+  hex="$(printf "%x\n" "$1")"
+  quartet_hi=${hex::$((${#hex} - 4))}
+  quartet_lo=${hex: -4:4}
+  ip+="${quartet_hi}:${quartet_lo}"
+  printf "%s\n" "${ip}"
+}
+
+cidrToMask() {
+  # Source: https://stackoverflow.com/a/20767392
+  set -- $((5 - ($1 / 8))) \
+    255 255 255 255 \
+    $(((255 << (8 - ($1 % 8))) & 255)) \
+    0 0 0
+  shift "${1}"
+  echo "${1-0}.${2-0}.${3-0}.${4-0}"
+}
+
 setVPNDefaultVars() {
   # Allow custom subnetClass via unattend setupVARs file.
   # Use default if not provided.
@@ -1775,7 +1811,11 @@ setOpenVPNDefaultVars() {
     pivpnNET="$(generateRandomSubnet)"
   fi
 
-  vpnGw="$(cut -d '.' -f 1-3 <<< "${pivpnNET}").1"
+  pivpnNETdec="$(dotIPv4ToDec "${pivpnNET}")"
+
+  vpnGwdec="$((pivpnNETdec + 1))"
+  vpnGw="$(decIPv4ToDot "${vpnGwdec}")"
+  vpnGwhex="$(decIPv4ToHex "${vpnGwdec}")"
 
   if [[ "${pivpnenableipv6}" -eq 1 ]] \
     && [[ -z "${pivpnNETv6}" ]]; then
@@ -1783,7 +1823,7 @@ setOpenVPNDefaultVars() {
   fi
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-    vpnGwv6="${pivpnNETv6}1"
+    vpnGwv6="${pivpnNETv6}${vpnGwhex}"
   fi
 }
 
@@ -1799,15 +1839,19 @@ setWireguardDefaultVars() {
     pivpnNET="$(generateRandomSubnet)"
   fi
 
+  pivpnNETdec="$(dotIPv4ToDec "${pivpnNET}")"
+
+  vpnGwdec="$((pivpnNETdec + 1))"
+  vpnGw="$(decIPv4ToDot "${vpnGwdec}")"
+  vpnGwhex="$(decIPv4ToHex "${vpnGwdec}")"
+
   if [[ "${pivpnenableipv6}" -eq 1 ]] \
     && [[ -z "${pivpnNETv6}" ]]; then
     pivpnNETv6="fd11:5ee:bad:c0de::"
   fi
 
-  vpnGw="$(cut -d '.' -f 1-3 <<< "${pivpnNET}").1"
-
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-    vpnGwv6="${pivpnNETv6}1"
+    vpnGwv6="${pivpnNETv6}${vpnGwhex}"
   fi
 
   # Allow custom allowed IPs via unattend setupVARs file.
@@ -2714,16 +2758,6 @@ parameters will be generated on your device." "${r}" "${c}"; then
     echo "pivpnENCRYPT=${pivpnENCRYPT}"
     echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
   } >> "${tempsetupVarsFile}"
-}
-
-cidrToMask() {
-  # Source: https://stackoverflow.com/a/20767392
-  set -- $((5 - ($1 / 8))) \
-    255 255 255 255 \
-    $(((255 << (8 - ($1 % 8))) & 255)) \
-    0 0 0
-  shift "${1}"
-  echo "${1-0}.${2-0}.${3-0}.${4-0}"
 }
 
 confOpenVPN() {

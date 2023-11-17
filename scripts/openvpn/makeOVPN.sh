@@ -14,6 +14,11 @@ INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 # shellcheck disable=SC1090
 source "${setupVars}"
 
+if [ ! -r /opt/pivpn/ipaddr_utils.sh ]; then
+  exit 1
+fi
+source /opt/pivpn/ipaddr_utils.sh
+
 # shellcheck disable=SC2154
 userGroup="${install_user}:${install_user}"
 
@@ -160,16 +165,6 @@ keyPASS() {
     build-client-full "${NAME}"
 
   cd pki || exit
-}
-
-cidrToMask() {
-  # Source: https://stackoverflow.com/a/20767392
-  set -- $((5 - (${1} / 8))) \
-    255 255 255 255 \
-    $(((255 << (8 - (${1} % 8))) & 255)) \
-    0 0 0
-  shift "${1}"
-  echo "${1-0}.${2-0}.${3-0}.${4-0}"
 }
 
 ### Script
@@ -469,33 +464,33 @@ if [[ "${iOS}" == 1 ]]; then
   printf "========================================================\n\n"
 fi
 
-#disabling SC2514, variable sourced externaly
-# shellcheck disable=SC2154
-NET_REDUCED="${pivpnNET::-2}"
+FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
+LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
 
-# Find an unused number for the last octet of the client IP
-for i in {2..254}; do
+# Find an unused address for the client IP
+for (( ip = FIRST_IPV4_DEC+2; ip <= LAST_IPV4_DEC-1; ip++ )); do
   # find returns 0 if the folder is empty, so we create the 'ls -A [...]'
   # exception to stop at the first static IP (10.8.0.2). Otherwise it would
   # cycle to the end without finding and available octet.
   # disabling SC2514, variable sourced externaly
-  # shellcheck disable=SC2154
+  ip_dot="$(decIPv4ToDot "${ip}")"
+
   if [[ -z "$(ls -A /etc/openvpn/ccd)" ]] \
     || ! find /etc/openvpn/ccd -type f \
-      -exec grep -q "${NET_REDUCED}.${i}" {} +; then
-    COUNT="${i}"
-    echo -n "ifconfig-push ${NET_REDUCED}.${i} " >> /etc/openvpn/ccd/"${NAME}"
-    # The space after ${i} is important ------^!
+      -exec grep -q "${ip_dot}" {} +; then
+    UNUSED_IPV4_DOT="${ip_dot}"
+    echo -n "ifconfig-push ${UNUSED_IPV4_DOT} " >> /etc/openvpn/ccd/"${NAME}"
+    # The space after ${UNUSED_IPV4_DOT} is important!
     cidrToMask "${subnetClass}" >> /etc/openvpn/ccd/"${NAME}"
     # the end resuld should be a line like:
-    # ifconfig-push ${NET_REDUCED}.${i} ${subnetClass}
+    # ifconfig-push ${UNUSED_IPV4_DOT} ${subnetClass}
     # ifconfig-push 10.205.45.8 255.255.255.0
     break
   fi
 done
 
 if [[ -f /etc/pivpn/hosts.openvpn ]]; then
-  echo "${NET_REDUCED}.${COUNT} ${NAME}.pivpn" >> /etc/pivpn/hosts.openvpn
+  echo "${UNUSED_IPV4_DOT} ${NAME}.pivpn" >> /etc/pivpn/hosts.openvpn
 
   if killall -SIGHUP pihole-FTL; then
     echo "::: Updated hosts file for Pi-hole"

@@ -6,6 +6,11 @@ setupVars="/etc/pivpn/wireguard/setupVars.conf"
 # shellcheck disable=SC1090
 source "${setupVars}"
 
+if [ ! -r /opt/pivpn/ipaddr_utils.sh ]; then
+  exit 1
+fi
+source /opt/pivpn/ipaddr_utils.sh
+
 ### Functions
 err() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*" >&2
@@ -100,8 +105,8 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
     fi
 
     if [[ "${REPLY}" =~ ^[Yy]$ ]]; then
-      # Grab the least significant octed of the client IP address
-      COUNT="$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $4}')"
+      # Grab the decimal representation of the client IP address
+      IPV4_DEC="$(grep "^${CLIENT_NAME} " configs/clients.txt | awk '{print $4}')"
       # The creation date of the client
       CREATION_DATE="$(grep "^${CLIENT_NAME} " configs/clients.txt \
         | awk '{print $3}')"
@@ -111,7 +116,7 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
 
       # Then remove the client matching the variables above
       sed \
-        -e "\#${CLIENT_NAME} ${PUBLIC_KEY} ${CREATION_DATE} ${COUNT}#d" \
+        -e "\#${CLIENT_NAME} ${PUBLIC_KEY} ${CREATION_DATE} ${IPV4_DEC}#d" \
         -i configs/clients.txt
 
       # Remove the peer section from the server config
@@ -147,10 +152,11 @@ for CLIENT_NAME in "${CLIENTS_TO_REMOVE[@]}"; do
       # Disabling SC2154, variable sourced externaly and may vary
       # shellcheck disable=SC2154
       if [[ -f /etc/pivpn/hosts.wireguard ]]; then
-        NET_REDUCED="${pivpnNET::-2}"
+        IPV4_DOT="$(decIPv4ToDot "${IPV4_DEC}")"
+        IPV4_HEX="$(decIPv4ToHex "${IPV4_DEC}")"
         sed \
-          -e "\#${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn#d" \
-          -e "\#${pivpnNETv6}${COUNT} ${CLIENT_NAME}.pivpn#d" \
+          -e "\#${IPV4_DOT} ${CLIENT_NAME}.pivpn#d" \
+          -e "\#${pivpnNETv6}${IPV4_HEX} ${CLIENT_NAME}.pivpn#d" \
           -i /etc/pivpn/hosts.wireguard
 
         if killall -SIGHUP pihole-FTL; then
