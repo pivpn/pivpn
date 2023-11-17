@@ -111,6 +111,25 @@ fi
 
 cd /etc/wireguard || exit
 
+# Exclude first, last and server addresses
+MAX_CLIENTS="$((2**(32-subnetClass)-3))"
+
+if [ "$(wc -l configs/clients.txt | awk '{print $1}')" -ge "${MAX_CLIENTS}" ]; then
+  echo "::: Can't add any more clients (max. ${MAX_CLIENTS})!"
+  exit 1
+fi
+
+FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
+LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
+
+# Find an unused address for the client IP
+for (( ip = FIRST_IPV4_DEC+2; ip <= LAST_IPV4_DEC-1; ip++ )); do
+  if ! grep -q " ${ip}$" configs/clients.txt; then
+    UNUSED_IPV4_DEC="${ip}"
+    break
+  fi
+done
+
 if [[ -z "${CLIENT_NAME}" ]]; then
   read -r -p "Enter a Name for the Client: " CLIENT_NAME
   checkName
@@ -123,19 +142,6 @@ wg genkey \
   | wg pubkey > "keys/${CLIENT_NAME}_pub"
 wg genpsk | tee "keys/${CLIENT_NAME}_psk" &> /dev/null
 echo "::: Client Keys generated"
-
-FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
-LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
-
-# Find an unused address for the client IP
-for (( ip = FIRST_IPV4_DEC+2; ip <= LAST_IPV4_DEC-1; ip++ )); do
-  if ! grep -q " ${ip}$" configs/clients.txt; then
-    UNUSED_IPV4_DEC="${ip}"
-    echo "${CLIENT_NAME} $(< keys/"${CLIENT_NAME}"_pub) $(date +%s) ${UNUSED_IPV4_DEC}" \
-      | tee -a configs/clients.txt > /dev/null
-    break
-  fi
-done
 
 UNUSED_IPV4_DOT="$(decIPv4ToDot "${UNUSED_IPV4_DEC}")"
 UNUSED_IPV4_HEX="$(decIPv4ToHex "${UNUSED_IPV4_DEC}")"
@@ -191,6 +197,9 @@ echo "::: Client config generated"
 } >> wg0.conf
 
 echo "::: Updated server config"
+
+echo "${CLIENT_NAME} $(< keys/"${CLIENT_NAME}"_pub) $(date +%s) ${UNUSED_IPV4_DEC}" \
+      | tee -a configs/clients.txt > /dev/null
 
 if [[ -f /etc/pivpn/hosts.wireguard ]]; then
   echo "${UNUSED_IPV4_DOT} ${CLIENT_NAME}.pivpn" \

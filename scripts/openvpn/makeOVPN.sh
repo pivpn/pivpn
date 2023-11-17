@@ -288,6 +288,33 @@ if [[ ! -d "${install_home}/ovpns" ]]; then
   chmod 0750 "${install_home}/ovpns"
 fi
 
+# Exclude first, last and server addresses
+MAX_CLIENTS="$((2**(32-subnetClass)-3))"
+
+FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
+LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
+
+if [ "$(find /etc/openvpn/ccd -type f | wc -l)" -ge "${MAX_CLIENTS}" ]; then
+  echo "::: Can't add any more clients (max. ${MAX_CLIENTS})!"
+  exit 1
+fi
+
+# Find an unused address for the client IP
+for (( ip = FIRST_IPV4_DEC+2; ip <= LAST_IPV4_DEC-1; ip++ )); do
+  # find returns 0 if the folder is empty, so we create the 'ls -A [...]'
+  # exception to stop at the first static IP (10.8.0.2). Otherwise it would
+  # cycle to the end without finding and available octet.
+  # disabling SC2514, variable sourced externaly
+  ip_dot="$(decIPv4ToDot "${ip}")"
+
+  if [[ -z "$(ls -A /etc/openvpn/ccd)" ]] \
+    || ! find /etc/openvpn/ccd -type f \
+      -exec grep -q "${ip_dot}" {} +; then
+    UNUSED_IPV4_DOT="${ip_dot}"
+    break
+  fi
+done
+
 #bitWarden
 if [[ "${BITWARDEN}" =~ "2" ]]; then
   useBitwarden
@@ -464,30 +491,12 @@ if [[ "${iOS}" == 1 ]]; then
   printf "========================================================\n\n"
 fi
 
-FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
-LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
-
-# Find an unused address for the client IP
-for (( ip = FIRST_IPV4_DEC+2; ip <= LAST_IPV4_DEC-1; ip++ )); do
-  # find returns 0 if the folder is empty, so we create the 'ls -A [...]'
-  # exception to stop at the first static IP (10.8.0.2). Otherwise it would
-  # cycle to the end without finding and available octet.
-  # disabling SC2514, variable sourced externaly
-  ip_dot="$(decIPv4ToDot "${ip}")"
-
-  if [[ -z "$(ls -A /etc/openvpn/ccd)" ]] \
-    || ! find /etc/openvpn/ccd -type f \
-      -exec grep -q "${ip_dot}" {} +; then
-    UNUSED_IPV4_DOT="${ip_dot}"
-    echo -n "ifconfig-push ${UNUSED_IPV4_DOT} " >> /etc/openvpn/ccd/"${NAME}"
-    # The space after ${UNUSED_IPV4_DOT} is important!
-    cidrToMask "${subnetClass}" >> /etc/openvpn/ccd/"${NAME}"
-    # the end resuld should be a line like:
-    # ifconfig-push ${UNUSED_IPV4_DOT} ${subnetClass}
-    # ifconfig-push 10.205.45.8 255.255.255.0
-    break
-  fi
-done
+echo -n "ifconfig-push ${UNUSED_IPV4_DOT} " >> /etc/openvpn/ccd/"${NAME}"
+# The space after ${UNUSED_IPV4_DOT} is important!
+cidrToMask "${subnetClass}" >> /etc/openvpn/ccd/"${NAME}"
+# the end resuld should be a line like:
+# ifconfig-push ${UNUSED_IPV4_DOT} ${subnetClass}
+# ifconfig-push 10.205.45.8 255.255.255.0
 
 if [[ -f /etc/pivpn/hosts.openvpn ]]; then
   echo "${UNUSED_IPV4_DOT} ${NAME}.pivpn" >> /etc/pivpn/hosts.openvpn
