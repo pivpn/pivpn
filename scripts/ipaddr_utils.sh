@@ -32,12 +32,15 @@ dotIPv4LastDec(){
 }
 
 decIPv4ToHex(){
-  local hex ip
-  hex="$(printf "%x\n" "$1")"
-  quartet_hi=${hex::$((${#hex} - 4))}
-  quartet_lo=${hex: -4:4}
-  ip+="${quartet_hi}:${quartet_lo}"
-  printf "%s\n" "${ip}"
+  local hex
+  hex="$(printf "%08x\n" "$1")"
+  quartet_hi=${hex:0:4}
+  quartet_lo=${hex:4:4}
+  # Removes leading zeros from quartets, purely for aesthetic reasons
+  # Source: https://stackoverflow.com/a/19861690
+  leading_zeros_hi="${quartet_hi%%[!0]*}"
+  leading_zeros_lo="${quartet_lo%%[!0]*}"
+  printf "%s:%s\n" "${quartet_hi#"${leading_zeros_hi}"}" "${quartet_lo#"${leading_zeros_lo}"}"
 }
 
 cidrToMask() {
