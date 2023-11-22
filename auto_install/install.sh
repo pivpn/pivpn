@@ -1714,7 +1714,7 @@ installPiVPN() {
   writeVPNTempVarsFile
 }
 
-decIPv4ToDot(){
+decIPv4ToDot() {
   local a b c d
   a=$(( ($1 & 4278190080) >> 24 ))
   b=$(( ($1 & 16711680) >> 16 ))
@@ -1728,24 +1728,24 @@ dotIPv4ToDec(){
   IFS='.'
   read -r -a array_ip <<< "$1"
   IFS=$original_ifs
-  printf "%s\n" $(( array_ip[0]*(16777216) + array_ip[1]*(65536) + array_ip[2]*(256) + array_ip[3] ))
+  printf "%s\n" $(( array_ip[0] * 16777216 + array_ip[1] * 65536 + array_ip[2] * 256 + array_ip[3] ))
 }
 
-dotIPv4FirstDec(){
+dotIPv4FirstDec() {
   local decimal_ip decimal_mask
   decimal_ip=$(dotIPv4ToDec "$1")
   decimal_mask=$(( 2**32-1 ^ (2**(32-$2)-1) ))
   printf "%s\n" "$(( decimal_ip & decimal_mask ))"
 }
 
-dotIPv4LastDec(){
+dotIPv4LastDec() {
   local decimal_ip decimal_mask_inv
   decimal_ip=$(dotIPv4ToDec "$1")
   decimal_mask_inv=$(( 2**(32-$2)-1 ))
   printf "%s\n" "$(( decimal_ip | decimal_mask_inv ))"
 }
 
-decIPv4ToHex(){
+decIPv4ToHex() {
   local hex
   hex="$(printf "%08x\n" "$1")"
   quartet_hi=${hex:0:4}
@@ -1782,23 +1782,23 @@ setVPNDefaultVars() {
 generateRandomSubnet(){
   # Source: https://community.openvpn.net/openvpn/wiki/AvoidRoutingConflicts
   declare -a excluded_subnets_dec=(
-    167772160 167772415 # 10.0.0.0/24
-    167772416 167772671 # 10.0.1.0/24
-    167837952 167838207 # 10.1.1.0/24
-    167840256 167840511 # 10.1.10.0/24
-    167903232 167903487 # 10.2.0.0/24
-    168296448 168296703 # 10.8.0.0/24
-    168427776 168428031 # 10.10.1.0/24
-    173693440 173693695 # 10.90.90.0/24
-    174326016 174326271 # 10.100.1.0/24
-    184549120 184549375 # 10.255.255.0/24
+    167772160 167772415   # 10.0.0.0/24
+    167772416 167772671   # 10.0.1.0/24
+    167837952 167838207   # 10.1.1.0/24
+    167840256 167840511   # 10.1.10.0/24
+    167903232 167903487   # 10.2.0.0/24
+    168296448 168296703   # 10.8.0.0/24
+    168427776 168428031   # 10.10.1.0/24
+    173693440 173693695   # 10.90.90.0/24
+    174326016 174326271   # 10.100.1.0/24
+    184549120 184549375   # 10.255.255.0/24
     3232235520 3232235775 # 192.168.0.0/24
     3232235776 3232236031 # 192.168.1.0/24
   )
 
   # Add numeric ranges to the previous array
-  readarray -t currently_used_subnets <<< "$(ip route show | \
-    grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
+  readarray -t currently_used_subnets <<< "$(ip route show \
+    | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
 
   local used used_ip used_mask
   for used in "${currently_used_subnets[@]}"; do
@@ -1826,7 +1826,7 @@ generateRandomSubnet(){
 
   # Picking a random subnet would cause the same subnets to be checked multiple
   # times shall the number of subnets were small, so instead a random permutation
-  # is scanned to check a subnet only one.
+  # is scanned to check a subnet only once.
   local subnets_count="$(( 2**(target_netmask - source_netmask) ))"
   readarray -t random_perm <<< "$(shuf -i 0-"$(( subnets_count - 1 ))")"
   # random_perm=( 3221 9 8 431 7 [...] )
@@ -1860,8 +1860,8 @@ generateRandomSubnet(){
       # first_ip_excluded_subnet_dec | last_ip_excluded_subnet_dec    |
       #                              |                                |
       #                   first_ip_subnet_dec                last_ip_subnet_dec
-      if (( last_ip_excluded_subnet_dec >= first_ip_subnet_dec )) && \
-        (( first_ip_excluded_subnet_dec <= last_ip_subnet_dec )); then
+      if (( last_ip_excluded_subnet_dec >= first_ip_subnet_dec )) \
+        && (( first_ip_excluded_subnet_dec <= last_ip_subnet_dec )); then
         overlap=true
         break
       fi
