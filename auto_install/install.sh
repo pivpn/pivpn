@@ -1731,6 +1731,20 @@ dotIPv4ToDec(){
   printf "%s\n" $(( array_ip[0]*(16777216) + array_ip[1]*(65536) + array_ip[2]*(256) + array_ip[3] ))
 }
 
+dotIPv4FirstDec(){
+  local decimal_ip decimal_mask
+  decimal_ip=$(dotIPv4ToDec "$1")
+  decimal_mask=$(( 2**32-1 ^ (2**(32-$2)-1) ))
+  printf "%s\n" "$(( decimal_ip & decimal_mask ))"
+}
+
+dotIPv4LastDec(){
+  local decimal_ip decimal_mask_inv
+  decimal_ip=$(dotIPv4ToDec "$1")
+  decimal_mask_inv=$(( 2**(32-$2)-1 ))
+  printf "%s\n" "$(( decimal_ip | decimal_mask_inv ))"
+}
+
 decIPv4ToHex(){
   local hex ip
   hex="$(printf "%x\n" "$1")"
@@ -1762,44 +1776,99 @@ setVPNDefaultVars() {
   fi
 }
 
-generateRandomSubnet() {
-  local MATCHES
+generateRandomSubnet(){
   # Source: https://community.openvpn.net/openvpn/wiki/AvoidRoutingConflicts
-  declare -a SUBNET_EXCLUDE_LIST
+  declare -a excluded_subnets_dec=(
+    167772160 167772415 # 10.0.0.0/24
+    167772416 167772671 # 10.0.1.0/24
+    167837952 167838207 # 10.1.1.0/24
+    167840256 167840511 # 10.1.10.0/24
+    167903232 167903487 # 10.2.0.0/24
+    168296448 168296703 # 10.8.0.0/24
+    168427776 168428031 # 10.10.1.0/24
+    173693440 173693695 # 10.90.90.0/24
+    174326016 174326271 # 10.100.1.0/24
+    184549120 184549375 # 10.255.255.0/24
+    3232235520 3232235775 # 192.168.0.0/24
+    3232235776 3232236031 # 192.168.1.0/24
+  )
 
-  SUBNET_EXCLUDE_LIST=(10.0.0.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.0.1.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.1.1.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.1.10.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.2.0.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.8.0.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.10.1.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.90.90.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.100.1.0/24)
-  SUBNET_EXCLUDE_LIST+=(10.255.255.0/24)
+  # Add numeric ranges to the previous array
+  readarray -t currently_used_subnets <<< "$(ip route show | \
+    grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
 
-  readarray -t CURRENTLY_USED_SUBNETS <<< "$(ip route show \
-    | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}')"
-  SUBNET_EXCLUDE_LIST=("${SUBNET_EXCLUDE_LIST[@]}"
-    "${CURRENTLY_USED_SUBNETS[@]}")
+  local used used_ip used_mask
+  for used in "${currently_used_subnets[@]}"; do
+    used_ip="${used%/*}"
+    used_mask="${used##*/}"
 
-  while true; do
-    MATCHES=0
-    pivpnNET="10.$((RANDOM % 256)).$((RANDOM % 256)).0"
+    excluded_subnets_dec+=( "$(dotIPv4FirstDec "$used_ip" "$used_mask")" )
+    excluded_subnets_dec+=( "$(dotIPv4LastDec "$used_ip" "$used_mask")" )
+  done
 
-    for SUB in "${SUBNET_EXCLUDE_LIST[@]}"; do
-      if grepcidr "${SUB}" <<< "${pivpnNET}/${subnetClass}" \
-        2>&1 > /dev/null; then
-        ((MATCHES++))
+  # Note: excluded_subnets_count array length is twice the number of subnets
+  local excluded_subnets_count="${#excluded_subnets_dec[@]}"
+
+  local source_subnet="$1"
+  local source_ip="${source_subnet%/*}"
+  local source_ip_dec="$(dotIPv4ToDec "$source_ip")"
+  local source_netmask="${source_subnet##*/}"
+  local source_netmask_dec="$(( 2**32-1 ^ (2**(32-source_netmask)-1) ))"
+
+  local target_netmask="$2"
+
+  local first_ip_target_subnet_dec="$(( source_ip_dec & source_netmask_dec ))"
+  local total_ips_target_subnet="$(( 2**(32-target_netmask) ))"
+
+  # Picking a random subnet would cause the same subnets to be checked multiple
+  # times shall the number of subnets were small, so instead a random permutation
+  # is scanned to check a subnet only one.
+  local subnets_count="$(( 2**(target_netmask - source_netmask) ))"
+  readarray -t random_perm <<< "$(shuf -i 0-"$(( subnets_count - 1 ))")"
+  # random_perm=( 3221 9 8 431 7 [...] )
+
+  # Due to bash performance limitations, it's not pratical to check all subnets.
+  # Taking into account that the install script should not hang for too long even
+  # on a Pi Zero, we avoid doing more than about 5000 iteration.
+  local max_tries="$subnets_count"
+  if [ $(( subnets_count * excluded_subnets_count )) -ge 5000 ]; then
+    max_tries="$(( 5000 / (excluded_subnets_count / 2) ))"
+  fi
+
+  local first_ip_subnet_dec last_ip_subnet_dec
+  local first_ip_excluded_subnet_dec last_ip_excluded_subnet_dec
+  local overlap
+  for (( i = 0; i < max_tries; i++ )); do
+
+    first_ip_subnet_dec="$(( first_ip_target_subnet_dec + total_ips_target_subnet * random_perm[i] ))"
+    last_ip_subnet_dec="$(( first_ip_subnet_dec + total_ips_target_subnet - 1 ))"
+
+    overlap=false
+
+    for (( j = 0; j < excluded_subnets_count; j += 2 )); do
+
+      first_ip_excluded_subnet_dec="${excluded_subnets_dec[$j]}"
+      last_ip_excluded_subnet_dec="${excluded_subnets_dec[$j+1]}"
+
+      #                              |-------------subnet2------------|
+      #           |----------subnet1-----------|                      |
+      #           |                  |         |                      |
+      # first_ip_excluded_subnet_dec | last_ip_excluded_subnet_dec    |
+      #                              |                                |
+      #                   first_ip_subnet_dec                last_ip_subnet_dec
+      if (( last_ip_excluded_subnet_dec >= first_ip_subnet_dec )) && \
+        (( first_ip_excluded_subnet_dec <= last_ip_subnet_dec )); then
+        overlap=true
+        break
       fi
+
     done
 
-    if [[ "${MATCHES}" -eq 0 ]]; then
+    if ! "$overlap"; then
+      decIPv4ToDot "$first_ip_subnet_dec"
       break
     fi
   done
-
-  echo "${pivpnNET}"
 }
 
 setOpenVPNDefaultVars() {
@@ -1808,7 +1877,24 @@ setOpenVPNDefaultVars() {
   # Allow custom NET via unattend setupVARs file.
   # Use default if not provided.
   if [[ -z "${pivpnNET}" ]]; then
-    pivpnNET="$(generateRandomSubnet)"
+    echo "::: Generating random subnet in network 10.0.0.0/8..."
+    pivpnNET="$(generateRandomSubnet "10.0.0.0/8" "$subnetClass")"
+  fi
+
+  if [[ -z "${pivpnNET}" ]]; then
+    echo "::: Network 10.0.0.0/8 is unavailable, trying 172.16.0.0/12 next..."
+    pivpnNET="$(generateRandomSubnet "172.16.0.0/12" "$subnetClass")"
+  fi
+
+  if [[ -z "${pivpnNET}" ]]; then
+    echo "::: Network 172.16.0.0/12 is unavailable, trying 192.168.0.0/16 next..."
+    pivpnNET="$(generateRandomSubnet "192.168.0.0/16" "$subnetClass")"
+  fi
+
+  if [[ -z "${pivpnNET}" ]]; then
+    # This should not happen in practice
+    echo "::: Unable to generate a random subnet for PiVPN. Looks like all private networks are in use."
+    exit 1
   fi
 
   pivpnNETdec="$(dotIPv4ToDec "${pivpnNET}")"
@@ -1836,7 +1922,24 @@ setWireguardDefaultVars() {
   # Allow custom NET via unattend setupVARs file.
   # Use default if not provided.
   if [[ -z "${pivpnNET}" ]]; then
-    pivpnNET="$(generateRandomSubnet)"
+    echo "::: Generating random subnet in network 10.0.0.0/8..."
+    pivpnNET="$(generateRandomSubnet "10.0.0.0/8" "$subnetClass")"
+  fi
+
+  if [[ -z "${pivpnNET}" ]]; then
+    echo "::: Network 10.0.0.0/8 is unavailable, trying 172.16.0.0/12 next..."
+    pivpnNET="$(generateRandomSubnet "172.16.0.0/12" "$subnetClass")"
+  fi
+
+  if [[ -z "${pivpnNET}" ]]; then
+    echo "::: Network 172.16.0.0/12 is unavailable, trying 192.168.0.0/16 next..."
+    pivpnNET="$(generateRandomSubnet "192.168.0.0/16" "$subnetClass")"
+  fi
+
+  if [[ -z "${pivpnNET}" ]]; then
+    # This should not happen in practice
+    echo "::: Unable to generate a random subnet for PiVPN. Looks like all private networks are in use."
+    exit 1
   fi
 
   pivpnNETdec="$(dotIPv4ToDec "${pivpnNET}")"
