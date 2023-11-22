@@ -9,6 +9,7 @@ source "${setupVars}"
 if [ ! -r /opt/pivpn/ipaddr_utils.sh ]; then
   exit 1
 fi
+# shellcheck disable=SC1091
 source /opt/pivpn/ipaddr_utils.sh
 
 ### Functions

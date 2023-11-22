@@ -13,6 +13,7 @@ source "${setupVars}"
 if [ ! -r /opt/pivpn/ipaddr_utils.sh ]; then
   exit 1
 fi
+# shellcheck disable=SC1091
 source /opt/pivpn/ipaddr_utils.sh
 
 # shellcheck disable=SC2154
@@ -112,6 +113,7 @@ fi
 cd /etc/wireguard || exit
 
 # Exclude first, last and server addresses
+# shellcheck disable=SC2154
 MAX_CLIENTS="$((2**(32-subnetClass)-3))"
 
 if [ "$(wc -l configs/clients.txt | awk '{print $1}')" -ge "${MAX_CLIENTS}" ]; then
@@ -119,6 +121,7 @@ if [ "$(wc -l configs/clients.txt | awk '{print $1}')" -ge "${MAX_CLIENTS}" ]; t
   exit 1
 fi
 
+# shellcheck disable=SC2154
 FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
 LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
 

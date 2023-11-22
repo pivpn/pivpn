@@ -1814,6 +1814,7 @@ generateRandomSubnet(){
 
   local source_subnet="$1"
   local source_ip="${source_subnet%/*}"
+  # shellcheck disable=SC2155
   local source_ip_dec="$(dotIPv4ToDec "$source_ip")"
   local source_netmask="${source_subnet##*/}"
   local source_netmask_dec="$(( 2**32-1 ^ (2**(32-source_netmask)-1) ))"
