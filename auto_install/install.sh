@@ -1828,7 +1828,7 @@ generateRandomSubnet() {
   # times shall the number of subnets were small, so instead a random permutation
   # is scanned to check a subnet only once.
   local subnets_count="$((2 ** (target_netmask - source_netmask)))"
-  readarray -t random_perm <<< "$(shuf -i 0-"$(( subnets_count - 1))")"
+  readarray -t random_perm <<< "$(shuf -i 0-"$((subnets_count - 1))")"
   # random_perm=( 3221 9 8 431 7 [...] )
 
   # Due to bash performance limitations, it's not pratical to check all subnets.
@@ -1836,7 +1836,7 @@ generateRandomSubnet() {
   # on a Pi Zero, we avoid doing more than about 5000 iteration.
   local max_tries="$subnets_count"
   if [ $((subnets_count * excluded_subnets_count)) -ge 5000 ]; then
-    max_tries="$(( 5000 / (excluded_subnets_count / 2) ))"
+    max_tries="$((5000 / (excluded_subnets_count / 2)))"
   fi
 
   local first_ip_subnet_dec last_ip_subnet_dec
@@ -1844,8 +1844,8 @@ generateRandomSubnet() {
   local overlap
   for ((i = 0; i < max_tries; i++)); do
 
-    first_ip_subnet_dec="$(( first_ip_target_subnet_dec + total_ips_target_subnet * random_perm[i] ))"
-    last_ip_subnet_dec="$(( first_ip_subnet_dec + total_ips_target_subnet - 1 ))"
+    first_ip_subnet_dec="$((first_ip_target_subnet_dec + total_ips_target_subnet * random_perm[i]))"
+    last_ip_subnet_dec="$((first_ip_subnet_dec + total_ips_target_subnet - 1))"
 
     overlap=false
 

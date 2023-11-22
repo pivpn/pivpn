@@ -114,7 +114,7 @@ cd /etc/wireguard || exit
 
 # Exclude first, last and server addresses
 # shellcheck disable=SC2154
-MAX_CLIENTS="$((2**(32-subnetClass)-3))"
+MAX_CLIENTS="$((2 ** (32 - subnetClass) - 3))"
 
 if [ "$(wc -l configs/clients.txt | awk '{print $1}')" -ge "${MAX_CLIENTS}" ]; then
   echo "::: Can't add any more clients (max. ${MAX_CLIENTS})!"
@@ -122,11 +122,11 @@ if [ "$(wc -l configs/clients.txt | awk '{print $1}')" -ge "${MAX_CLIENTS}" ]; t
 fi
 
 # shellcheck disable=SC2154
-FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
-LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
+FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}")"
+LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}")"
 
 # Find an unused address for the client IP
-for (( ip = FIRST_IPV4_DEC+2; ip <= LAST_IPV4_DEC-1; ip++ )); do
+for ((ip = FIRST_IPV4_DEC + 2; ip <= LAST_IPV4_DEC - 1; ip++)); do
   if ! grep -q " ${ip}$" configs/clients.txt; then
     UNUSED_IPV4_DEC="${ip}"
     break
@@ -202,7 +202,7 @@ echo "::: Client config generated"
 echo "::: Updated server config"
 
 echo "${CLIENT_NAME} $(< keys/"${CLIENT_NAME}"_pub) $(date +%s) ${UNUSED_IPV4_DEC}" \
-      | tee -a configs/clients.txt > /dev/null
+  | tee -a configs/clients.txt > /dev/null
 
 if [[ -f /etc/pivpn/hosts.wireguard ]]; then
   echo "${UNUSED_IPV4_DOT} ${CLIENT_NAME}.pivpn" \
