@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
 
-decIPv4ToDot(){
+decIPv4ToDot() {
   local a b c d
-  a=$(( ($1 & 4278190080) >> 24 ))
-  b=$(( ($1 & 16711680) >> 16 ))
-  c=$(( ($1 & 65280) >> 8 ))
-  d=$(( $1 & 255 ))
+  a=$((($1 & 4278190080) >> 24))
+  b=$((($1 & 16711680) >> 16))
+  c=$((($1 & 65280) >> 8))
+  d=$(($1 & 255))
   printf "%s.%s.%s.%s\n" $a $b $c $d
 }
 
-dotIPv4ToDec(){
+dotIPv4ToDec() {
   local original_ifs=$IFS
   IFS='.'
   read -r -a array_ip <<< "$1"
   IFS=$original_ifs
-  printf "%s\n" $(( array_ip[0]*(16777216) + array_ip[1]*(65536) + array_ip[2]*(256) + array_ip[3] ))
+  printf "%s\n" $((array_ip[0] * 16777216 + array_ip[1] * 65536 + array_ip[2] * 256 + array_ip[3]))
 }
 
-dotIPv4FirstDec(){
+dotIPv4FirstDec() {
   local decimal_ip decimal_mask
   decimal_ip=$(dotIPv4ToDec "$1")
-  decimal_mask=$(( 2**32-1 ^ (2**(32-$2)-1) ))
-  printf "%s\n" "$(( decimal_ip & decimal_mask ))"
+  decimal_mask=$((2 ** 32 - 1 ^ (2 ** (32 - $2) - 1)))
+  printf "%s\n" "$((decimal_ip & decimal_mask))"
 }
 
-dotIPv4LastDec(){
+dotIPv4LastDec() {
   local decimal_ip decimal_mask_inv
   decimal_ip=$(dotIPv4ToDec "$1")
-  decimal_mask_inv=$(( 2**(32-$2)-1 ))
-  printf "%s\n" "$(( decimal_ip | decimal_mask_inv ))"
+  decimal_mask_inv=$((2 ** (32 - $2) - 1))
+  printf "%s\n" "$((decimal_ip | decimal_mask_inv))"
 }
 
-decIPv4ToHex(){
+decIPv4ToHex() {
   local hex
   hex="$(printf "%08x\n" "$1")"
   quartet_hi=${hex:0:4}

@@ -1716,33 +1716,33 @@ installPiVPN() {
 
 decIPv4ToDot() {
   local a b c d
-  a=$(( ($1 & 4278190080) >> 24 ))
-  b=$(( ($1 & 16711680) >> 16 ))
-  c=$(( ($1 & 65280) >> 8 ))
-  d=$(( $1 & 255 ))
+  a=$((($1 & 4278190080) >> 24))
+  b=$((($1 & 16711680) >> 16))
+  c=$((($1 & 65280) >> 8))
+  d=$(($1 & 255))
   printf "%s.%s.%s.%s\n" $a $b $c $d
 }
 
-dotIPv4ToDec(){
+dotIPv4ToDec() {
   local original_ifs=$IFS
   IFS='.'
   read -r -a array_ip <<< "$1"
   IFS=$original_ifs
-  printf "%s\n" $(( array_ip[0] * 16777216 + array_ip[1] * 65536 + array_ip[2] * 256 + array_ip[3] ))
+  printf "%s\n" $((array_ip[0] * 16777216 + array_ip[1] * 65536 + array_ip[2] * 256 + array_ip[3]))
 }
 
 dotIPv4FirstDec() {
   local decimal_ip decimal_mask
   decimal_ip=$(dotIPv4ToDec "$1")
-  decimal_mask=$(( 2**32-1 ^ (2**(32-$2)-1) ))
-  printf "%s\n" "$(( decimal_ip & decimal_mask ))"
+  decimal_mask=$((2 ** 32 - 1 ^ (2 ** (32 - $2) - 1)))
+  printf "%s\n" "$((decimal_ip & decimal_mask))"
 }
 
 dotIPv4LastDec() {
   local decimal_ip decimal_mask_inv
   decimal_ip=$(dotIPv4ToDec "$1")
-  decimal_mask_inv=$(( 2**(32-$2)-1 ))
-  printf "%s\n" "$(( decimal_ip | decimal_mask_inv ))"
+  decimal_mask_inv=$((2 ** (32 - $2) - 1))
+  printf "%s\n" "$((decimal_ip | decimal_mask_inv))"
 }
 
 decIPv4ToHex() {
@@ -1779,7 +1779,7 @@ setVPNDefaultVars() {
   fi
 }
 
-generateRandomSubnet(){
+generateRandomSubnet() {
   # Source: https://community.openvpn.net/openvpn/wiki/AvoidRoutingConflicts
   declare -a excluded_subnets_dec=(
     167772160 167772415   # 10.0.0.0/24
@@ -1805,8 +1805,8 @@ generateRandomSubnet(){
     used_ip="${used%/*}"
     used_mask="${used##*/}"
 
-    excluded_subnets_dec+=( "$(dotIPv4FirstDec "$used_ip" "$used_mask")" )
-    excluded_subnets_dec+=( "$(dotIPv4LastDec "$used_ip" "$used_mask")" )
+    excluded_subnets_dec+=("$(dotIPv4FirstDec "$used_ip" "$used_mask")")
+    excluded_subnets_dec+=("$(dotIPv4LastDec "$used_ip" "$used_mask")")
   done
 
   # Note: excluded_subnets_count array length is twice the number of subnets
@@ -1817,42 +1817,42 @@ generateRandomSubnet(){
   # shellcheck disable=SC2155
   local source_ip_dec="$(dotIPv4ToDec "$source_ip")"
   local source_netmask="${source_subnet##*/}"
-  local source_netmask_dec="$(( 2**32-1 ^ (2**(32-source_netmask)-1) ))"
+  local source_netmask_dec="$((2 ** 32 - 1 ^ (2 ** (32 - source_netmask) - 1)))"
 
   local target_netmask="$2"
 
-  local first_ip_target_subnet_dec="$(( source_ip_dec & source_netmask_dec ))"
-  local total_ips_target_subnet="$(( 2**(32-target_netmask) ))"
+  local first_ip_target_subnet_dec="$((source_ip_dec & source_netmask_dec))"
+  local total_ips_target_subnet="$((2 ** (32 - target_netmask)))"
 
   # Picking a random subnet would cause the same subnets to be checked multiple
   # times shall the number of subnets were small, so instead a random permutation
   # is scanned to check a subnet only once.
-  local subnets_count="$(( 2**(target_netmask - source_netmask) ))"
-  readarray -t random_perm <<< "$(shuf -i 0-"$(( subnets_count - 1 ))")"
+  local subnets_count="$((2 ** (target_netmask - source_netmask)))"
+  readarray -t random_perm <<< "$(shuf -i 0-"$(( subnets_count - 1))")"
   # random_perm=( 3221 9 8 431 7 [...] )
 
   # Due to bash performance limitations, it's not pratical to check all subnets.
   # Taking into account that the install script should not hang for too long even
   # on a Pi Zero, we avoid doing more than about 5000 iteration.
   local max_tries="$subnets_count"
-  if [ $(( subnets_count * excluded_subnets_count )) -ge 5000 ]; then
+  if [ $((subnets_count * excluded_subnets_count)) -ge 5000 ]; then
     max_tries="$(( 5000 / (excluded_subnets_count / 2) ))"
   fi
 
   local first_ip_subnet_dec last_ip_subnet_dec
   local first_ip_excluded_subnet_dec last_ip_excluded_subnet_dec
   local overlap
-  for (( i = 0; i < max_tries; i++ )); do
+  for ((i = 0; i < max_tries; i++)); do
 
     first_ip_subnet_dec="$(( first_ip_target_subnet_dec + total_ips_target_subnet * random_perm[i] ))"
     last_ip_subnet_dec="$(( first_ip_subnet_dec + total_ips_target_subnet - 1 ))"
 
     overlap=false
 
-    for (( j = 0; j < excluded_subnets_count; j += 2 )); do
+    for ((j = 0; j < excluded_subnets_count; j += 2)); do
 
       first_ip_excluded_subnet_dec="${excluded_subnets_dec[$j]}"
-      last_ip_excluded_subnet_dec="${excluded_subnets_dec[$j+1]}"
+      last_ip_excluded_subnet_dec="${excluded_subnets_dec[$j + 1]}"
 
       #                              |-------------subnet2------------|
       #           |----------subnet1-----------|                      |
@@ -1860,8 +1860,8 @@ generateRandomSubnet(){
       # first_ip_excluded_subnet_dec | last_ip_excluded_subnet_dec    |
       #                              |                                |
       #                   first_ip_subnet_dec                last_ip_subnet_dec
-      if (( last_ip_excluded_subnet_dec >= first_ip_subnet_dec )) \
-        && (( first_ip_excluded_subnet_dec <= last_ip_subnet_dec )); then
+      if ((last_ip_excluded_subnet_dec >= first_ip_subnet_dec)) \
+        && ((first_ip_excluded_subnet_dec <= last_ip_subnet_dec)); then
         overlap=true
         break
       fi

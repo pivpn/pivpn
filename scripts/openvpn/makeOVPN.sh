@@ -291,11 +291,11 @@ fi
 
 # Exclude first, last and server addresses
 # shellcheck disable=SC2154
-MAX_CLIENTS="$((2**(32-subnetClass)-3))"
+MAX_CLIENTS="$((2 ** (32 - subnetClass) - 3))"
 
 # shellcheck disable=SC2154
-FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}" )"
-LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}" )"
+FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}")"
+LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}")"
 
 if [ "$(find /etc/openvpn/ccd -type f | wc -l)" -ge "${MAX_CLIENTS}" ]; then
   echo "::: Can't add any more clients (max. ${MAX_CLIENTS})!"
@@ -303,7 +303,7 @@ if [ "$(find /etc/openvpn/ccd -type f | wc -l)" -ge "${MAX_CLIENTS}" ]; then
 fi
 
 # Find an unused address for the client IP
-for (( ip = FIRST_IPV4_DEC+2; ip <= LAST_IPV4_DEC-1; ip++ )); do
+for ((ip = FIRST_IPV4_DEC + 2; ip <= LAST_IPV4_DEC - 1; ip++)); do
   # find returns 0 if the folder is empty, so we create the 'ls -A [...]'
   # exception to stop at the first static IP (10.8.0.2). Otherwise it would
   # cycle to the end without finding and available octet.
