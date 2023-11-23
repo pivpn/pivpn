@@ -10,6 +10,12 @@ setupVars="/etc/pivpn/wireguard/setupVars.conf"
 # shellcheck disable=SC1090
 source "${setupVars}"
 
+if [ ! -r /opt/pivpn/ipaddr_utils.sh ]; then
+  exit 1
+fi
+# shellcheck disable=SC1091
+source /opt/pivpn/ipaddr_utils.sh
+
 # shellcheck disable=SC2154
 userGroup="${install_user}:${install_user}"
 
@@ -109,6 +115,27 @@ fi
 
 cd /etc/wireguard || exit
 
+# Exclude first, last and server addresses
+# shellcheck disable=SC2154
+MAX_CLIENTS="$((2 ** (32 - subnetClass) - 3))"
+
+if [ "$(wc -l configs/clients.txt | awk '{print $1}')" -ge "${MAX_CLIENTS}" ]; then
+  echo "::: Can't add any more clients (max. ${MAX_CLIENTS})!"
+  exit 1
+fi
+
+# shellcheck disable=SC2154
+FIRST_IPV4_DEC="$(dotIPv4FirstDec "${pivpnNET}" "${subnetClass}")"
+LAST_IPV4_DEC="$(dotIPv4LastDec "${pivpnNET}" "${subnetClass}")"
+
+# Find an unused address for the client IP
+for ((ip = FIRST_IPV4_DEC + 2; ip <= LAST_IPV4_DEC - 1; ip++)); do
+  if ! grep -q " ${ip}$" configs/clients.txt; then
+    UNUSED_IPV4_DEC="${ip}"
+    break
+  fi
+done
+
 if [[ -z "${CLIENT_NAME}" ]]; then
   read -r -p "Enter a Name for the Client: " CLIENT_NAME
   checkName
@@ -122,28 +149,17 @@ wg genkey \
 wg genpsk | tee "keys/${CLIENT_NAME}_psk" &> /dev/null
 echo "::: Client Keys generated"
 
-# Find an unused number for the last octet of the client IP
-for i in {2..254}; do
-  if ! grep -q " ${i}$" configs/clients.txt; then
-    COUNT="${i}"
-    echo "${CLIENT_NAME} $(< keys/"${CLIENT_NAME}"_pub) $(date +%s) ${COUNT}" \
-      | tee -a configs/clients.txt > /dev/null
-    break
-  fi
-done
-
-# Disabling SC2154, variables sourced externaly
-# shellcheck disable=SC2154
-NET_REDUCED="${pivpnNET::-2}"
+UNUSED_IPV4_DOT="$(decIPv4ToDot "${UNUSED_IPV4_DEC}")"
+UNUSED_IPV4_HEX="$(decIPv4ToHex "${UNUSED_IPV4_DEC}")"
 
 # shellcheck disable=SC2154
 {
   echo '[Interface]'
   echo "PrivateKey = $(cat "keys/${CLIENT_NAME}_priv")"
-  echo -n "Address = ${NET_REDUCED}.${COUNT}/${subnetClass}"
+  echo -n "Address = ${UNUSED_IPV4_DOT}/${subnetClass}"
 
   if [[ "${pivpnenableipv6}" == 1 ]]; then
-    echo ",${pivpnNETv6}${COUNT}/${subnetClassv6}"
+    echo ",${pivpnNETv6}${UNUSED_IPV4_HEX}/${subnetClassv6}"
   else
     echo
   fi
@@ -175,10 +191,10 @@ echo "::: Client config generated"
   echo '[Peer]'
   echo "PublicKey = $(cat "keys/${CLIENT_NAME}_pub")"
   echo "PresharedKey = $(cat "keys/${CLIENT_NAME}_psk")"
-  echo -n "AllowedIPs = ${NET_REDUCED}.${COUNT}/32"
+  echo -n "AllowedIPs = ${UNUSED_IPV4_DOT}/32"
 
   if [[ "${pivpnenableipv6}" == 1 ]]; then
-    echo ",${pivpnNETv6}${COUNT}/128"
+    echo ",${pivpnNETv6}${UNUSED_IPV4_HEX}/128"
   else
     echo
   fi
@@ -188,12 +204,15 @@ echo "::: Client config generated"
 
 echo "::: Updated server config"
 
+echo "${CLIENT_NAME} $(< keys/"${CLIENT_NAME}"_pub) $(date +%s) ${UNUSED_IPV4_DEC}" \
+  | tee -a configs/clients.txt > /dev/null
+
 if [[ -f /etc/pivpn/hosts.wireguard ]]; then
-  echo "${NET_REDUCED}.${COUNT} ${CLIENT_NAME}.pivpn" \
+  echo "${UNUSED_IPV4_DOT} ${CLIENT_NAME}.pivpn" \
     | tee -a /etc/pivpn/hosts.wireguard > /dev/null
 
   if [[ "${pivpnenableipv6}" == 1 ]]; then
-    echo "${pivpnNETv6}${COUNT} ${CLIENT_NAME}.pivpn" \
+    echo "${pivpnNETv6}${UNUSED_IPV4_HEX} ${CLIENT_NAME}.pivpn" \
       | tee -a /etc/pivpn/hosts.wireguard > /dev/null
   fi
 

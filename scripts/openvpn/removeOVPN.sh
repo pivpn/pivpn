@@ -4,8 +4,15 @@
 ### Constants
 setupVars="/etc/pivpn/openvpn/setupVars.conf"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
+
 # shellcheck disable=SC1090
 source "${setupVars}"
+
+if [ ! -r /opt/pivpn/ipaddr_utils.sh ]; then
+  exit 1
+fi
+# shellcheck disable=SC1091
+source /opt/pivpn/ipaddr_utils.sh
 
 ### Functions
 err() {
@@ -167,10 +174,8 @@ for ((ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
     # Disabling SC2154 $pivpnNET sourced externally
     # shellcheck disable=SC2154
     # Grab the client IP address
-    NET_REDUCED="${pivpnNET::-2}"
     STATIC_IP="$(grep -v "^#" /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}" \
-      | grep -w ifconfig-push \
-      | grep -oE "${NET_REDUCED}\.[0-9]{1,3}")"
+      | grep -w ifconfig-push | awk '{print $2}')"
     rm -rf /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}"
 
     # disablung warning SC2154, $install_home sourced externally
