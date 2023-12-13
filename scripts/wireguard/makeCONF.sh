@@ -49,6 +49,9 @@ checkName() {
   elif [[ -z "${CLIENT_NAME}" ]]; then
     err "::: You cannot leave the name blank."
     exit 1
+  elif [[ "${CLIENT_NAME}" == "server" ]]; then
+    err "Sorry, this is in use by the server and cannot be used by clients."
+    exit 1
   elif [[ -f "configs/${CLIENT_NAME}.conf" ]]; then
     err "::: A client with this name already exists"
     exit 1
