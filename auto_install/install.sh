@@ -1087,7 +1087,6 @@ checkipv6uplink() {
     --max-time 3 \
     --connect-timeout 3 \
     --silent \
-    --fail \
     -6 \
     https://google.com \
     > /dev/null
