@@ -57,6 +57,7 @@ easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}
 
 ######## Undocumented Flags. Shhh ########
 runUnattended=false
+usePiholeDNS=false
 skipSpaceCheck=false
 reconfigure=false
 showUnsupportedNICs=false
@@ -225,6 +226,9 @@ flagsCheck() {
       "--unattended")
         runUnattended=true
         unattendedConfig="${!j}"
+        ;;
+      "--use-pihole")
+        usePiholeDNS=true
         ;;
       "--reconfigure")
         reconfigure=true
@@ -2342,9 +2346,49 @@ the default" "${r}" "${c}" "${DEFAULT_PORT}" \
   echo "pivpnPORT=${pivpnPORT}" >> "${tempsetupVarsFile}"
 }
 
+setupPiholeDNS() {
+  # Add a custom hosts file for VPN clients so they appear
+  # as 'name.pivpn' in the Pi-hole dashboard as well as resolve
+  # by their names.
+  echo "addn-hosts=/etc/pivpn/hosts.${VPN}" \
+    | ${SUDO} tee "${dnsmasqConfig}" > /dev/null
+
+  # Then create an empty hosts file or clear if it exists.
+  ${SUDO} bash -c "> /etc/pivpn/hosts.${VPN}"
+
+  # Setting Pi-hole to "Listen on all interfaces" allows
+  # dnsmasq to listen on the VPN interface while permitting
+  # queries only from hosts whose address is on the LAN and
+  # VPN subnets.
+  ${SUDO} pihole -a -i local
+
+  # Use the Raspberry Pi VPN IP as DNS server.
+  pivpnDNS1="${vpnGw}"
+
+  {
+    echo "pivpnDNS1=${pivpnDNS1}"
+    echo "pivpnDNS2=${pivpnDNS2}"
+  } >> "${tempsetupVarsFile}"
+
+  # Allow incoming DNS requests through UFW.
+  if [[ "${USING_UFW}" -eq 1 ]]; then
+    ${SUDO} ufw insert 1 allow in \
+      on "${pivpnDEV}" to any port 53 \
+      from "${pivpnNET}/${subnetClass}" > /dev/null
+  else
+    ${SUDO} iptables -I INPUT -i "${pivpnDEV}" \
+      -p udp --dport 53 -j ACCEPT -m comment --comment "pihole-DNS-rule"
+  fi
+}
+
 askClientDNS() {
   if [[ "${runUnattended}" == 'true' ]]; then
-    if [[ -z "${pivpnDNS1}" ]] \
+    if [[ "${usePiholeDNS}" == 'true' ]] \
+      && command -v pihole > /dev/null \
+      && [[ -r "${piholeSetupVars}" ]]; then
+      setupPiholeDNS
+      return
+    elif [[ -z "${pivpnDNS1}" ]] \
       && [[ -n "${pivpnDNS2}" ]]; then
       pivpnDNS1="${pivpnDNS2}"
       unset pivpnDNS2
@@ -2384,10 +2428,11 @@ askClientDNS() {
 
   # Detect and offer to use Pi-hole
   if command -v pihole > /dev/null; then
-    if whiptail \
-      --backtitle "Setup PiVPN" \
-      --title "Pi-hole" \
-      --yesno "We have detected a Pi-hole installation, \
+    if [[ "${usePiholeDNS}" == 'true' ]] \
+      || whiptail \
+        --backtitle "Setup PiVPN" \
+        --title "Pi-hole" \
+        --yesno "We have detected a Pi-hole installation, \
 do you want to use it as the DNS server for the VPN, so you \
 get ad blocking on the go?" "${r}" "${c}"; then
       if [[ ! -r "${piholeSetupVars}" ]]; then
@@ -2395,38 +2440,7 @@ get ad blocking on the go?" "${r}" "${c}"; then
         exit 1
       fi
 
-      # Add a custom hosts file for VPN clients so they appear
-      # as 'name.pivpn' in the Pi-hole dashboard as well as resolve
-      # by their names.
-      echo "addn-hosts=/etc/pivpn/hosts.${VPN}" \
-        | ${SUDO} tee "${dnsmasqConfig}" > /dev/null
-
-      # Then create an empty hosts file or clear if it exists.
-      ${SUDO} bash -c "> /etc/pivpn/hosts.${VPN}"
-
-      # Setting Pi-hole to "Listen on all interfaces" allows
-      # dnsmasq to listen on the VPN interface while permitting
-      # queries only from hosts whose address is on the LAN and
-      # VPN subnets.
-      ${SUDO} pihole -a -i local
-
-      # Use the Raspberry Pi VPN IP as DNS server.
-      pivpnDNS1="${vpnGw}"
-
-      {
-        echo "pivpnDNS1=${pivpnDNS1}"
-        echo "pivpnDNS2=${pivpnDNS2}"
-      } >> "${tempsetupVarsFile}"
-
-      # Allow incoming DNS requests through UFW.
-      if [[ "${USING_UFW}" -eq 1 ]]; then
-        ${SUDO} ufw insert 1 allow in \
-          on "${pivpnDEV}" to any port 53 \
-          from "${pivpnNET}/${subnetClass}" > /dev/null
-      else
-        ${SUDO} iptables -I INPUT -i "${pivpnDEV}" \
-          -p udp --dport 53 -j ACCEPT -m comment --comment "pihole-DNS-rule"
-      fi
+      setupPiholeDNS
       return
     fi
   fi
