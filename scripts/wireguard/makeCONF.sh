@@ -52,6 +52,9 @@ checkName() {
   elif [[ "${CLIENT_NAME::1}" == "." ]]; then
     err "Names cannot start with a . (dot)."
     exit 1
+  elif [[ "${#CLIENT_NAME}" -gt 15 ]]; then
+    err "::: Names cannot be longer than 15 characters."
+    exit 1
   elif [[ -z "${CLIENT_NAME}" ]]; then
     err "::: You cannot leave the name blank."
     exit 1
