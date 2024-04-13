@@ -351,13 +351,14 @@ distroCheck() {
     . /etc/os-release
     PLAT="$(awk '{print $1}' <<< "${NAME}")"
     VER="${VERSION_ID}"
-    declare -A VER_MAP=(["10"]="buster"
+    declare -A VER_MAP=(
+      ["10"]="buster"
       ["11"]="bullseye"
       ["12"]="bookworm"
-      ["18.04"]="bionic"
       ["20.04"]="focal"
       ["22.04"]="jammy"
-      ["23.04"]="lunar")
+      ["24.04"]="noble"
+    )
     OSCN="${VER_MAP["${VER}"]}"
 
     # Alpine support
@@ -369,7 +370,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        stretch | buster | bullseye | bookworm | xenial | bionic | focal | jammy | lunar)
+        buster | bullseye | bookworm | focal | jammy | noble)
           :
           ;;
         *)
