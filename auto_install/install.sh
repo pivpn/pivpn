@@ -654,12 +654,15 @@ preconfigurePackages() {
   # wireguard-dkms does not make the module part of the package since the
   # module itself is built at install time and not part of the .deb).
   # Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
+  # Additionally, if we're using something like LXC, the host kernel will load
+  # the wireguard module so it'll appear builtin from the container's point of view.
   WIREGUARD_BUILTIN=0
 
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
     if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null \
       || modinfo wireguard 2> /dev/null \
-      | grep -q '^filename:[[:blank:]]*(builtin)$'; then
+      | grep -q '^filename:[[:blank:]]*(builtin)$' \
+      || lsmod | grep -q '^wireguard'; then
       WIREGUARD_BUILTIN=1
     fi
   fi
