@@ -3296,6 +3296,10 @@ confNetwork() {
 
   ${SUDO} sysctl -p /etc/sysctl.d/99-pivpn.conf > /dev/null
 
+  if [[ "${PLAT}" == 'Alpine' ]]; then
+	${SUDO} rc-update add sysctl
+  fi
+
   if [[ "${USING_UFW}" -eq 1 ]]; then
     echo "::: Detected UFW is enabled."
     echo "::: Adding UFW rules..."
@@ -3578,6 +3582,12 @@ confNetwork() {
       ${SUDO} ip6tables-save \
         | ${SUDO} tee /etc/iptables/rules.v6 > /dev/null
       ;;
+	Alpine)
+	  ${SUDO} rc-service iptables save
+	  ${SUDO} rc-service ip6tables save
+	  ${SUDO} rc-update add iptables
+	  ${SUDO} rc-update add ip6tables
+	  ;;
   esac
 
   {
