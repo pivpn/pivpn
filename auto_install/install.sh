@@ -21,7 +21,7 @@ pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
 GITBIN="/usr/bin/git"
 
-piholeSetupVars="/etc/pihole/setupVars.conf"
+piholeVersions="/etc/pihole/versions"
 dnsmasqConfig="/etc/dnsmasq.d/02-pivpn.conf"
 
 dhcpcdFile="/etc/dhcpcd.conf"
@@ -2359,11 +2359,19 @@ setupPiholeDNS() {
   # Then create an empty hosts file or clear if it exists.
   ${SUDO} bash -c "> /etc/pivpn/hosts.${VPN}"
 
-  # Setting Pi-hole to "Listen on all interfaces" allows
-  # dnsmasq to listen on the VPN interface while permitting
-  # queries only from hosts whose address is on the LAN and
-  # VPN subnets.
-  ${SUDO} pihole -a -i local
+  # shellcheck disable=SC1090
+  CORE_VERSION="$(source "$piholeVersions" && echo "${CORE_VERSION}")"
+  if [ "$(echo -e 'v6.0.0\n'"${CORE_VERSION}" | sort -V | head -n 1)" = "v6.0.0" ]; then
+    # Running Pi-hole v6 or later
+    ${SUDO} pihole-FTL --config dns.listeningMode LOCAL
+    ${SUDO} pihole-FTL --config misc.etc_dnsmasq_d true
+  else
+    # Setting Pi-hole to "Listen on all interfaces" allows
+    # dnsmasq to listen on the VPN interface while permitting
+    # queries only from hosts whose address is on the LAN and
+    # VPN subnets.
+    ${SUDO} pihole -a -i local
+  fi
 
   # Use the Raspberry Pi VPN IP as DNS server.
   pivpnDNS1="${vpnGw}"
@@ -2387,8 +2395,7 @@ setupPiholeDNS() {
 askClientDNS() {
   if [[ "${runUnattended}" == 'true' ]]; then
     if [[ "${usePiholeDNS}" == 'true' ]] \
-      && command -v pihole > /dev/null \
-      && [[ -r "${piholeSetupVars}" ]]; then
+      && command -v pihole > /dev/null; then
       setupPiholeDNS
       return
     elif [[ -z "${pivpnDNS1}" ]] \
@@ -2438,11 +2445,6 @@ askClientDNS() {
         --yesno "We have detected a Pi-hole installation, \
 do you want to use it as the DNS server for the VPN, so you \
 get ad blocking on the go?" "${r}" "${c}"; then
-      if [[ ! -r "${piholeSetupVars}" ]]; then
-        err "::: Unable to read ${piholeSetupVars}"
-        exit 1
-      fi
-
       setupPiholeDNS
       return
     fi
