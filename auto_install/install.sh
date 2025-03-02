@@ -3399,7 +3399,7 @@ confNetwork() {
         out on "${IPv4dev}" to any > /dev/null
 
       if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-        ${SUDO} ufw route insert 1 \
+        ${SUDO} ufw route \
           allow in on "${pivpnDEV}" \
           from "${pivpnNETv6}/${subnetClassv6}" \
           out on "${IPv6dev}" to any > /dev/null
