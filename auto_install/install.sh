@@ -352,7 +352,6 @@ distroCheck() {
     PLAT="$(awk '{print $1}' <<< "${NAME}")"
     VER="${VERSION_ID}"
     declare -A VER_MAP=(
-      ["10"]="buster"
       ["11"]="bullseye"
       ["12"]="bookworm"
       ["20.04"]="focal"
@@ -370,7 +369,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        buster | bullseye | bookworm | focal | jammy | noble)
+        bullseye | bookworm | focal | jammy | noble)
           :
           ;;
         *)
