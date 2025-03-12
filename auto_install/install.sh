@@ -3217,13 +3217,15 @@ confWireGuard() {
   fi
 
   if [[ -d /etc/wireguard ]]; then
-    # Backup the wireguard folder
-    WIREGUARD_BACKUP="wireguard_$(date +%Y-%m-%d-%H%M%S).tar.gz"
-    echo "::: Backing up the wireguard folder to /etc/${WIREGUARD_BACKUP}"
-    CURRENT_UMASK="$(umask)"
-    umask 0077
-    ${SUDO} tar -czf "/etc/${WIREGUARD_BACKUP}" /etc/wireguard &> /dev/null
-    umask "${CURRENT_UMASK}"
+    if [[ -n "$(ls -A /etc/wireguard)" ]]; then
+      # Backup the wireguard folder
+      WIREGUARD_BACKUP="wireguard_$(date +%Y-%m-%d-%H%M%S).tar.gz"
+      echo "::: Backing up the wireguard folder to /etc/${WIREGUARD_BACKUP}"
+      CURRENT_UMASK="$(umask)"
+      umask 0077
+      ${SUDO} tar -czf "/etc/${WIREGUARD_BACKUP}" /etc/wireguard &> /dev/null
+      umask "${CURRENT_UMASK}"
+    fi
 
     if [[ -f /etc/wireguard/wg0.conf ]]; then
       ${SUDO} rm /etc/wireguard/wg0.conf
