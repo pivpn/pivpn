@@ -3270,10 +3270,10 @@ confWireGuard() {
   {
     echo '[Interface]'
     echo "PrivateKey = $(${SUDO} cat /etc/wireguard/keys/server_priv)"
-    echo -n "Address = ${vpnGw}/${subnetClass}"
+    echo "Address = ${vpnGw}/${subnetClass}"
 
     if [[ "${pivpnenableipv6}" -eq 1 ]]; then
-      echo ",${vpnGwv6}/${subnetClassv6}"
+      echo "Address = ${vpnGwv6}/${subnetClassv6}"
     else
       echo
     fi
