@@ -32,12 +32,16 @@ helpFunc() {
   echo "::: Commands:"
   echo ":::  [none]               Interactive mode"
   echo ":::  -n,--name            Name for the Client (default: '${HOSTNAME}')"
-  echo ":::  -ip,--client-ip      IPv4 address of the Client"
+  echo ":::  -ip,--client-ip      IPv4 address of the Client ('auto' for automatically assigning IP)"
   echo ":::  -h,--help            Show this help dialog"
 }
 
 checkName() {
   # check name
+  if [[ -z "${CLIENT_NAME}" ]]; then
+    err "::: Name is blank. Defaulting to '${HOSTNAME}'."
+    CLIENT_NAME=$HOSTNAME
+  fi
   if [[ "${CLIENT_NAME}" =~ [^a-zA-Z0-9.@_-] ]]; then
     err "Name can only contain alphanumeric characters and these symbols (.-@_)."
     exit 1
@@ -56,14 +60,11 @@ checkName() {
   elif [[ "${#CLIENT_NAME}" -gt 15 ]]; then
     err "::: Names cannot be longer than 15 characters."
     exit 1
-  elif [[ -z "${CLIENT_NAME}" ]]; then
-    err "::: You cannot leave the name blank."
-    exit 1
   elif [[ "${CLIENT_NAME}" == "server" ]]; then
     err "Sorry, this is in use by the server and cannot be used by clients."
     exit 1
   elif [[ -f "configs/${CLIENT_NAME}.conf" ]]; then
-    err "::: A client with this name already exists"
+    err "::: A client with this name already exists."
     exit 1
   fi
 }
@@ -167,7 +168,7 @@ if [[ -z "${CLIENT_IP}" ]]; then
   read -p "Enter the Client IP from range ${FIRST_IPV4} - ${LAST_IPV4} (optional): " CLIENT_IP
 fi
 
-if [[ -n "${CLIENT_IP}" ]]; then
+if [[ -n "${CLIENT_IP}" && "${CLIENT_IP}" != "auto" ]]; then
   checkClientIP "${CLIENT_IP}"
   ip="$(dotIPv4ToDec "${CLIENT_IP}")"
 
@@ -194,7 +195,7 @@ else
 fi
 
 if [[ -z "${CLIENT_NAME}" ]]; then
-  read -r -p "Enter a Name for the Client: " CLIENT_NAME
+  read -r -p "Enter a Name for the Client (default: '${HOSTNAME}'): " CLIENT_NAME
   checkName
 else
   checkName
