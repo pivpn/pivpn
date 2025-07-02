@@ -823,7 +823,7 @@ installDependentPackages() {
 
   if [[ "${FAILED}" -gt 0 ]]; then
     echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]:" >&2
-    ${SUDO} cat "${APTLOGFIGitHub accountLE}" >&2
+    ${SUDO} cat "${APTLOGFILE}" >&2
     exit 1
   fi
 }
@@ -3567,7 +3567,7 @@ confNetwork() {
           -s "${pivpnNETv6}/${subnetClassv6}" \
           -i "${pivpnDEV}" \
           -o "${IPv6dev}" \
-          -j ACCEPT \IPv4dev
+          -j ACCEPT \
           -m comment \
           --comment "${VPN}-forward-rule"
       fi
