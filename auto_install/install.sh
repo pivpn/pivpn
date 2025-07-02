@@ -823,7 +823,7 @@ installDependentPackages() {
 
   if [[ "${FAILED}" -gt 0 ]]; then
     echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]:" >&2
-    ${SUDO} cat "${APTLOGFILE}" >&2
+    ${SUDO} cat "${APTLOGFIGitHub accountLE}" >&2
     exit 1
   fi
 }
@@ -3567,7 +3567,7 @@ confNetwork() {
           -s "${pivpnNETv6}/${subnetClassv6}" \
           -i "${pivpnDEV}" \
           -o "${IPv6dev}" \
-          -j ACCEPT \
+          -j ACCEPT \IPv4dev
           -m comment \
           --comment "${VPN}-forward-rule"
       fi
@@ -3582,8 +3582,12 @@ confNetwork() {
     Debian | Raspbian | Ubuntu)
       ${SUDO} iptables-save \
         | ${SUDO} tee /etc/iptables/rules.v4 > /dev/null
+        
       ${SUDO} ip6tables-save \
         | ${SUDO} tee /etc/iptables/rules.v6 > /dev/null
+      if command -v netfilter-persistent >/dev/null 2>&1; then
+        ${SUDO} netfilter-persistent save
+      fi
       ;;
 	Alpine)
 	  ${SUDO} rc-service iptables save
