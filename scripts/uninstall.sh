@@ -151,7 +151,7 @@ removeAll() {
 
   # Disable IPv4 forwarding
   if [[ "${vpnStillExists}" -eq 0 ]]; then
-    sed -i '/net.ipv4.ip_forward=1/c\#net.ipv4.ip_forward=1' /etc/sysctl.conf
+    rm -f /etc/sysctl.d/99-pivpn.conf
     sysctl -p
   fi
 

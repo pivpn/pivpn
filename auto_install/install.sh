@@ -38,7 +38,7 @@ CHECK_PKG_INSTALLED='dpkg-query -s'
 
 # Dependencies that are required by the script,
 # regardless of the VPN protocol chosen
-BASE_DEPS=(git tar curl grep dnsutils grepcidr whiptail net-tools)
+BASE_DEPS=(git tar curl grep bind9-dnsutils grepcidr whiptail net-tools)
 BASE_DEPS+=(bsdmainutils bash-completion)
 
 BASE_DEPS_ALPINE=(git grep bind-tools newt net-tools bash-completion coreutils)
@@ -46,7 +46,7 @@ BASE_DEPS_ALPINE+=(openssl util-linux openrc iptables ip6tables coreutils sed)
 BASE_DEPS_ALPINE+=(perl libqrencode-tools)
 
 # Dependencies that where actually installed by the script. For example if the
-# script requires grep and dnsutils but dnsutils is already installed, we save
+# script requires grep and bind9-dnsutils but bind9-dnsutils is already installed, we save
 # grep here. This way when uninstalling PiVPN we won't prompt to remove packages
 # that may have been installed by the user for other reasons
 INSTALLED_PACKAGES=()
@@ -354,6 +354,7 @@ distroCheck() {
     declare -A VER_MAP=(
       ["11"]="bullseye"
       ["12"]="bookworm"
+      ["13"]="trixie"
       ["20.04"]="focal"
       ["22.04"]="jammy"
       ["24.04"]="noble"
@@ -369,7 +370,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        bullseye | bookworm | focal | jammy | noble)
+        bullseye | bookworm | trixie | focal | jammy | noble)
           :
           ;;
         *)
@@ -580,7 +581,7 @@ preconfigurePackages() {
 
   # We set static IP only on Raspberry Pi OS
   if checkStaticIpSupported; then
-    if [[ "${OSCN}" != "bookworm" ]]; then
+    if [[ "${OSCN}" == "bullseye" ]]; then
       BASE_DEPS+=(dhcpcd5)
     else
       useNetworkManager=true
@@ -657,8 +658,14 @@ preconfigurePackages() {
   # the wireguard module so it'll appear builtin from the container's point of view.
   WIREGUARD_BUILTIN=0
 
+  if [[ "${OSCN}" == "trixie" ]]; then
+    module_search_path='/usr/lib/modules/*/wireguard.ko*'
+  else
+    module_search_path='/lib/modules/*/wireguard.ko*'
+  fi
+
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-    if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null \
+    if dpkg-query -S "${module_search_path}" &> /dev/null \
       || modinfo wireguard 2> /dev/null \
       | grep -q '^filename:[[:blank:]]*(builtin)$' \
       || lsmod | grep -q '^wireguard'; then
@@ -3217,7 +3224,7 @@ confWireGuard() {
   fi
 
   if [[ -d /etc/wireguard ]]; then
-    if [[ -n "$(ls -A /etc/wireguard)" ]]; then
+    if [[ -n "$(${SUDO} ls -A /etc/wireguard)" ]]; then
       # Backup the wireguard folder
       WIREGUARD_BACKUP="wireguard_$(date +%Y-%m-%d-%H%M%S).tar.gz"
       echo "::: Backing up the wireguard folder to /etc/${WIREGUARD_BACKUP}"
