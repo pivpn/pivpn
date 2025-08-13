@@ -45,7 +45,7 @@ else
     REPLY
 
   if [[ "${REPLY}" =~ ^[Yy]$ ]] || [[ -z "${REPLY}" ]]; then
-    sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.conf
+    sed -i '/net.ipv4.ip_forward=1/s/^#//g' /etc/sysctl.d/99-pivpn.conf
     sysctl -p
     echo "Done"
   fi
