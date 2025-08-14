@@ -607,12 +607,12 @@ preconfigurePackages() {
   OPENVPN_SUPPORT=0
   NEED_OPENVPN_REPO=0
 
-  # We require OpenVPN 2.4 or later for ECC support. If not available in the
-  # repositories but we are running x86 Debian or Ubuntu, add the official repo
+  # We require OpenVPN 2.5 or later for ECC support and tls-crypt-v2. If not available
+  # in the repositories but we are running x86 Debian or Ubuntu, add the official repo
   # which provides the updated package.
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
     if [[ -n "${AVAILABLE_OPENVPN}" ]] \
-      && dpkg --compare-versions "${AVAILABLE_OPENVPN}" ge 2.4; then
+      && dpkg --compare-versions "${AVAILABLE_OPENVPN}" ge 2.5; then
       OPENVPN_SUPPORT=1
     else
       if [[ "${PLAT}" == "Debian" ]] \
@@ -630,7 +630,7 @@ preconfigurePackages() {
     fi
   elif [[ "${PKG_MANAGER}" == 'apk' ]]; then
     if [[ -n "${AVAILABLE_OPENVPN}" ]] \
-      && [[ "$(apk version -t "${AVAILABLE_OPENVPN}" 2.4)" == '>' ]]; then
+      && [[ "$(apk version -t "${AVAILABLE_OPENVPN}" 2.5)" == '>' ]]; then
       OPENVPN_SUPPORT=1
     else
       OPENVPN_SUPPORT=0
@@ -2746,10 +2746,10 @@ Public DNS Name:  ${PUBLICDNS}" "${r}" "${c}"; then
 
 askEncryption() {
   if [[ "${runUnattended}" == 'true' ]]; then
-    if [[ -z "${TWO_POINT_FOUR}" ]] \
-      || [[ "${TWO_POINT_FOUR}" -eq 1 ]]; then
-      TWO_POINT_FOUR=1
-      echo "::: Using OpenVPN 2.4 features"
+    if [[ -z "${TWO_POINT_FIVE}" ]] \
+      || [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
+      TWO_POINT_FIVE=1
+      echo "::: Using OpenVPN 2.5 features"
 
       if [[ -z "${pivpnENCRYPT}" ]]; then
         pivpnENCRYPT=256
@@ -2764,7 +2764,7 @@ askEncryption() {
         exit 1
       fi
     else
-      TWO_POINT_FOUR=0
+      TWO_POINT_FIVE=0
       echo "::: Using traditional OpenVPN configuration"
 
       if [[ -z "${pivpnENCRYPT}" ]]; then
@@ -2792,7 +2792,7 @@ askEncryption() {
     fi
 
     {
-      echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+      echo "TWO_POINT_FIVE=${TWO_POINT_FIVE}"
       echo "pivpnENCRYPT=${pivpnENCRYPT}"
       echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
     } >> "${tempsetupVarsFile}"
@@ -2801,11 +2801,11 @@ askEncryption() {
 
   if [[ "${CUSTOMIZE}" -eq 0 ]]; then
     if [[ "${VPN}" == "openvpn" ]]; then
-      TWO_POINT_FOUR=1
+      TWO_POINT_FIVE=1
       pivpnENCRYPT=256
 
       {
-        echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+        echo "TWO_POINT_FIVE=${TWO_POINT_FIVE}"
         echo "pivpnENCRYPT=${pivpnENCRYPT}"
         echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
       } >> "${tempsetupVarsFile}"
@@ -2816,19 +2816,19 @@ askEncryption() {
   if whiptail \
     --backtitle "Setup OpenVPN" \
     --title "Installation mode" \
-    --yesno "OpenVPN 2.4 can take advantage of Elliptic Curves \
+    --yesno "OpenVPN 2.5 can take advantage of Elliptic Curves \
 to provide higher connection speed and improved security over \
 RSA, while keeping smaller certificates.
 
-Moreover, the 'tls-crypt' directive encrypts the certificates \
+Moreover, the 'tls-crypt-v2' directive encrypts the certificates \
 being used while authenticating, increasing privacy.
 
-If your clients do run OpenVPN 2.4 or later you can enable \
+If your clients do run OpenVPN 2.5 or later you can enable \
 these features, otherwise choose 'No' for best \
 compatibility." \
     "${r}" \
     "${c}"; then
-    TWO_POINT_FOUR=1
+    TWO_POINT_FIVE=1
     pivpnENCRYPT="$(whiptail \
       --backtitle "Setup OpenVPN" \
       --title "ECDSA certificate size" \
@@ -2844,7 +2844,7 @@ that 256 bits are already as secure as 3072 bit RSA." "${r}" "${c}" 3 \
       "521" "Use a 521-bit certificate (paranoid level)" OFF \
       3>&1 1>&2 2>&3)"
   else
-    TWO_POINT_FOUR=0
+    TWO_POINT_FIVE=0
     pivpnENCRYPT="$(whiptail \
       --backtitle "Setup OpenVPN" \
       --title "RSA certificate size" \
@@ -2886,7 +2886,7 @@ parameters will be generated on your device." "${r}" "${c}"; then
   fi
 
   {
-    echo "TWO_POINT_FOUR=${TWO_POINT_FOUR}"
+    echo "TWO_POINT_FIVE=${TWO_POINT_FIVE}"
     echo "pivpnENCRYPT=${pivpnENCRYPT}"
     echo "USE_PREDEFINED_DH_PARAM=${USE_PREDEFINED_DH_PARAM}"
   } >> "${tempsetupVarsFile}"
@@ -2944,9 +2944,9 @@ confOpenVPN() {
 
   cd /etc/openvpn/easy-rsa || exit 1
 
-  if [[ "${TWO_POINT_FOUR}" -eq 1 ]]; then
+  if [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
     pivpnCERT="ec"
-    pivpnTLSPROT="tls-crypt"
+    pivpnTLSPROT="tls-crypt-v2"
   else
     pivpnCERT="rsa"
     pivpnTLSPROT="tls-auth"
@@ -3043,7 +3043,11 @@ and HMAC key will now be generated." \
   fi
 
   # Generate static HMAC key to defend against DDoS
-  ${SUDOE} openvpn --genkey --secret pki/ta.key
+  if [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
+    ${SUDOE} openvpn --genkey tls-crypt-v2-server pki/tc-v2.key
+  else
+    ${SUDOE} openvpn --genkey tls-auth pki/ta.key
+  fi
 
   # Generate an empty Certificate Revocation List
   ${SUDOE} ./easyrsa gen-crl
@@ -3089,18 +3093,15 @@ and HMAC key will now be generated." \
     "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" \
     /etc/openvpn/server.conf
 
-  if [[ "${pivpnTLSPROT}" == "tls-crypt" ]]; then
-    # If they enabled 2.4 use tls-crypt instead of
+  if [[ "${pivpnTLSPROT}" == "tls-crypt-v2" ]]; then
+    # If they enabled 2.5 use tls-crypt-v2 instead of
     # tls-auth to encrypt control channel
-    sed_pattern="s/tls-auth"
-    sed_pattern="${sed_pattern} \/etc\/openvpn\/easy-rsa\/pki\/ta.key 0/"
-    sed_pattern="${sed_pattern} tls-crypt"
-    sed_pattern="${sed_pattern} \/etc\/openvpn\/easy-rsa\/pki\/ta.key/"
+    sed_pattern='s|tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0|tls-crypt-v2 /etc/openvpn/easy-rsa/pki/tc-v2.key|'
     ${SUDO} sed -i "${sed_pattern}" /etc/openvpn/server.conf
   fi
 
   if [[ "${pivpnCERT}" == "ec" ]]; then
-    # If they enabled 2.4 disable dh parameters and specify the
+    # If they enabled 2.5 disable dh parameters and specify the
     # matching curve from the ECDSA certificate
     sed_pattern="s/\(dh \/etc\/openvpn\/easy-rsa\/pki\/dh\).*/dh"
     sed_pattern="${sed_pattern} none\necdh-curve"
@@ -3193,8 +3194,8 @@ confOVPN() {
     "s/SRVRNAME/${SERVER_NAME}/" \
     /etc/openvpn/easy-rsa/pki/Default.txt
 
-  if [[ "${pivpnTLSPROT}" == "tls-crypt" ]]; then
-    # If they enabled 2.4 remove key-direction options since it's not required
+  if [[ "${pivpnTLSPROT}" == "tls-crypt-v2" ]]; then
+    # If they enabled 2.5 remove key-direction options since it's not required
     ${SUDO} sed -i \
       "/key-direction 1/d" \
       /etc/openvpn/easy-rsa/pki/Default.txt

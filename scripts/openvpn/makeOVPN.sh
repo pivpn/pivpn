@@ -9,6 +9,7 @@ CRT=".crt"
 KEY=".key"
 CA="ca.crt"
 TA="ta.key"
+TC_V2="tc-v2.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
 
 # shellcheck disable=SC1090
@@ -229,7 +230,7 @@ while [[ "$#" -gt 0 ]]; do
       DAYS="${_val}"
       ;;
     -i | --iOS)
-      if [[ "${TWO_POINT_FOUR}" -ne 1 ]]; then
+      if [[ "${TWO_POINT_FIVE}" -ne 1 ]]; then
         iOS=1
       else
         err "Sorry, can't generate iOS-specific configs for ECDSA certificates"
@@ -417,13 +418,25 @@ fi
 
 echo "CA public Key found: ${CA}"
 
-#Confirm the tls key file exists
-if [[ ! -f "${TA}" ]]; then
-  err "[ERROR]: tls Private Key not found: ${TA}"
-  exit
-fi
+if [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
+  # Confirm the tls-crypt-v2 key file exists
+  if [[ ! -f "${TC_V2}" ]]; then
+    err "[ERROR]: TLS crypt server key not found: ${TC_V2}"
+    exit
+  fi
 
-echo "tls Private Key found: ${TA}"
+  echo "TLS crypt server key found: ${TC_V2}"
+  # Generate client-specific tls-crypt-v2 key based on the server one
+  openvpn --tls-crypt-v2 "${TC_V2}" --genkey tls-crypt-v2-client "tc-v2-${NAME}.key"
+else
+  # Confirm the tls-auth key file exists
+  if [[ ! -f "${TA}" ]]; then
+    err "[ERROR]: TLS auth key not found: ${TA}"
+    exit
+  fi
+
+  echo "TLS auth key found: ${TA}"
+fi
 
 ## Added new step to create an .ovpn12 file that can be stored on iOS keychain
 ## This step is more secure method and does not require the end-user to keep
@@ -456,10 +469,10 @@ echo "tls Private Key found: ${TA}"
   fi
 
   # Finally, append the tls Private Key
-  if [[ "${iOS}" != 1 ]] && [[ "${TWO_POINT_FOUR}" -eq 1 ]]; then
-    echo "<tls-crypt>"
-    cat "${TA}"
-    echo "</tls-crypt>"
+  if [[ "${iOS}" != 1 ]] && [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
+    echo "<tls-crypt-v2>"
+    cat "tc-v2-${NAME}.key"
+    echo "</tls-crypt-v2>"
   else
     echo "<tls-auth>"
     cat "${TA}"
