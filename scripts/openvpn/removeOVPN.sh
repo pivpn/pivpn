@@ -4,6 +4,7 @@
 ### Constants
 setupVars="/etc/pivpn/openvpn/setupVars.conf"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
+TC_V2_METADATA="/etc/pivpn/openvpn/tc-v2-metadata.txt"
 
 # shellcheck disable=SC1090
 source "${setupVars}"
@@ -60,6 +61,11 @@ done
 
 if [[ ! -f "${INDEX}" ]]; then
   err "The file: ${INDEX} was not found"
+  exit 1
+fi
+
+if [[ "${TWO_POINT_FIVE}" -eq 1 ]] && [[ ! -f "${TC_V2_METADATA}" ]]; then
+  err "The file: ${TC_V2_METADATA} was not found"
   exit 1
 fi
 
@@ -178,11 +184,17 @@ for ((ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
       | grep -w ifconfig-push | awk '{print $2}')"
     rm -rf /etc/openvpn/ccd/"${CERTS_TO_REVOKE[ii]}"
 
-    # disablung warning SC2154, $install_home sourced externally
+    # disabling warning SC2154, $install_home sourced externally
     # shellcheck disable=SC2154
     rm -rf "${install_home}/ovpns/${CERTS_TO_REVOKE[ii]}.ovpn"
     rm -rf "/etc/openvpn/easy-rsa/pki/${CERTS_TO_REVOKE[ii]}.ovpn"
-    cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
+    cp -a /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
+
+    if [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
+      # Delete client metadata to block authentication at the tls-crypt level
+      sed '/^'"${CERTS_TO_REVOKE[ii]}"' /d' -i "${TC_V2_METADATA}"
+      rm -f "/etc/openvpn/easy-rsa/pki/tc-v2/${CERTS_TO_REVOKE[ii]}.key"
+    fi
 
     # If using Pi-hole, remove the client from the hosts file
     if [[ -f /etc/pivpn/hosts.openvpn ]]; then

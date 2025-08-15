@@ -3094,9 +3094,12 @@ and HMAC key will now be generated." \
     /etc/openvpn/server.conf
 
   if [[ "${pivpnTLSPROT}" == "tls-crypt-v2" ]]; then
-    # If they enabled 2.5 use tls-crypt-v2 instead of
-    # tls-auth to encrypt control channel
-    sed_pattern='s|tls-auth /etc/openvpn/easy-rsa/pki/ta.key 0|tls-crypt-v2 /etc/openvpn/easy-rsa/pki/tc-v2.key|'
+    # If they enabled 2.5 use tls-crypt-v2 instead of tls-auth to encrypt control channel
+    mkdir -p "/etc/openvpn/easy-rsa/pki/tc-v2"
+    ta_path="/etc/openvpn/easy-rsa/pki/ta.key"
+    tc_v2_path="/etc/openvpn/easy-rsa/pki/tc-v2/server.key"
+    tc_v2_cmd_path="/opt/pivpn/openvpn/TLSCryptV2Verify.sh"
+    sed_pattern='s|tls-auth '"${ta_path}"' 0|tls-crypt-v2 '"${tc_v2_path}"'\ntls-crypt-v2-verify '"${tc_v2_cmd_path}"'\nscript-security 2|'
     ${SUDO} sed -i "${sed_pattern}" /etc/openvpn/server.conf
   fi
 

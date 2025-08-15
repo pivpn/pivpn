@@ -9,8 +9,9 @@ CRT=".crt"
 KEY=".key"
 CA="ca.crt"
 TA="ta.key"
-TC_V2="tc-v2.key"
+TC_V2="tc-v2/server.key"
 INDEX="/etc/openvpn/easy-rsa/pki/index.txt"
+TC_V2_METADATA="/etc/pivpn/openvpn/tc-v2-metadata.txt"
 
 # shellcheck disable=SC1090
 source "${setupVars}"
@@ -426,8 +427,15 @@ if [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
   fi
 
   echo "TLS crypt server key found: ${TC_V2}"
+
+  # Generate and save a random 128-bit ID to embed into the tls-crypt key
+  # to reject revoked clients at the tls-crypt level
+  metadata="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 22)"
+  base64_metadata="$(echo -n "${metadata}" | base64 -w 0)"
+  echo "${NAME} ${metadata}" >> "${TC_V2_METADATA}"
+
   # Generate client-specific tls-crypt-v2 key based on the server one
-  openvpn --tls-crypt-v2 "${TC_V2}" --genkey tls-crypt-v2-client "tc-v2-${NAME}.key"
+  openvpn --tls-crypt-v2 "${TC_V2}" --genkey tls-crypt-v2-client "tc-v2/${NAME}.key" "${base64_metadata}"
 else
   # Confirm the tls-auth key file exists
   if [[ ! -f "${TA}" ]]; then
