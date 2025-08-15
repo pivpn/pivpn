@@ -3044,7 +3044,8 @@ and HMAC key will now be generated." \
 
   # Generate static HMAC key to defend against DDoS
   if [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
-    ${SUDOE} openvpn --genkey tls-crypt-v2-server pki/tc-v2.key
+    ${SUDOE} mkdir -p "/etc/openvpn/easy-rsa/pki/tc-v2"
+    ${SUDOE} openvpn --genkey tls-crypt-v2-server pki/tc-v2/server.key
   else
     ${SUDOE} openvpn --genkey tls-auth pki/ta.key
   fi
@@ -3095,7 +3096,6 @@ and HMAC key will now be generated." \
 
   if [[ "${pivpnTLSPROT}" == "tls-crypt-v2" ]]; then
     # If they enabled 2.5 use tls-crypt-v2 instead of tls-auth to encrypt control channel
-    mkdir -p "/etc/openvpn/easy-rsa/pki/tc-v2"
     ta_path="/etc/openvpn/easy-rsa/pki/ta.key"
     tc_v2_path="/etc/openvpn/easy-rsa/pki/tc-v2/server.key"
     tc_v2_cmd_path="/opt/pivpn/openvpn/TLSCryptV2Verify.sh"
