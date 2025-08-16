@@ -1722,7 +1722,9 @@ installPiVPN() {
   confNetwork
 
   if [[ "${VPN}" == 'openvpn' ]]; then
-    confLogging
+    if [[ "${PLAT}" == 'Alpine' ]]; then
+      confLogging
+    fi
   elif [[ "${VPN}" == 'wireguard' ]]; then
     writeWireguardTempVarsFile
   fi
@@ -3627,14 +3629,8 @@ confLogging() {
   # installed at a later time
   ${SUDO} mkdir -p /etc/{rsyslog,logrotate}.d
 
-  if [[ "${PLAT}" == 'Alpine' ]]; then
-    program_name='openvpn'
-  else
-    program_name='ovpn-server'
-  fi
-
-  echo "if \$programname == '${program_name}' then /var/log/openvpn.log
-if \$programname == '${program_name}' then stop" | ${SUDO} tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
+  echo "if \$programname == 'openvpn' then /var/log/openvpn.log
+if \$programname == 'openvpn' then stop" | ${SUDO} tee /etc/rsyslog.d/30-openvpn.conf > /dev/null
 
   echo "/var/log/openvpn.log
 {
@@ -3651,16 +3647,8 @@ if \$programname == '${program_name}' then stop" | ${SUDO} tee /etc/rsyslog.d/30
 }" | ${SUDO} tee /etc/logrotate.d/openvpn > /dev/null
 
   # Restart the logging service
-  case "${PLAT}" in
-    Debian | Raspbian | Ubuntu)
-      ${SUDO} systemctl -q is-active rsyslog.service \
-        && ${SUDO} systemctl restart rsyslog.service
-      ;;
-    Alpine)
-      ${SUDO} rc-service -is rsyslog restart
-      ${SUDO} rc-service -iN rsyslog start
-      ;;
-  esac
+  ${SUDO} rc-service -is rsyslog restart
+  ${SUDO} rc-service -iN rsyslog start
 }
 
 restartServices() {

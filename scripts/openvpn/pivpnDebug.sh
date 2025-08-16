@@ -61,7 +61,11 @@ printf "=============================================\n"
 
 if [[ "${PLAT}" != 'Alpine' ]]; then
   echo -e "::::      \e[4mSnippet of the server log\e[0m      ::::"
-  OVPNLOG="$(tail -n 20 /var/log/openvpn.log)"
+  if [ -f /var/log/openvpn.log ]; then
+    OVPNLOG="$(tail -n 20 /var/log/openvpn.log)"
+  else
+    OVPNLOG="$(journalctl -t ovpn-server -n 20)"
+  fi
 
   # Regular expession taken from https://superuser.com/a/202835,
   # it will match invalid IPs like 123.456.789.012 but it's fine
