@@ -79,7 +79,7 @@ checkName() {
 keynoPASS() {
   # Build the client key
   export EASYRSA_CERT_EXPIRE="${DAYS}"
-  ./easyrsa build-client-full "${NAME}" nopass
+  ./easyrsa --batch build-client-full "${NAME}" nopass
   cd pki || exit
 }
 
@@ -163,7 +163,7 @@ keyPASS() {
   fi
 
   export EASYRSA_CERT_EXPIRE="${DAYS}"
-  ./easyrsa --passin=pass:"${PASSWD}" \
+  ./easyrsa --batch --passin=pass:"${PASSWD}" \
     --passout=pass:"${PASSWD}" \
     build-client-full "${NAME}"
 

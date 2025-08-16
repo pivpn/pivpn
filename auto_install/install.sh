@@ -52,7 +52,7 @@ BASE_DEPS_ALPINE+=(perl libqrencode-tools)
 INSTALLED_PACKAGES=()
 
 ######## URLs ########
-easyrsaVer="3.1.0"
+easyrsaVer="3.2.3"
 easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}/EasyRSA-${easyrsaVer}.tgz"
 
 ######## Undocumented Flags. Shhh ########
@@ -3023,10 +3023,8 @@ and HMAC key will now be generated." \
   fi
 
   # Build the server
-  EASYRSA_CERT_EXPIRE=3650 ${SUDOE} ./easyrsa \
-    build-server-full \
-    "${SERVER_NAME}" \
-    nopass
+  EASYRSA_CERT_EXPIRE=3650 ${SUDOE} \
+    ./easyrsa --batch build-server-full "${SERVER_NAME}" nopass
 
   if [[ "${pivpnCERT}" == "rsa" ]]; then
     if [[ "${USE_PREDEFINED_DH_PARAM}" -eq 1 ]]; then
