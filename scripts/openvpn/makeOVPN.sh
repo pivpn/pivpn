@@ -479,7 +479,7 @@ fi
   # Finally, append the tls Private Key
   if [[ "${iOS}" != 1 ]] && [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
     echo "<tls-crypt-v2>"
-    cat "tc-v2-${NAME}.key"
+    cat "tc-v2/${NAME}.key"
     echo "</tls-crypt-v2>"
   else
     echo "<tls-auth>"

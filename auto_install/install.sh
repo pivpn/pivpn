@@ -282,6 +282,9 @@ checkExistingInstall() {
     setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
   fi
 
+  # Remove existing temporary setup vars file in case it's owned by another user
+  ${SUDO} rm -f "${tempsetupVarsFile}"
+
   if [[ -r "${setupVars}" ]]; then
     if [[ "${reconfigure}" == 'true' ]]; then
       echo -n "::: --reconfigure passed to install script, "
