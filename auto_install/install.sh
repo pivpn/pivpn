@@ -2946,9 +2946,11 @@ confOpenVPN() {
 
   if [[ "${TWO_POINT_FIVE}" -eq 1 ]]; then
     pivpnCERT="ec"
+    pivpnTLSVERS="1.3"
     pivpnTLSPROT="tls-crypt-v2"
   else
     pivpnCERT="rsa"
+    pivpnTLSVERS="1.2"
     pivpnTLSPROT="tls-auth"
   fi
 
@@ -3115,6 +3117,12 @@ and HMAC key will now be generated." \
     ${SUDO} sed -i \
       "s#\\(dh /etc/openvpn/easy-rsa/pki/dh\\).*#\\1${pivpnENCRYPT}.pem#" \
       /etc/openvpn/server.conf
+  fi
+
+  # Increase minimum TLS version to limit ciphersuites reducing attack surface
+  if [[ "${pivpnTLSVERS}" == "1.3" ]]; then
+    ${SUDO} sed -i "s|tls-version-min 1.2|tls-version-min 1.3|" "/etc/openvpn/server.conf"
+    ${SUDO} sed -i "s|tls-version-min 1.2|tls-version-min 1.3|" "${pivpnFilesDir}/files/etc/openvpn/easy-rsa/pki/Default.txt"
   fi
 
   # if they modified VPN network put value in server.conf
