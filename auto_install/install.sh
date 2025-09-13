@@ -661,14 +661,9 @@ preconfigurePackages() {
   # the wireguard module so it'll appear builtin from the container's point of view.
   WIREGUARD_BUILTIN=0
 
-  if [[ "${OSCN}" == "trixie" ]]; then
-    module_search_path='/usr/lib/modules/*/wireguard.ko*'
-  else
-    module_search_path='/lib/modules/*/wireguard.ko*'
-  fi
-
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-    if dpkg-query -S "${module_search_path}" &> /dev/null \
+    if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null \
+      || dpkg-query -S '/usr/lib/modules/*/wireguard.ko*' &> /dev/null \
       || modinfo wireguard 2> /dev/null \
       | grep -q '^filename:[[:blank:]]*(builtin)$' \
       || lsmod | grep -q '^wireguard'; then
