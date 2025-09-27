@@ -1922,7 +1922,7 @@ setOpenVPNDefaultVars() {
 
   if [[ "${pivpnenableipv6}" -eq 1 ]] \
     && [[ -z "${pivpnNETv6}" ]]; then
-    pivpnNETv6="fd11:5ee:bad:c0de::"
+    pivpnNETv6="fd11:${vpnGwhex}::"
   fi
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
@@ -1967,7 +1967,7 @@ setWireguardDefaultVars() {
 
   if [[ "${pivpnenableipv6}" -eq 1 ]] \
     && [[ -z "${pivpnNETv6}" ]]; then
-    pivpnNETv6="fd11:5ee:bad:c0de::"
+    pivpnNETv6="fd11:${vpnGwhex}::"
   fi
 
   if [[ "${pivpnenableipv6}" -eq 1 ]]; then
