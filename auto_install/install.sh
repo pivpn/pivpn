@@ -1026,7 +1026,7 @@ checkStaticIpSupported() {
   # If we are on 'Debian' but the raspi.list file is present,
   # then we actually are on 64-bit Raspberry Pi OS.
   elif [[ "${PLAT}" == "Debian" ]] \
-    && [[ -s /etc/apt/sources.list.d/raspi.list ]]; then
+    && [[ -s /etc/apt/sources.list.d/raspi.list || -s /etc/apt/sources.list.d/raspi.sources ]]; then
     return 0
   else
     return 1
