@@ -355,12 +355,13 @@ distroCheck() {
     PLAT="$(awk '{print $1}' <<< "${NAME}")"
     VER="${VERSION_ID}"
     declare -A VER_MAP=(
-      ["11"]="bullseye"
-      ["12"]="bookworm"
+	  # see https://wiki.debian.org/DebianReleases
+      ["12"]="bookworm" # until 2026-06-10 
       ["13"]="trixie"
-      ["20.04"]="focal"
-      ["22.04"]="jammy"
-      ["24.04"]="noble"
+	  # see https://ubuntu.com/about/release-cycle
+      ["20.04"]="focal" # until April 2030
+      ["22.04"]="jammy" # until April 2032
+      ["24.04"]="noble" # until April 2034
     )
     OSCN="${VER_MAP["${VER}"]}"
 
@@ -373,7 +374,7 @@ distroCheck() {
   case "${PLAT}" in
     Debian | Raspbian | Ubuntu)
       case "${OSCN}" in
-        bullseye | bookworm | trixie | focal | jammy | noble)
+        bookworm | trixie | focal | jammy | noble)
           :
           ;;
         *)
