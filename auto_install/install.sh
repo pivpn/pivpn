@@ -3599,8 +3599,12 @@ confNetwork() {
     Debian | Raspbian | Ubuntu)
       ${SUDO} iptables-save \
         | ${SUDO} tee /etc/iptables/rules.v4 > /dev/null
+        
       ${SUDO} ip6tables-save \
         | ${SUDO} tee /etc/iptables/rules.v6 > /dev/null
+      if command -v netfilter-persistent >/dev/null 2>&1; then
+        ${SUDO} netfilter-persistent save
+      fi
       ;;
 	Alpine)
 	  ${SUDO} rc-service iptables save
