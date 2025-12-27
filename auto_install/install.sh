@@ -16,7 +16,8 @@ pivpnGitUrl="https://github.com/pivpn/pivpn.git"
 #pivpnGitBranch="custombranchtocheckout"
 setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn"
-tempsetupVarsFile="/tmp/setupVars.conf"
+# Use mktemp for secure temp file creation (prevents TOCTOU race conditions)
+tempsetupVarsFile=""
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
 GITBIN="/usr/bin/git"
@@ -282,9 +283,6 @@ checkExistingInstall() {
     setupVars="${setupConfigDir}/openvpn/${setupVarsFile}"
   fi
 
-  # Remove existing temporary setup vars file in case it's owned by another user
-  ${SUDO} rm -f "${tempsetupVarsFile}"
-
   if [[ -r "${setupVars}" ]]; then
     if [[ "${reconfigure}" == 'true' ]]; then
       echo -n "::: --reconfigure passed to install script, "
@@ -392,6 +390,12 @@ distroCheck() {
       noOSSupport
       ;;
   esac
+
+  # Create secure temp file with mktemp (prevents TOCTOU race conditions)
+  if ! tempsetupVarsFile="$(mktemp)"; then
+    err "::: Failed to create temporary setup vars file"
+    exit 1
+  fi
 
   {
     echo "PLAT=${PLAT}"
