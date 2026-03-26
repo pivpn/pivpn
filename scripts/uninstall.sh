@@ -22,8 +22,8 @@ setupVarsFile="setupVars.conf"
 setupConfigDir="/etc/pivpn"
 pivpnFilesDir="/usr/local/src/pivpn"
 pivpnScriptDir="/opt/pivpn"
-PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
-  | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
+PLAT="$(grep -sEe '^NAME=' /etc/os-release \
+  | sed -E -e "s/NAME=[\'\"]?([^ ]*).*/\1/")"
 UPDATE_PKG_CACHE="${PKG_MANAGER} update"
 
 ### Functions

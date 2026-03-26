@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ### Constants
-PLAT="$(grep -sEe '^NAME\=' /etc/os-release \
-  | sed -E -e "s/NAME\=[\'\"]?([^ ]*).*/\1/")"
+PLAT="$(grep -sEe '^NAME=' /etc/os-release \
+  | sed -E -e "s/NAME=[\'\"]?([^ ]*).*/\1/")"
 
 # dual protocol, VPN type supplied as $1
 VPN="${1}"
