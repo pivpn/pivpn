@@ -6,7 +6,7 @@ CHECK_PKG_INSTALLED='dpkg-query -s'
 scriptdir="/opt/pivpn"
 vpn="wireguard"
 
-if grep -qsEe "^NAME\=['\"]?Alpine[a-zA-Z ]*['\"]?$" /etc/os-release; then
+if test -f /etc/alpine-release && which apk > /dev/null; then
   CHECK_PKG_INSTALLED='apk --no-cache info -e'
 fi
 
