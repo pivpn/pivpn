@@ -53,19 +53,20 @@ cat ../wg0.tmp
 rm ../wg0.tmp
 
 printf "=============================================\n"
-echo -e "::::  \e[4mClient configuration shown below\e[0m   ::::"
+echo -e "::::  \e[4mClient configuration(s) shown below\e[0m   ::::"
 
-EXAMPLE="$(head -1 /etc/wireguard/configs/clients.txt | awk '{print $1}')"
-
-if [[ -n "${EXAMPLE}" ]]; then
-  cp ../configs/"${EXAMPLE}".conf ../configs/"${EXAMPLE}".tmp
-
-  for k in *; do
-    sed "s#$(< "${k}")#${k}#" -i ../configs/"${EXAMPLE}".tmp
-  done
-
-  sed "s/${pivpnHOST}/REDACTED/" < ../configs/"${EXAMPLE}".tmp
-  rm ../configs/"${EXAMPLE}".tmp
+if [[ -s /etc/wireguard/configs/clients.txt ]]; then
+  while read -r CLIENT _; do
+    [[ -z "${CLIENT}" ]] && continue
+    echo "---------------------------------------------"
+    echo "Client: ${CLIENT}"
+    cp ../configs/"${CLIENT}".conf ../configs/"${CLIENT}".tmp
+    for k in *; do
+      sed "s#$(< "${k}")#${k}#" -i ../configs/"${CLIENT}".tmp
+    done
+    sed "s/${pivpnHOST}/REDACTED/" < ../configs/"${CLIENT}".tmp
+    rm ../configs/"${CLIENT}".tmp
+  done < /etc/wireguard/configs/clients.txt
 else
   echo "::: There are no clients yet"
 fi
