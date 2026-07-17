@@ -1070,6 +1070,18 @@ validIP() {
   return "${stat}"
 }
 
+validIPv6() {
+  local ip="${1}"
+  local stat=1
+
+  if [[ "${ip}" =~ ^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$ ]] \
+    || [[ "${ip}" == "::" ]]; then
+    stat=0
+  fi
+
+  return "${stat}"
+}
+
 validIPAndNetmask() {
   # shellcheck disable=SC2178
   local ip="${1}"
@@ -2383,8 +2395,13 @@ setupPiholeDNS() {
   pivpnDNS1="${vpnGw}"
 
   {
-    echo "pivpnDNS1=${pivpnDNS1}"
-    echo "pivpnDNS2=${pivpnDNS2}"
+  echo "pivpnDNS1=${pivpnDNS1}"
+  echo "pivpnDNS2=${pivpnDNS2}"
+
+  if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+    echo "pivpnDNS3=${pivpnDNS3}"
+    echo "pivpnDNS4=${pivpnDNS4}"
+  fi
   } >> "${tempsetupVarsFile}"
 
   # Allow incoming DNS requests through UFW.
@@ -2429,15 +2446,46 @@ askClientDNS() {
       echo "::: Invalid DNS ${pivpnDNS2}"
     fi
 
+    if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+      if [[ -z "${pivpnDNS3}" ]] \
+        && [[ -z "${pivpnDNS4}" ]]; then
+        pivpnDNS3="2620:fe::fe"
+        pivpnDNS4="2620:fe::9"
+        echo -n "::: No IPv6 DNS provider specified, "
+        echo "using Quad9 IPv6 DNS (${pivpnDNS3} ${pivpnDNS4})"
+      fi
+
+      if [[ -n "${pivpnDNS3}" ]] \
+        && ! validIPv6 "${pivpnDNS3}"; then
+        INVALID_DNS_SETTINGS=1
+        echo "::: Invalid DNS ${pivpnDNS3}"
+      fi
+
+      if [[ -n "${pivpnDNS4}" ]] \
+        && ! validIPv6 "${pivpnDNS4}"; then
+        INVALID_DNS_SETTINGS=1
+        echo "::: Invalid DNS ${pivpnDNS4}"
+      fi
+    fi
+
     if [[ "${INVALID_DNS_SETTINGS}" -eq 0 ]]; then
-      echo "::: Using DNS ${pivpnDNS1} ${pivpnDNS2}"
+      if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+        echo "::: Using DNS ${pivpnDNS1} ${pivpnDNS2} ${pivpnDNS3} ${pivpnDNS4}"
+      else
+        echo "::: Using DNS ${pivpnDNS1} ${pivpnDNS2}"
+      fi
     else
       exit 1
     fi
 
     {
-      echo "pivpnDNS1=${pivpnDNS1}"
-      echo "pivpnDNS2=${pivpnDNS2}"
+    echo "pivpnDNS1=${pivpnDNS1}"
+    echo "pivpnDNS2=${pivpnDNS2}"
+
+    if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+      echo "pivpnDNS3=${pivpnDNS3}"
+      echo "pivpnDNS4=${pivpnDNS4}"
+    fi
     } >> "${tempsetupVarsFile}"
     return
   fi
@@ -2484,17 +2532,27 @@ In case you have a local resolver running, i.e. unbound, select \
     2>&1 > /dev/tty)"; then
     if [[ "${DNSchoices}" != "Custom" ]]; then
       echo "::: Using ${DNSchoices} servers."
-      declare -A DNS_MAP=(["Quad9"]="9.9.9.9 149.112.112.112"
-        ["OpenDNS"]="208.67.222.222 208.67.220.220"
+      # Fields: <DNS1> <DNS2> <DNS3 (IPv6)> <DNS4 (IPv6)>
+      # Providers without a well-known public IPv6 resolver leave
+      # fields 3/4 empty, which triggers the manual IPv6 prompt below.
+      declare -A DNS_MAP=(["Quad9"]="9.9.9.9 149.112.112.112 2620:fe::fe 2620:fe::9"
+        ["OpenDNS"]="208.67.222.222 208.67.220.220 2620:119:35::35 2620:119:53::53"
         ["Level3"]="209.244.0.3 209.244.0.4"
-        ["DNS.WATCH"]="84.200.69.80 84.200.70.40"
+        ["DNS.WATCH"]="84.200.69.80 84.200.70.40 2001:1608:10:25::1c04:b12f 2001:1608:10:25::9249:d69b"
         ["Norton"]="199.85.126.10 199.85.127.10"
         ["FamilyShield"]="208.67.222.123 208.67.220.123"
-        ["CloudFlare"]="1.1.1.1 1.0.0.1"
-        ["Google"]="8.8.8.8 8.8.4.4"
+        ["CloudFlare"]="1.1.1.1 1.0.0.1 2606:4700:4700::1111 2606:4700:4700::1001"
+        ["Google"]="8.8.8.8 8.8.4.4 2001:4860:4860::8888 2001:4860:4860::8844"
         ["PiVPN-is-local-DNS"]="${vpnGw}")
       pivpnDNS1=$(awk '{print $1}' <<< "${DNS_MAP["${DNSchoices}"]}")
       pivpnDNS2=$(awk '{print $2}' <<< "${DNS_MAP["${DNSchoices}"]}")
+
+      if [[ "${DNSchoices}" == "PiVPN-is-local-DNS" ]]; then
+        pivpnDNS3="${vpnGwv6}"
+      else
+        pivpnDNS3=$(awk '{print $3}' <<< "${DNS_MAP["${DNSchoices}"]}")
+        pivpnDNS4=$(awk '{print $4}' <<< "${DNS_MAP["${DNSchoices}"]}")
+      fi
     else
       until [[ "${DNSSettingsCorrect}" == 'true' ]]; do
         strInvalid="Invalid"
@@ -2567,9 +2625,80 @@ Please try again.
     exit 1
   fi
 
+  # If IPv6 is enabled and we don't already have a known-good IPv6 DNS pair
+  # from the chosen preset (or the user picked Custom), ask for it manually.
+  if [[ "${pivpnenableipv6}" -eq 1 ]] \
+    && [[ -z "${pivpnDNS3}" ]]; then
+    until [[ "${DNSv6SettingsCorrect}" == 'true' ]]; do
+      strInvalid="Invalid"
+
+      if pivpnDNSv6="$(whiptail \
+        --backtitle "Specify Upstream IPv6 DNS Provider(s)" \
+        --inputbox "Enter your desired upstream IPv6 DNS provider(s), \
+separated by a comma.
+
+For example '2606:4700:4700::1111, 2606:4700:4700::1001'" "${r}" "${c}" "" \
+        3>&1 1>&2 2>&3)"; then
+        pivpnDNS3="$(echo "${pivpnDNSv6}" \
+          | sed 's/[, \t]\+/,/g' \
+          | awk -F, '{print$1}')"
+        pivpnDNS4="$(echo "${pivpnDNSv6}" \
+          | sed 's/[, \t]\+/,/g' \
+          | awk -F, '{print$2}')"
+
+        if ! validIPv6 "${pivpnDNS3}" \
+          || [[ ! "${pivpnDNS3}" ]]; then
+          pivpnDNS3="${strInvalid}"
+        fi
+
+        if ! validIPv6 "${pivpnDNS4}" \
+          && [[ "${pivpnDNS4}" ]]; then
+          pivpnDNS4="${strInvalid}"
+        fi
+      else
+        err "::: Cancel selected, exiting...."
+        exit 1
+      fi
+
+      if [[ "${pivpnDNS3}" == "${strInvalid}" ]] \
+        || [[ "${pivpnDNS4}" == "${strInvalid}" ]]; then
+        whiptail \
+          --backtitle "Invalid IP" \
+          --title "Invalid IPv6 Address" \
+          --msgbox "One or both entered IPv6 addresses were invalid. \
+Please try again.
+    DNS Server 3:   ${pivpnDNS3}
+    DNS Server 4:   ${pivpnDNS4}" "${r}" "${c}"
+
+        [[ "${pivpnDNS3}" == "${strInvalid}" ]] && pivpnDNS3=""
+        [[ "${pivpnDNS4}" == "${strInvalid}" ]] && pivpnDNS4=""
+
+        DNSv6SettingsCorrect=false
+      else
+        if whiptail \
+          --backtitle "Specify Upstream IPv6 DNS Provider(s)" \
+          --title "Upstream IPv6 DNS Provider(s)" \
+          --yesno "Are these settings correct?
+    DNS Server 3:   ${pivpnDNS3}
+    DNS Server 4:   ${pivpnDNS4}" "${r}" "${c}"; then
+          DNSv6SettingsCorrect=true
+        else
+          DNSv6SettingsCorrect=false
+        fi
+      fi
+    done
+  elif [[ "${pivpnenableipv6}" -eq 1 ]]; then
+    echo "::: Using IPv6 DNS ${pivpnDNS3}${pivpnDNS4:+ ${pivpnDNS4}}"
+  fi
+
   {
     echo "pivpnDNS1=${pivpnDNS1}"
     echo "pivpnDNS2=${pivpnDNS2}"
+
+    if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+      echo "pivpnDNS3=${pivpnDNS3}"
+      echo "pivpnDNS4=${pivpnDNS4}"
+    fi
   } >> "${tempsetupVarsFile}"
 }
 
