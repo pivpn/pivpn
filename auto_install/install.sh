@@ -2369,7 +2369,25 @@ setupPiholeDNS() {
   CORE_VERSION="$(source "$piholeVersions" && echo "${CORE_VERSION}")"
   if [ "$(echo -e 'v6.0.0\n'"${CORE_VERSION}" | sort -V | head -n 1)" = "v6.0.0" ]; then
     # Running Pi-hole v6 or later
-    ${SUDO} pihole-FTL --config dns.listeningMode LOCAL
+    # Both LOCAL and ALL listening modes answer queries from the VPN
+    # subnet since it is directly attached, so keep the current setting
+    # as other clients may depend on it (e.g. a routed subnet permitted
+    # by ALL). Only a mode pinned to a specific interface would ignore
+    # VPN clients, in which case fall back to LOCAL.
+    listeningMode="$(${SUDO} pihole-FTL --config dns.listeningMode \
+      | tr -d '[:space:]')"
+
+    case "${listeningMode}" in
+      ALL | LOCAL)
+        :
+        ;;
+      *)
+        echo -n "::: Changing Pi-hole DNS listening mode from "
+        echo "${listeningMode:-unknown} to LOCAL to serve VPN clients"
+        ${SUDO} pihole-FTL --config dns.listeningMode LOCAL
+        ;;
+    esac
+
     ${SUDO} pihole-FTL --config misc.etc_dnsmasq_d true
   else
     # Setting Pi-hole to "Listen on all interfaces" allows
