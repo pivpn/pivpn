@@ -572,6 +572,17 @@ notifyPackageUpdatesAvailable() {
   fi
 }
 
+# A container shares the host's kernel. Modules can neither be built nor
+# loaded from inside one, and the module file belongs to a kernel package the
+# container does not have installed, so looking for it here tells us nothing
+# about whether WireGuard is usable.
+isContainer() {
+  systemd-detect-virt --container --quiet 2> /dev/null \
+    || [[ -f /.dockerenv ]] \
+    || [[ -f /run/.containerenv ]] \
+    || grep -saq 'container=' /proc/1/environ
+}
+
 preconfigurePackages() {
   # Install packages used by this installation script
   # If apt is older than 1.5 we need to install an additional package to add
@@ -663,12 +674,15 @@ preconfigurePackages() {
   # wireguard-dkms does not make the module part of the package since the
   # module itself is built at install time and not part of the .deb).
   # Source: https://github.com/MichaIng/DietPi/blob/7bf5e1041f3b2972d7827c48215069d1c90eee07/dietpi/dietpi-software#L1807-L1815
-  # Additionally, if we're using something like LXC, the host kernel will load
-  # the wireguard module so it'll appear builtin from the container's point of view.
+  # Additionally, if we're using something like LXC, the host kernel provides
+  # the module. The checks below only see that once the host has loaded it, so
+  # ask whether we are in a container first: there is nothing to build there,
+  # and the DKMS fallback would fail on a package that no longer exists.
   WIREGUARD_BUILTIN=0
 
   if [[ "${PKG_MANAGER}" == 'apt-get' ]]; then
-    if dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null \
+    if isContainer \
+      || dpkg-query -S '/lib/modules/*/wireguard.ko*' &> /dev/null \
       || dpkg-query -S '/usr/lib/modules/*/wireguard.ko*' &> /dev/null \
       || modinfo wireguard 2> /dev/null \
       | grep -q '^filename:[[:blank:]]*(builtin)$' \
