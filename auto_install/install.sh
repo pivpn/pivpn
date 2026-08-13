@@ -108,9 +108,11 @@ export LC_ALL=C
 
 main() {
   # Pre install checks and configs
+  # flagsCheck first: distroCheck reads runUnattended when the OS is untested,
+  # and rootCheck reads the package manager distroCheck picks.
+  flagsCheck "$@"
   distroCheck
   rootCheck
-  flagsCheck "$@"
   unattendedCheck
   checkExistingInstall "$@"
   checkHostname
