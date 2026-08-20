@@ -2921,7 +2921,7 @@ confOpenVPN() {
   fi
 
   # Create folder to store client specific directives used to push static IPs
-  ${SUDO} mkdir /etc/openvpn/ccd
+  ${SUDO} mkdir -p /etc/openvpn/ccd
 
   # If easy-rsa exists, remove it
   if [[ -d /etc/openvpn/easy-rsa/ ]]; then
@@ -2929,8 +2929,13 @@ confOpenVPN() {
   fi
 
   # Get easy-rsa
+  # NOTE: --one-top-level with an absolute path fails with 'Invalid
+  # cross-device link' (EXDEV) on Ubuntu 26.04's tar due to the
+  # CVE-2026-5704 mitigation (LP#2160696). Create the directory and
+  # extract into it with -C instead.
+  ${SUDO} mkdir -p /etc/openvpn/easy-rsa
   curl -sSfL "${easyrsaRel}" \
-    | ${SUDO} tar -xz --one-top-level=/etc/openvpn/easy-rsa --strip-components 1
+    | ${SUDO} tar -xz -C /etc/openvpn/easy-rsa --strip-components 1
 
   if [[ ! -s /etc/openvpn/easy-rsa/easyrsa ]]; then
     err "${0}: ERR: Failed to download EasyRSA."
