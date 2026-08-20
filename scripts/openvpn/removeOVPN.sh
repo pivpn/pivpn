@@ -202,10 +202,19 @@ for ((ii = 0; ii < ${#CERTS_TO_REVOKE[@]}; ii++)); do
         -e "\#${STATIC_IP} ${CERTS_TO_REVOKE[ii]}.pivpn#d" \
         -i /etc/pivpn/hosts.openvpn
 
-      if killall -SIGHUP pihole-FTL; then
-        echo "::: Updated hosts file for Pi-hole"
-      else
-        err "::: Failed to reload pihole-FTL configuration"
+      if command -v pihole-FTL > /dev/null; then
+        if killall -SIGHUP pihole-FTL; then
+          echo "::: Updated hosts file for Pi-hole"
+        else
+          err "::: Failed to reload pihole-FTL configuration"
+        fi
+      elif command -v AdGuardHome > /dev/null \
+          || systemctl is-active -q AdGuardHome 2>/dev/null; then
+        if systemctl restart AdGuardHome 2>/dev/null; then
+          echo "::: Restarted AdGuard Home"
+        else
+          err "::: Failed to restart AdGuard Home"
+        fi
       fi
     fi
   fi

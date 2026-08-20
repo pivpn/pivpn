@@ -274,10 +274,19 @@ if [[ -f /etc/pivpn/hosts.wireguard ]]; then
       | tee -a /etc/pivpn/hosts.wireguard > /dev/null
   fi
 
-  if killall -SIGHUP pihole-FTL; then
-    echo "::: Updated hosts file for Pi-hole"
-  else
-    err "::: Failed to reload pihole-FTL configuration"
+  if command -v pihole-FTL > /dev/null; then
+    if killall -SIGHUP pihole-FTL; then
+      echo "::: Updated hosts file for Pi-hole"
+    else
+      err "::: Failed to reload pihole-FTL configuration"
+    fi
+  elif command -v AdGuardHome > /dev/null \
+      || systemctl is-active -q AdGuardHome 2>/dev/null; then
+    if systemctl restart AdGuardHome 2>/dev/null; then
+      echo "::: Restarted AdGuard Home"
+    else
+      err "::: Failed to restart AdGuard Home"
+    fi
   fi
 fi
 
