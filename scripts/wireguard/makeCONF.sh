@@ -222,6 +222,10 @@ UNUSED_IPV4_HEX="$(decIPv4ToHex "${UNUSED_IPV4_DEC}")"
     echo
   fi
 
+  if [[ -n "${pivpnMTU}" && "${pivpnMTU}" != "1420" ]]; then
+    echo "MTU = ${pivpnMTU}"
+  fi
+
   echo -n "DNS = ${pivpnDNS1}"
 
   if [[ -n "${pivpnDNS2}" ]]; then
