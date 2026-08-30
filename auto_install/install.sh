@@ -2967,10 +2967,6 @@ confOpenVPN() {
   fi
 
   # Get easy-rsa
-  # NOTE: --one-top-level with an absolute path fails with 'Invalid
-  # cross-device link' (EXDEV) on Ubuntu 26.04's tar due to the
-  # CVE-2026-5704 mitigation (LP#2160696). Create the directory and
-  # extract into it with -C instead.
   ${SUDO} mkdir -p /etc/openvpn/easy-rsa
   curl -sSfL "${easyrsaRel}" \
     | ${SUDO} tar -xz -C /etc/openvpn/easy-rsa --strip-components 1
