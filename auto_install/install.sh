@@ -58,6 +58,7 @@ easyrsaRel="https://github.com/OpenVPN/easy-rsa/releases/download/v${easyrsaVer}
 ######## Undocumented Flags. Shhh ########
 runUnattended=false
 usePiholeDNS=false
+useAdGuardDNS=false
 skipSpaceCheck=false
 reconfigure=false
 showUnsupportedNICs=false
@@ -229,6 +230,9 @@ flagsCheck() {
         ;;
       "--use-pihole")
         usePiholeDNS=true
+        ;;
+      "--use-adguard")
+        useAdGuardDNS=true
         ;;
       "--reconfigure")
         reconfigure=true
@@ -718,7 +722,23 @@ preconfigurePackages() {
     USING_UFW=0
   fi
 
-  if [[ "${PKG_MANAGER}" == 'apt-get' ]] && [[ "${USING_UFW}" -eq 0 ]]; then
+  # if firewalld is running, configure that.
+  if [[ "${USING_UFW}" -eq 0 ]]; then
+    if ${SUDO} bash -c 'command -v firewall-cmd' > /dev/null; then
+      if ${SUDO} firewall-cmd --state 2>/dev/null | grep -q running; then
+        USING_FIREWALLD=1
+      else
+        USING_FIREWALLD=0
+      fi
+    else
+      USING_FIREWALLD=0
+    fi
+  else
+    USING_FIREWALLD=0
+  fi
+
+  if [[ "${PKG_MANAGER}" == 'apt-get' ]] && [[ "${USING_UFW}" -eq 0 ]] \
+      && [[ "${USING_FIREWALLD}" -eq 0 ]]; then
     BASE_DEPS+=(iptables-persistent)
     echo iptables-persistent iptables-persistent/autosave_v4 boolean true \
       | ${SUDO} debconf-set-selections
@@ -761,6 +781,7 @@ preconfigurePackages() {
   fi
 
   echo "USING_UFW=${USING_UFW}" >> "${tempsetupVarsFile}"
+  echo "USING_FIREWALLD=${USING_FIREWALLD}" >> "${tempsetupVarsFile}"
 }
 
 installDependentPackages() {
@@ -2387,15 +2408,52 @@ setupPiholeDNS() {
     echo "pivpnDNS2=${pivpnDNS2}"
   } >> "${tempsetupVarsFile}"
 
-  # Allow incoming DNS requests through UFW.
+  # Allow incoming DNS requests through the firewall.
   if [[ "${USING_UFW}" -eq 1 ]]; then
     ${SUDO} ufw insert 1 allow in \
       on "${pivpnDEV}" to any port 53 \
       from "${pivpnNET}/${subnetClass}" > /dev/null
+  elif [[ "${USING_FIREWALLD}" -eq 1 ]]; then
+    ${SUDO} firewall-cmd --permanent \
+      --add-rich-rule="rule family=\"ipv4\" \
+        source address=\"${pivpnNET}/${subnetClass}\" \
+        port port=\"53\" protocol=\"udp\" accept" > /dev/null
+    ${SUDO} firewall-cmd --reload > /dev/null
   else
     ${SUDO} iptables -I INPUT -i "${pivpnDEV}" \
       -p udp --dport 53 -j ACCEPT -m comment --comment "pihole-DNS-rule"
   fi
+}
+
+setupAdGuardDNS() {
+  # Create an empty hosts file for VPN clients.
+  ${SUDO} bash -c "> /etc/pivpn/hosts.${VPN}"
+
+  # Use the VPN gateway IP as DNS server.
+  pivpnDNS1="${vpnGw}"
+
+  {
+    echo "pivpnDNS1=${pivpnDNS1}"
+    echo "pivpnDNS2=${pivpnDNS2}"
+  } >> "${tempsetupVarsFile}"
+
+  # Allow incoming DNS requests through the firewall.
+  if [[ "${USING_UFW}" -eq 1 ]]; then
+    ${SUDO} ufw insert 1 allow in \
+      on "${pivpnDEV}" to any port 53 \
+      from "${pivpnNET}/${subnetClass}" > /dev/null
+  elif [[ "${USING_FIREWALLD}" -eq 1 ]]; then
+    ${SUDO} firewall-cmd --permanent \
+      --add-rich-rule="rule family=\"ipv4\" \
+        source address=\"${pivpnNET}/${subnetClass}\" \
+        port port=\"53\" protocol=\"udp\" accept" > /dev/null
+    ${SUDO} firewall-cmd --reload > /dev/null
+  else
+    ${SUDO} iptables -I INPUT -i "${pivpnDEV}" \
+      -p udp --dport 53 -j ACCEPT -m comment --comment "adguard-DNS-rule"
+  fi
+
+  echo "::: AdGuard Home DNS configured for VPN clients."
 }
 
 askClientDNS() {
@@ -2403,6 +2461,11 @@ askClientDNS() {
     if [[ "${usePiholeDNS}" == 'true' ]] \
       && command -v pihole > /dev/null; then
       setupPiholeDNS
+      return
+    elif [[ "${useAdGuardDNS}" == 'true' ]] \
+      && { command -v AdGuardHome > /dev/null \
+           || systemctl is-active -q AdGuardHome 2>/dev/null; }; then
+      setupAdGuardDNS
       return
     elif [[ -z "${pivpnDNS1}" ]] \
       && [[ -n "${pivpnDNS2}" ]]; then
@@ -2452,6 +2515,21 @@ askClientDNS() {
 do you want to use it as the DNS server for the VPN, so you \
 get ad blocking on the go?" "${r}" "${c}"; then
       setupPiholeDNS
+      return
+    fi
+  fi
+
+  # Detect and offer to use AdGuard Home
+  if command -v AdGuardHome > /dev/null \
+      || systemctl is-active -q AdGuardHome 2>/dev/null; then
+    if [[ "${useAdGuardDNS}" == 'true' ]] \
+      || whiptail \
+        --backtitle "Setup PiVPN" \
+        --title "AdGuard Home" \
+        --yesno "We have detected an AdGuard Home installation, \
+do you want to use it as the DNS server for the VPN, so you \
+get ad blocking on the go?" "${r}" "${c}"; then
+      setupAdGuardDNS
       return
     fi
   fi
@@ -3426,6 +3504,35 @@ confNetwork() {
 
     ${SUDO} ufw reload > /dev/null
     echo "::: UFW configuration completed."
+    return
+  fi
+
+  if [[ "${USING_FIREWALLD}" -eq 1 ]]; then
+    echo "::: Detected firewalld is running."
+    echo "::: Adding firewalld rules..."
+
+    # Enable masquerade for NAT
+    ${SUDO} firewall-cmd --permanent --add-masquerade > /dev/null
+
+    # Allow VPN port
+    ${SUDO} firewall-cmd --permanent \
+      --add-port="${pivpnPORT}/${pivpnPROTO}" > /dev/null
+
+    # Allow forwarding from VPN subnet
+    ${SUDO} firewall-cmd --permanent \
+      --add-rich-rule="rule family=\"ipv4\" \
+        source address=\"${pivpnNET}/${subnetClass}\" \
+        accept" > /dev/null
+
+    if [[ "${pivpnenableipv6}" -eq 1 ]]; then
+      ${SUDO} firewall-cmd --permanent \
+        --add-rich-rule="rule family=\"ipv6\" \
+          source address=\"${pivpnNETv6}/${subnetClassv6}\" \
+          accept" > /dev/null
+    fi
+
+    ${SUDO} firewall-cmd --reload > /dev/null
+    echo "::: firewalld configuration completed."
     return
   fi
 

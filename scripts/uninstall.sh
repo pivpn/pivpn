@@ -103,6 +103,20 @@ removeAll() {
       --comment "${VPN}-nat-rule"
 
     ufw reload &> /dev/null
+  elif [[ "${USING_FIREWALLD}" -eq 1 ]]; then
+    firewall-cmd --permanent \
+      --remove-port="${pivpnPORT}/${pivpnPROTO}" > /dev/null 2>&1
+    firewall-cmd --permanent --remove-masquerade > /dev/null 2>&1
+    firewall-cmd --permanent \
+      --remove-rich-rule="rule family=\"ipv4\" \
+        source address=\"${pivpnNET}/${subnetClass}\" \
+        accept" > /dev/null 2>&1
+    # Remove DNS rule if it was added for Pi-hole/AdGuard Home
+    firewall-cmd --permanent \
+      --remove-rich-rule="rule family=\"ipv4\" \
+        source address=\"${pivpnNET}/${subnetClass}\" \
+        port port=\"53\" protocol=\"udp\" accept" > /dev/null 2>&1
+    firewall-cmd --reload > /dev/null
   elif [[ "${USING_UFW}" -eq 0 ]]; then
     if [[ "${INPUT_CHAIN_EDITED}" -eq 1 ]]; then
       iptables \
@@ -258,6 +272,16 @@ removeAll() {
       pihole reloaddns
     else
       pihole restartdns reload
+    fi
+  fi
+
+  # If AdGuard Home was used, restart it to clear stale config
+  if [[ -f "/etc/pivpn/hosts.${VPN}" ]] \
+      && { command -v AdGuardHome > /dev/null \
+           || systemctl is-active -q AdGuardHome 2>/dev/null; }; then
+    # Only restart if dnsmasqConfig doesn't exist (not Pi-hole)
+    if [[ ! -f "${dnsmasqConfig}" ]]; then
+      systemctl restart AdGuardHome 2>/dev/null || true
     fi
   fi
 
